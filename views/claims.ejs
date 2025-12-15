@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siniestros | CRM Insurance System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #001f3f;
+            --secondary: #87ceeb;
+            --accent: #4da6ff;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border: #dee2e6;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        header {
+            background-color: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0;
+            margin-bottom: 0;
+        }
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        .logo-text span {
+            color: var(--accent);
+        }
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .btn {
+            padding: 10px 24px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: #003366;
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .page-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .page-title i {
+            color: var(--primary);
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 28px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background-color: #f8f9fa;
+        }
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        tbody tr {
+            transition: background-color 0.15s;
+        }
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .badge-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray);
+        }
+        .empty-state i {
+            font-size: 3.5rem;
+            color: #dee2e6;
+            margin-bottom: 16px;
+        }
+        .empty-state h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+        .text-muted {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+        .font-weight-bold {
+            font-weight: 700;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background-color: #f8f9fa;
+            color: var(--dark);
+        }
+        .modal-body {
+            padding: 28px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Open Sans', sans-serif;
+            transition: border-color 0.2s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 31, 63, 0.1);
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo-text">CRM <span>Insurance</span> System</div>
+            <div class="user-menu">
+                <span><%= user.nombre || user.username %></span>
+                <a href="/dashboard" class="btn">Dashboard</a>
+                <a href="/vehicles" class="btn">Vehículos</a>
+                <a href="/logout" class="btn btn-danger">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-exclamation-triangle"></i>
+                Siniestros
+            </h1>
+            <button class="btn btn-success" onclick="openModal()">
+                <i class="fas fa-plus"></i> Registrar Siniestro
+            </button>
+        </div>
+
+        <div class="section">
+            <% if (claims.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h2>No hay siniestros registrados</h2>
+                <p>Registra siniestros cuando ocurran para mantener un historial completo</p>
+                <button class="btn btn-success" onclick="openModal()" style="margin-top: 20px;">
+                    <i class="fas fa-plus"></i> Registrar Siniestro
+                </button>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Vehículo</th>
+                        <th>Tipo</th>
+                        <th>Monto del Daño</th>
+                        <th>Estado</th>
+                        <th>Número de Referencia</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% claims.forEach(function(claim) { %>
+                    <tr>
+                        <td><%= new Date(claim.fecha_siniestro).toLocaleDateString('es-ES') %></td>
+                        <td>
+                            <strong>#<%= claim.numero_vehiculo %></strong><br>
+                            <span class="text-muted" style="font-size: 0.85rem;"><%= claim.marca %> <%= claim.modelo %></span>
+                        </td>
+                        <td><%= claim.tipo_siniestro || '-' %></td>
+                        <td>
+                            <% if (claim.monto_dano) { %>
+                                <span class="font-weight-bold">$<%= claim.monto_dano.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></span>
+                            <% } else { %>
+                                <span class="text-muted">-</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% 
+                            const estadoClass = claim.estado === 'Resuelto' ? 'success' : 
+                                                 claim.estado === 'En Proceso' ? 'info' : 
+                                                 claim.estado === 'Rechazado' ? 'danger' : 'warning';
+                            %>
+                            <span class="badge badge-<%= estadoClass %>">
+                                <%= claim.estado %>
+                            </span>
+                        </td>
+                        <td>
+                            <% if (claim.numero_referencia) { %>
+                                <%= claim.numero_referencia %>
+                            <% } else { %>
+                                <span class="text-muted">-</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="claimModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Registrar Siniestro</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="claimForm">
+                    <div class="form-group">
+                        <label class="form-label">Vehículo *</label>
+                        <select class="form-control" name="vehicle_id" id="vehicleSelect" required>
+                            <option value="">Seleccionar vehículo</option>
+                            <% vehicles.forEach(function(vehicle) { %>
+                            <option value="<%= vehicle.id %>">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Póliza (Opcional)</label>
+                        <select class="form-control" name="policy_id" id="policySelect">
+                            <option value="">Seleccionar póliza</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fecha del Siniestro *</label>
+                        <input type="date" class="form-control" name="fecha_siniestro" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo de Siniestro</label>
+                        <select class="form-control" name="tipo_siniestro">
+                            <option value="">Seleccionar tipo</option>
+                            <option value="Colisión">Colisión</option>
+                            <option value="Robo">Robo</option>
+                            <option value="Vandalismo">Vandalismo</option>
+                            <option value="Daño por Granizo">Daño por Granizo</option>
+                            <option value="Incendio">Incendio</option>
+                            <option value="Inundación">Inundación</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" name="descripcion" rows="4" placeholder="Describe el siniestro..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Monto del Daño</label>
+                        <input type="number" step="0.01" class="form-control" name="monto_dano" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estado</label>
+                        <select class="form-control" name="estado">
+                            <option value="En Proceso">En Proceso</option>
+                            <option value="Resuelto">Resuelto</option>
+                            <option value="Rechazado">Rechazado</option>
+                            <option value="Pendiente">Pendiente</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Número de Referencia</label>
+                        <input type="text" class="form-control" name="numero_referencia" placeholder="Número de referencia de la aseguradora">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Compañía de Seguros</label>
+                        <input type="text" class="form-control" name="compania_seguro" placeholder="Nombre de la compañía">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const policies = <%= JSON.stringify(policies) %>;
+        
+        function openModal() {
+            document.getElementById('claimModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('claimModal').style.display = 'none';
+            document.getElementById('claimForm').reset();
+            document.getElementById('policySelect').innerHTML = '<option value="">Seleccionar póliza</option>';
+        }
+
+        // Update policy dropdown when vehicle changes
+        document.getElementById('vehicleSelect').addEventListener('change', function() {
+            const vehicleId = this.value;
+            const policySelect = document.getElementById('policySelect');
+            policySelect.innerHTML = '<option value="">Seleccionar póliza</option>';
+            
+            if (vehicleId) {
+                const vehiclePolicies = policies.filter(p => p.vehicle_id == vehicleId);
+                vehiclePolicies.forEach(policy => {
+                    const option = document.createElement('option');
+                    option.value = policy.id;
+                    option.textContent = policy.numero_poliza;
+                    policySelect.appendChild(option);
+                });
+            }
+        });
+
+        document.getElementById('claimForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            // Convert numeric fields
+            if (data.monto_dano) data.monto_dano = parseFloat(data.monto_dano);
+            if (!data.policy_id) data.policy_id = null;
+
+            try {
+                const response = await fetch('/api/claims', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('Siniestro registrado exitosamente');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                alert('Error al guardar: ' + error.message);
+            }
+        });
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('claimModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
+

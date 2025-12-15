@@ -1,0 +1,2112 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CRM Insurance System | Control de Flotas</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+
+        :root {
+
+            --primary: #001f3f;
+
+            --secondary: #87ceeb;
+
+            --accent: #4da6ff;
+
+            --light: #f5f9fc;
+
+            --dark: #1a2a3a;
+
+            --gray: #6c757d;
+
+            --success: #28a745;
+
+            --warning: #ffc107;
+
+            --danger: #dc3545;
+
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+            --border-radius: 8px;
+
+        }
+
+
+
+        * {
+
+            margin: 0;
+
+            padding: 0;
+
+            box-sizing: border-box;
+
+        }
+
+
+
+        body {
+
+            font-family: 'Open Sans', sans-serif;
+
+            color: var(--dark);
+
+            line-height: 1.6;
+
+            background-color: var(--light);
+
+        }
+
+
+
+        h1, h2, h3, h4, h5, h6 {
+
+            font-family: 'Montserrat', sans-serif;
+
+            font-weight: 600;
+
+            margin-bottom: 1rem;
+
+        }
+
+
+
+        h1 {
+
+            font-size: 2.8rem;
+
+            line-height: 1.2;
+
+        }
+
+
+
+        h2 {
+
+            font-size: 2.2rem;
+
+            color: var(--primary);
+
+            position: relative;
+
+            padding-bottom: 0.8rem;
+
+        }
+
+
+
+        h2:after {
+
+            content: '';
+
+            position: absolute;
+
+            bottom: 0;
+
+            left: 0;
+
+            width: 80px;
+
+            height: 4px;
+
+            background-color: var(--accent);
+
+        }
+
+
+
+        h3 {
+
+            font-size: 1.6rem;
+
+            color: var(--secondary);
+
+        }
+
+
+
+        .container {
+
+            width: 100%;
+
+            max-width: 1200px;
+
+            margin: 0 auto;
+
+            padding: 0 20px;
+
+        }
+
+
+
+        .btn {
+
+            display: inline-block;
+
+            padding: 12px 28px;
+
+            border-radius: var(--border-radius);
+
+            font-weight: 600;
+
+            text-decoration: none;
+
+            cursor: pointer;
+
+            transition: all 0.3s ease;
+
+            border: none;
+
+            font-family: 'Montserrat', sans-serif;
+
+            font-size: 1rem;
+
+        }
+
+
+
+        .btn-primary {
+
+            background-color: var(--accent);
+
+            color: white;
+
+        }
+
+
+
+        .btn-primary:hover {
+
+            background-color: #3d8cd9;
+
+            transform: translateY(-3px);
+
+            box-shadow: var(--shadow);
+
+        }
+
+
+
+        .btn-secondary {
+
+            background-color: var(--secondary);
+
+            color: white;
+
+        }
+
+
+
+        .btn-secondary:hover {
+
+            background-color: #6bb8d4;
+
+            transform: translateY(-3px);
+
+            box-shadow: var(--shadow);
+
+        }
+
+
+
+        /* Header */
+
+        header {
+
+            background-color: white;
+
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+
+            position: sticky;
+
+            top: 0;
+
+            z-index: 1000;
+
+        }
+
+
+
+        .header-container {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            padding: 15px 0;
+
+        }
+
+
+
+        .logo {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+
+        }
+
+
+
+        .logo-icon {
+
+            color: var(--primary);
+
+            font-size: 2.2rem;
+
+        }
+
+
+
+        .logo-img {
+
+            height: 50px;
+
+            width: auto;
+
+            object-fit: contain;
+
+        }
+
+
+
+        .logo-text {
+
+            font-family: 'Montserrat', sans-serif;
+
+            font-weight: 700;
+
+            font-size: 1.8rem;
+
+            color: var(--primary);
+
+        }
+
+
+
+        .logo-text span {
+
+            color: var(--accent);
+
+        }
+
+
+
+        nav ul {
+
+            display: flex;
+
+            list-style: none;
+
+            gap: 30px;
+
+        }
+
+
+
+        nav a {
+
+            text-decoration: none;
+
+            color: var(--dark);
+
+            font-weight: 500;
+
+            font-size: 1.05rem;
+
+            transition: color 0.3s;
+
+        }
+
+
+
+        nav a:hover {
+
+            color: var(--accent);
+
+        }
+
+
+
+        .mobile-menu-btn {
+
+            display: none;
+
+            background: none;
+
+            border: none;
+
+            font-size: 1.5rem;
+
+            color: var(--primary);
+
+            cursor: pointer;
+
+        }
+
+
+
+        /* Hero Section */
+
+        .hero {
+
+            background: linear-gradient(135deg, var(--primary) 0%, #003366 100%);
+
+            color: white;
+
+            padding: 100px 0;
+
+            position: relative;
+
+            overflow: hidden;
+
+        }
+
+
+
+        .hero:before {
+
+            content: '';
+
+            position: absolute;
+
+            top: 0;
+
+            right: 0;
+
+            width: 40%;
+
+            height: 100%;
+
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0,0 L100,0 L100,100 Z" fill="rgba(255,255,255,0.05)"/></svg>');
+
+            background-size: cover;
+
+        }
+
+
+
+        .hero-content {
+
+            max-width: 600px;
+
+            position: relative;
+
+            z-index: 1;
+
+        }
+
+
+
+        .hero h1 {
+
+            color: white;
+
+            margin-bottom: 1.5rem;
+
+        }
+
+
+
+        .hero p {
+
+            font-size: 1.2rem;
+
+            margin-bottom: 2rem;
+
+            opacity: 0.9;
+
+        }
+
+
+
+        .hero-btns {
+
+            display: flex;
+
+            gap: 15px;
+
+        }
+
+
+
+        /* Features */
+
+        .features {
+
+            padding: 100px 0;
+
+            background-color: white;
+
+        }
+
+
+
+        .section-header {
+
+            text-align: center;
+
+            margin-bottom: 60px;
+
+        }
+
+
+
+        .section-header h2 {
+
+            display: inline-block;
+
+        }
+
+
+
+        .section-header h2:after {
+
+            left: 50%;
+
+            transform: translateX(-50%);
+
+        }
+
+
+
+        .features-grid {
+
+            display: grid;
+
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+
+            gap: 30px;
+
+        }
+
+
+
+        .feature-card {
+
+            background-color: white;
+
+            border-radius: var(--border-radius);
+
+            padding: 30px;
+
+            box-shadow: var(--shadow);
+
+            transition: transform 0.3s ease;
+
+            border-top: 4px solid var(--secondary);
+
+        }
+
+
+
+        .feature-card:hover {
+
+            transform: translateY(-10px);
+
+        }
+
+
+
+        .feature-icon {
+
+            font-size: 2.5rem;
+
+            color: var(--secondary);
+
+            margin-bottom: 20px;
+
+        }
+
+
+
+        /* Dashboard Preview */
+
+        .dashboard-preview {
+
+            padding: 100px 0;
+
+            background-color: #f0f7ff;
+
+        }
+
+
+
+        .dashboard-container {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 50px;
+
+        }
+
+
+
+        .dashboard-image {
+
+            flex: 1;
+
+            background-color: var(--dark);
+
+            border-radius: var(--border-radius);
+
+            overflow: hidden;
+
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+
+        }
+
+
+
+        .dashboard-content {
+
+            flex: 1;
+
+        }
+
+
+
+        .dashboard-image img {
+
+            width: 100%;
+
+            height: auto;
+
+            display: block;
+
+        }
+
+
+
+        .dashboard-placeholder {
+
+            background: linear-gradient(135deg, #2c3e50 0%, #1a2530 100%);
+
+            height: 400px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            color: white;
+
+            font-size: 1.2rem;
+
+        }
+
+
+
+        /* Modules */
+
+        .modules {
+
+            padding: 100px 0;
+
+            background-color: white;
+
+        }
+
+
+
+        .modules-grid {
+
+            display: grid;
+
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
+            gap: 30px;
+
+        }
+
+
+
+        .module-card {
+
+            background-color: white;
+
+            border-radius: var(--border-radius);
+
+            overflow: hidden;
+
+            box-shadow: var(--shadow);
+
+            transition: transform 0.3s ease;
+
+        }
+
+
+
+        .module-card:hover {
+
+            transform: translateY(-5px);
+
+        }
+
+
+
+        .module-card-link {
+
+            text-decoration: none;
+
+            color: inherit;
+
+            display: block;
+
+        }
+
+
+
+        .module-card-link:hover {
+
+            text-decoration: none;
+
+        }
+
+
+
+        .module-header {
+
+            background-color: var(--primary);
+
+            color: white;
+
+            padding: 20px;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 15px;
+
+        }
+
+
+
+        .module-icon {
+
+            font-size: 1.8rem;
+
+        }
+
+
+
+        .module-body {
+
+            padding: 25px;
+
+        }
+
+
+
+        .module-list {
+
+            list-style: none;
+
+        }
+
+
+
+        .module-list li {
+
+            padding: 10px 0;
+
+            border-bottom: 1px solid #eee;
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+        }
+
+
+
+        .module-list li:last-child {
+
+            border-bottom: none;
+
+        }
+
+
+
+        .module-list i {
+
+            color: var(--success);
+
+        }
+
+
+
+        /* CTA */
+
+        .cta {
+
+            padding: 100px 0;
+
+            background: linear-gradient(135deg, var(--primary) 0%, #003366 100%);
+
+            color: white;
+
+            text-align: center;
+
+        }
+
+
+
+        .cta h2 {
+
+            color: white;
+
+        }
+
+
+
+        .cta h2:after {
+
+            background-color: var(--accent);
+
+            left: 50%;
+
+            transform: translateX(-50%);
+
+        }
+
+
+
+        .cta p {
+
+            font-size: 1.2rem;
+
+            max-width: 700px;
+
+            margin: 0 auto 40px;
+
+            opacity: 0.9;
+
+        }
+
+
+
+        /* Footer */
+
+        footer {
+
+            background-color: var(--dark);
+
+            color: white;
+
+            padding: 70px 0 30px;
+
+        }
+
+
+
+        .footer-content {
+
+            display: grid;
+
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+
+            gap: 40px;
+
+            margin-bottom: 50px;
+
+        }
+
+
+
+        .footer-column h3 {
+
+            color: white;
+
+            font-size: 1.3rem;
+
+            margin-bottom: 25px;
+
+            position: relative;
+
+            padding-bottom: 10px;
+
+        }
+
+
+
+        .footer-column h3:after {
+
+            content: '';
+
+            position: absolute;
+
+            bottom: 0;
+
+            left: 0;
+
+            width: 40px;
+
+            height: 3px;
+
+            background-color: var(--accent);
+
+        }
+
+
+
+        .footer-links {
+
+            list-style: none;
+
+        }
+
+
+
+        .footer-links li {
+
+            margin-bottom: 12px;
+
+        }
+
+
+
+        .footer-links a {
+
+            color: #ccc;
+
+            text-decoration: none;
+
+            transition: color 0.3s;
+
+        }
+
+
+
+        .footer-links a:hover {
+
+            color: var(--accent);
+
+        }
+
+
+
+        .contact-info {
+
+            list-style: none;
+
+        }
+
+
+
+        .contact-info li {
+
+            display: flex;
+
+            align-items: flex-start;
+
+            gap: 15px;
+
+            margin-bottom: 20px;
+
+        }
+
+
+
+        .contact-info i {
+
+            color: var(--accent);
+
+            margin-top: 4px;
+
+        }
+
+
+
+        .copyright {
+
+            text-align: center;
+
+            padding-top: 30px;
+
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+
+            color: #aaa;
+
+            font-size: 0.9rem;
+
+        }
+
+
+
+        /* Responsive */
+
+        @media (max-width: 992px) {
+
+            .dashboard-container {
+
+                flex-direction: column;
+
+            }
+
+            
+
+            .dashboard-content {
+
+                order: 1;
+
+            }
+
+            
+
+            .dashboard-image {
+
+                order: 2;
+
+            }
+
+        }
+
+
+
+        @media (max-width: 768px) {
+
+            h1 {
+
+                font-size: 2.2rem;
+
+            }
+
+            
+
+            h2 {
+
+                font-size: 1.8rem;
+
+            }
+
+            
+
+            .hero-btns {
+
+                flex-direction: column;
+
+                align-items: flex-start;
+
+            }
+
+            
+
+            nav ul {
+
+                display: none;
+
+            }
+
+            
+
+            .mobile-menu-btn {
+
+                display: block;
+
+            }
+
+            
+
+            #mainMenu.active {
+
+                display: flex;
+
+                flex-direction: column;
+
+                position: absolute;
+
+                top: 100%;
+
+                left: 0;
+
+                width: 100%;
+
+                background-color: white;
+
+                box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+                padding: 20px;
+
+                z-index: 1000;
+
+            }
+
+            
+
+            #mainMenu.active li {
+            
+                margin: 10px 0;
+            
+            }
+            
+        }
+
+        /* Ajustes extra para tablet y móvil */
+
+        @media (max-width: 1200px) {
+
+            .hero {
+
+                padding: 80px 0;
+
+            }
+
+            .features,
+            .dashboard-preview,
+            .modules,
+            .cta {
+
+                padding: 80px 0;
+
+            }
+
+        }
+
+        @media (max-width: 992px) {
+
+            .header-container {
+
+                padding: 12px 0;
+
+            }
+
+            .dashboard-container {
+
+                flex-direction: column;
+
+                align-items: flex-start;
+
+            }
+            
+
+            .dashboard-content {
+
+                order: 1;
+
+                margin-bottom: 20px;
+
+            }
+            
+
+            .dashboard-image {
+
+                order: 2;
+
+            }
+
+            .hero {
+
+                padding: 70px 0;
+
+            }
+
+            .hero p {
+
+                font-size: 1.05rem;
+
+            }
+
+        }
+
+        @media (max-width: 768px) {
+
+            .header-container {
+
+                gap: 10px;
+
+            }
+
+            .logo-text {
+
+                font-size: 1.4rem;
+
+            }
+
+            .hero {
+
+                padding: 60px 0;
+
+            }
+
+            .hero-btns {
+
+                max-width: 260px;
+
+                align-items: stretch;
+
+            }
+
+            .modules-grid,
+            .features-grid,
+            .footer-content {
+
+                grid-template-columns: 1fr;
+
+            }
+
+        }
+
+        @media (max-width: 576px) {
+
+            h1 {
+
+                font-size: 1.9rem;
+
+            }
+
+            h2 {
+
+                font-size: 1.5rem;
+
+            }
+
+            .container {
+
+                padding: 0 14px;
+
+            }
+
+            .hero {
+
+                padding: 45px 0 55px;
+
+            }
+
+            .cta,
+            .features,
+            .dashboard-preview,
+            .modules {
+
+                padding: 60px 0;
+
+            }
+
+            .dashboard-placeholder {
+
+                height: 320px;
+
+            }
+
+        }
+        
+    </style>
+
+</head>
+
+<body>
+
+    <!-- Header -->
+
+    <header>
+
+        <div class="container header-container">
+
+            <div class="logo">
+
+                <img src="images/logo.png" alt="CRM Insurance System Logo" class="logo-img">
+
+                <div class="logo-text">CRM <span>Insurance</span> System</div>
+
+            </div>
+
+            
+
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+
+                <i class="fas fa-bars"></i>
+
+            </button>
+
+            
+
+            <nav>
+
+                <ul id="mainMenu">
+
+                    <li><a href="/">Inicio</a></li>
+
+                    <li><a href="combustible.html">Combustible</a></li>
+
+                    <li><a href="llantas.html">Llantas</a></li>
+
+                    <li><a href="mantenimiento-preventivo.html">Mantenimiento</a></li>
+
+                    <li><a href="operadores-licencias.html">Operadores</a></li>
+
+                    <li><a href="polizas-siniestros.html">Pólizas</a></li>
+
+                    <li><a href="dashboard-powerbi.html">Dashboard</a></li>
+
+                </ul>
+
+            </nav>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- Hero Section -->
+
+    <section class="hero" id="inicio">
+
+        <div class="container">
+
+            <div class="hero-content">
+
+                <h1>CRM Insurance System</h1>
+                <h2 style="color: white; font-size: 2rem; margin-bottom: 1rem;">Control de Flotas</h2>
+                <p>Sistema CRM especializado para clientes con pólizas de autos. Gestiona tu flotilla vehicular con control completo de combustible, llantas, mantenimientos, licencias de operadores, pólizas y siniestros. Dashboard integrado con Power BI para análisis y métricas en tiempo real.</p>
+
+                <div class="hero-btns">
+
+                    <a href="combustible.html" class="btn btn-secondary">Ver Servicios</a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- Features Section -->
+
+    <section class="features" id="caracteristicas">
+
+        <div class="container">
+
+            <div class="section-header">
+
+                <h2>Características Principales</h2>
+
+                <p>Sistema completo para la gestión profesional de flotillas con pólizas de seguros</p>
+
+            </div>
+
+            
+
+            <div class="features-grid">
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+
+                        <i class="fas fa-gas-pump"></i>
+
+                    </div>
+
+                    <h3>Control de Combustible</h3>
+
+                    <p>Registro y seguimiento detallado del consumo de combustible por vehículo, con reportes de eficiencia y detección de anomalías.</p>
+
+                </div>
+
+                
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+
+                        <i class="fas fa-circle"></i>
+
+                    </div>
+
+                    <h3>Gestión de Llantas</h3>
+
+                    <p>Control completo del inventario de llantas, kilometraje de uso, rotaciones y reemplazos programados para cada vehículo.</p>
+
+                </div>
+
+                
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+
+                        <i class="fas fa-tools"></i>
+
+                    </div>
+
+                    <h3>Mantenimiento Preventivo</h3>
+
+                    <p>Programación automática de mantenimientos preventivos con alertas basadas en kilometraje para garantizar el óptimo estado de tu flotilla.</p>
+
+                </div>
+
+                
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+
+                        <i class="fas fa-wrench"></i>
+
+                    </div>
+
+                    <h3>Mantenimiento Correctivo</h3>
+
+                    <p>Registro y seguimiento de reparaciones y mantenimientos correctivos, con historial completo y control de costos.</p>
+
+                </div>
+
+                
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+
+                        <i class="fas fa-id-card"></i>
+
+                    </div>
+
+                    <h3>Datos de Operadores y Licencias</h3>
+
+                    <p>Gestión completa de información de operadores con control de licencias vigentes y alertas de vencimiento automáticas.</p>
+
+                </div>
+
+                
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+
+                        <i class="fas fa-file-contract"></i>
+
+                    </div>
+
+                    <h3>Pólizas y Siniestros</h3>
+
+                    <p>Administración centralizada de todas las pólizas de seguros con gestión de siniestros y alertas de vencimiento.</p>
+
+                </div>
+
+                
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+
+                        <i class="fas fa-bell"></i>
+
+                    </div>
+
+                    <h3>Alertas de Mantenimiento</h3>
+
+                    <p>Sistema inteligente de alertas de mantenimientos preventivos según kilometraje, notificaciones automáticas y seguimiento.</p>
+
+                </div>
+
+                
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+
+                        <i class="fas fa-exclamation-triangle"></i>
+
+                    </div>
+
+                    <h3>Alertas de Vencimiento</h3>
+
+                    <p>Alertas automáticas de vencimiento de pólizas y licencias de operadores para mantener todo al día y evitar multas.</p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- Dashboard Preview -->
+
+    <section class="dashboard-preview" id="dashboard">
+
+        <div class="container">
+
+            <div class="dashboard-container">
+
+                <div class="dashboard-content">
+
+                    <h2>Dashboard con Power BI - Control de Flotas</h2>
+
+                    <p>Panel de control integrado con Microsoft Power BI que te ofrece visualizaciones avanzadas y análisis en tiempo real de tu flotilla. Dashboard completo con métricas clave y reportes personalizables.</p>
+
+                    <ul class="module-list">
+
+                        <li><i class="fas fa-check-circle"></i> Dashboard de Control de Flotas con Power BI</li>
+
+                        <li><i class="fas fa-check-circle"></i> Dashboard de Métricas y KPIs en tiempo real</li>
+
+                        <li><i class="fas fa-check-circle"></i> Alertas de pólizas próximas a vencer</li>
+
+                        <li><i class="fas fa-check-circle"></i> Alertas de mantenimientos preventivos según kilometraje</li>
+
+                        <li><i class="fas fa-check-circle"></i> Alertas de licencias por vencer de operadores</li>
+
+                        <li><i class="fas fa-check-circle"></i> Análisis de costos operativos y comparativas</li>
+
+                        <li><i class="fas fa-check-circle"></i> Reportes personalizables y exportables</li>
+
+                    </ul>
+
+                    <a href="dashboard-powerbi.html" class="btn btn-primary" style="margin-top: 20px;">Ver Dashboard Completo</a>
+
+                </div>
+
+                
+
+                <div class="dashboard-image">
+
+                    <div class="dashboard-placeholder">
+
+                        <div style="text-align: center; padding: 20px;">
+
+                            <i class="fas fa-tachometer-alt" style="font-size: 3rem; margin-bottom: 20px; color: var(--secondary);"></i>
+
+                            <h3>Dashboard Power BI</h3>
+
+                            <p>Control de Flotas y Métricas</p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- Modules Section -->
+
+    <section class="modules" id="modulos">
+
+        <div class="container">
+
+            <div class="section-header">
+
+                <h2>Módulos Especializados</h2>
+
+                <p>Funcionalidades diseñadas para la gestión integral de flotillas con pólizas de seguros</p>
+
+            </div>
+
+            
+
+            <div class="modules-grid">
+
+                <a href="combustible.html" class="module-card-link">
+
+                    <div class="module-card">
+
+                        <div class="module-header">
+
+                            <i class="fas fa-gas-pump module-icon"></i>
+
+                            <h3>Combustible</h3>
+
+                        </div>
+
+                        <div class="module-body">
+
+                            <ul class="module-list">
+
+                                <li><i class="fas fa-check"></i> Control de consumo por vehículo</li>
+
+                                <li><i class="fas fa-check"></i> Registro de cargas de combustible</li>
+
+                                <li><i class="fas fa-check"></i> Reportes de eficiencia y costos</li>
+
+                                <li><i class="fas fa-check"></i> Análisis de consumo y tendencias</li>
+
+                            </ul>
+
+                        </div>
+
+                    </div>
+
+                </a>
+
+                
+
+                <a href="llantas.html" class="module-card-link">
+
+                    <div class="module-card">
+
+                        <div class="module-header">
+
+                            <i class="fas fa-circle module-icon"></i>
+
+                            <h3>Llantas</h3>
+
+                        </div>
+
+                        <div class="module-body">
+
+                            <ul class="module-list">
+
+                                <li><i class="fas fa-check"></i> Inventario de llantas por vehículo</li>
+
+                                <li><i class="fas fa-check"></i> Control de kilometraje de uso</li>
+
+                                <li><i class="fas fa-check"></i> Programación de rotaciones</li>
+
+                                <li><i class="fas fa-check"></i> Alertas de reemplazo según desgaste</li>
+
+                            </ul>
+
+                        </div>
+
+                    </div>
+
+                </a>
+
+                
+
+                <a href="mantenimiento-preventivo.html" class="module-card-link">
+
+                    <div class="module-card">
+
+                        <div class="module-header">
+
+                            <i class="fas fa-tools module-icon"></i>
+
+                            <h3>Mantenimiento Preventivo</h3>
+
+                        </div>
+
+                        <div class="module-body">
+
+                            <ul class="module-list">
+
+                                <li><i class="fas fa-check"></i> Programación automática</li>
+
+                                <li><i class="fas fa-check"></i> Alertas según kilometraje</li>
+
+                                <li><i class="fas fa-check"></i> Checklist de servicios</li>
+
+                                <li><i class="fas fa-check"></i> Historial completo</li>
+
+                            </ul>
+
+                        </div>
+
+                    </div>
+
+                </a>
+
+                
+
+                <a href="mantenimiento-correctivo.html" class="module-card-link">
+
+                    <div class="module-card">
+
+                        <div class="module-header">
+
+                            <i class="fas fa-wrench module-icon"></i>
+
+                            <h3>Mantenimiento Correctivo</h3>
+
+                        </div>
+
+                        <div class="module-body">
+
+                            <ul class="module-list">
+
+                                <li><i class="fas fa-check"></i> Registro de reparaciones</li>
+
+                                <li><i class="fas fa-check"></i> Control de costos</li>
+
+                                <li><i class="fas fa-check"></i> Tiempo de inactividad</li>
+
+                                <li><i class="fas fa-check"></i> Análisis de patrones</li>
+
+                            </ul>
+
+                        </div>
+
+                    </div>
+
+                </a>
+
+                
+
+                <a href="operadores-licencias.html" class="module-card-link">
+
+                    <div class="module-card">
+
+                        <div class="module-header">
+
+                            <i class="fas fa-id-card module-icon"></i>
+
+                            <h3>Operadores y Licencias</h3>
+
+                        </div>
+
+                        <div class="module-body">
+
+                            <ul class="module-list">
+
+                                <li><i class="fas fa-check"></i> Datos completos de operadores</li>
+
+                                <li><i class="fas fa-check"></i> Control de licencias vigentes</li>
+
+                                <li><i class="fas fa-check"></i> Alertas de licencias por vencer</li>
+
+                                <li><i class="fas fa-check"></i> Historial de certificaciones</li>
+
+                            </ul>
+
+                        </div>
+
+                    </div>
+
+                </a>
+
+                
+
+                <a href="polizas-siniestros.html" class="module-card-link">
+
+                    <div class="module-card">
+
+                        <div class="module-header">
+
+                            <i class="fas fa-file-contract module-icon"></i>
+
+                            <h3>Pólizas y Siniestros</h3>
+
+                        </div>
+
+                        <div class="module-body">
+
+                            <ul class="module-list">
+
+                                <li><i class="fas fa-check"></i> Base de datos de pólizas de seguros</li>
+
+                                <li><i class="fas fa-check"></i> Alertas de vencimiento automáticas</li>
+
+                                <li><i class="fas fa-check"></i> Gestión de siniestros</li>
+
+                                <li><i class="fas fa-check"></i> Historial de reclamaciones</li>
+
+                            </ul>
+
+                        </div>
+
+                    </div>
+
+                </a>
+
+                
+
+                <a href="dashboard-powerbi.html" class="module-card-link">
+
+                    <div class="module-card">
+
+                        <div class="module-header">
+
+                            <i class="fas fa-chart-bar module-icon"></i>
+
+                            <h3>Dashboard Power BI</h3>
+
+                        </div>
+
+                        <div class="module-body">
+
+                            <ul class="module-list">
+
+                                <li><i class="fas fa-check"></i> Dashboard de Control de Flotas</li>
+
+                                <li><i class="fas fa-check"></i> Dashboard de Métricas y KPIs</li>
+
+                                <li><i class="fas fa-check"></i> Visualizaciones interactivas</li>
+
+                                <li><i class="fas fa-check"></i> Reportes personalizables</li>
+
+                            </ul>
+
+                        </div>
+
+                    </div>
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- CTA Section -->
+
+    <section class="cta" id="contacto">
+
+        <div class="container">
+
+            <h2>¿Listo para optimizar tu flotilla?</h2>
+
+            <p>Accede a tu panel de control y comienza a gestionar tu flotilla vehicular con todas las herramientas profesionales que necesitas.</p>
+
+            <a href="/login" class="btn btn-primary" style="font-size: 1.1rem; padding: 15px 35px;">
+                <i class="fas fa-sign-in-alt"></i> Acceder al Sistema
+            </a>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- Access System Section -->
+
+    <section class="access-system" style="padding: 100px 0; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+
+        <div class="container">
+
+            <div style="max-width: 800px; margin: 0 auto; text-align: center; background: white; padding: 60px 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);">
+
+                <div style="margin-bottom: 30px;">
+
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 25px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);">
+
+                        <i class="fas fa-lock" style="font-size: 2.5rem; color: white;"></i>
+
+                    </div>
+
+                    <h2 style="font-family: 'Montserrat', sans-serif; font-size: 2.5rem; color: var(--primary); margin-bottom: 15px;">Acceso al Sistema</h2>
+
+                    <p style="font-size: 1.2rem; color: #666; line-height: 1.8; margin-bottom: 40px;">Accede a tu panel de control personalizado. Gestiona tu flotilla, registra combustible, mantenimientos y pólizas desde un solo lugar.</p>
+
+                </div>
+
+                
+
+                <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px;">
+
+                    <a href="/login" class="btn btn-primary" style="font-size: 1.2rem; padding: 18px 45px; border-radius: 12px; box-shadow: 0 6px 20px rgba(77, 166, 255, 0.3); transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 12px;">
+
+                        <i class="fas fa-sign-in-alt"></i>
+
+                        <span>Iniciar Sesión</span>
+
+                    </a>
+
+                    <a href="/register" class="btn btn-secondary" style="font-size: 1.2rem; padding: 18px 45px; border-radius: 12px; background-color: white; color: var(--primary); border: 2px solid var(--primary); transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 12px;">
+
+                        <i class="fas fa-user-plus"></i>
+
+                        <span>Crear Cuenta</span>
+
+                    </a>
+
+                </div>
+
+                
+
+                <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
+
+                    <p style="color: #999; font-size: 0.95rem; margin-bottom: 15px;">¿Necesitas ayuda para acceder?</p>
+
+                    <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
+
+                        <div style="text-align: center;">
+
+                            <i class="fas fa-envelope" style="color: var(--accent); font-size: 1.5rem; margin-bottom: 8px;"></i>
+
+                            <div style="font-size: 0.9rem; color: #666;">rene-cruz10@hotmail.com</div>
+
+                        </div>
+
+                        <div style="text-align: center;">
+
+                            <i class="fas fa-phone" style="color: var(--accent); font-size: 1.5rem; margin-bottom: 8px;"></i>
+
+                            <div style="font-size: 0.9rem; color: #666;">+52 1 871 398 4560</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- Footer -->
+
+    <footer>
+
+        <div class="container">
+
+            <div class="footer-content">
+
+                <div class="footer-column">
+
+                    <h3>CRM Insurance System</h3>
+
+                    <p>La solución integral para la gestión profesional de flotillas vehiculares con pólizas de seguros. Sistema completo con control de combustible, llantas, mantenimientos, licencias y dashboard Power BI.</p>
+
+                </div>
+
+                
+
+                <div class="footer-column">
+
+                    <h3>Enlaces Rápidos</h3>
+
+                    <ul class="footer-links">
+
+                        <li><a href="index.html">Inicio</a></li>
+
+                        <li><a href="combustible.html">Combustible</a></li>
+
+                        <li><a href="llantas.html">Llantas</a></li>
+
+                        <li><a href="mantenimiento-preventivo.html">Mantenimiento Preventivo</a></li>
+
+                        <li><a href="mantenimiento-correctivo.html">Mantenimiento Correctivo</a></li>
+
+                        <li><a href="operadores-licencias.html">Operadores</a></li>
+
+                        <li><a href="polizas-siniestros.html">Pólizas</a></li>
+
+                        <li><a href="dashboard-powerbi.html">Dashboard</a></li>
+
+                    </ul>
+
+                </div>
+
+                
+
+                <div class="footer-column">
+
+                    <h3>Contacto</h3>
+
+                    <ul class="contact-info">
+
+                        <li>
+
+                            <i class="fas fa-map-marker-alt"></i>
+
+                            <div>Av. Insurgentes 1234, Col. Del Valle, CDMX, México</div>
+
+                        </li>
+
+                        <li>
+
+                            <i class="fas fa-phone"></i>
+
+                            <div>+52 1 871 398 4560</div>
+
+                        </li>
+
+                        <li>
+
+                            <i class="fas fa-envelope"></i>
+
+                            <div>rene-cruz10@hotmail.com</div>
+
+                        </li>
+
+                    </ul>
+
+                </div>
+
+            </div>
+
+            
+
+            <div class="copyright">
+
+                <p>&copy; 2025 CRM Insurance System. Todos los derechos reservados.</p>
+
+            </div>
+
+        </div>
+
+    </footer>
+
+
+
+    <script>
+
+        // Mobile menu toggle
+
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+
+        const mainMenu = document.getElementById('mainMenu');
+
+        
+
+        mobileMenuBtn.addEventListener('click', function() {
+
+            mainMenu.classList.toggle('active');
+
+            
+
+            // Change icon
+
+            const icon = mobileMenuBtn.querySelector('i');
+
+            if (mainMenu.classList.contains('active')) {
+
+                icon.classList.remove('fa-bars');
+
+                icon.classList.add('fa-times');
+
+            } else {
+
+                icon.classList.remove('fa-times');
+
+                icon.classList.add('fa-bars');
+
+            }
+
+        });
+
+        
+
+        // Smooth scrolling for anchor links
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+
+            anchor.addEventListener('click', function(e) {
+
+                e.preventDefault();
+
+                
+
+                const targetId = this.getAttribute('href');
+
+                if (targetId === '#') return;
+
+                
+
+                const targetElement = document.querySelector(targetId);
+
+                if (targetElement) {
+
+                    // Close mobile menu if open
+
+                    if (mainMenu.classList.contains('active')) {
+
+                        mainMenu.classList.remove('active');
+
+                        const icon = mobileMenuBtn.querySelector('i');
+
+                        icon.classList.remove('fa-times');
+
+                        icon.classList.add('fa-bars');
+
+                    }
+
+                    
+
+                    window.scrollTo({
+
+                        top: targetElement.offsetTop - 80,
+
+                        behavior: 'smooth'
+
+                    });
+
+                }
+
+            });
+
+        });
+
+        
+
+        // Form submission simulation
+
+        document.querySelectorAll('.btn-primary[href="#contacto"]').forEach(button => {
+
+            button.addEventListener('click', function(e) {
+
+                if (this.getAttribute('href') === '#contacto') {
+
+                    e.preventDefault();
+
+                    
+
+                    // Show a simple alert as demo (in a real site would open a form)
+
+                    alert("¡Gracias por su interés! Para más información, puede contactarnos en rene-cruz10@hotmail.com o al teléfono +52 1 871 398 4560");
+
+                    
+
+                    // Scroll to contact section anyway
+
+                    const contactSection = document.querySelector('#contacto');
+
+                    if (contactSection) {
+
+                        window.scrollTo({
+
+                            top: contactSection.offsetTop - 80,
+
+                            behavior: 'smooth'
+
+                        });
+
+                    }
+
+                }
+
+            });
+
+        });
+
+    </script>
+
+</body>
+
+</html>
+

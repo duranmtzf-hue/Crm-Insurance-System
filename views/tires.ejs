@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Llantas | CRM Insurance System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #001f3f;
+            --secondary: #87ceeb;
+            --accent: #4da6ff;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border: #dee2e6;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        header {
+            background-color: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0;
+            margin-bottom: 0;
+        }
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        .logo-text span {
+            color: var(--accent);
+        }
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .btn {
+            padding: 10px 24px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: #003366;
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .page-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .page-title i {
+            color: var(--primary);
+        }
+        .filter-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 28px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background-color: #f8f9fa;
+        }
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        tbody tr {
+            transition: background-color 0.15s;
+        }
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray);
+        }
+        .empty-state i {
+            font-size: 3.5rem;
+            color: #dee2e6;
+            margin-bottom: 16px;
+        }
+        .empty-state h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+        .text-muted {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+        .font-weight-bold {
+            font-weight: 700;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background-color: #f8f9fa;
+            color: var(--dark);
+        }
+        .modal-body {
+            padding: 28px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Open Sans', sans-serif;
+            transition: border-color 0.2s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 31, 63, 0.1);
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo-text">CRM <span>Insurance</span> System</div>
+            <div class="user-menu">
+                <span><%= user.nombre || user.username %></span>
+                <a href="/dashboard" class="btn">Dashboard</a>
+                <a href="/vehicles" class="btn">Vehículos</a>
+                <a href="/logout" class="btn btn-danger">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-circle"></i>
+                Gestión de Llantas
+            </h1>
+            <button class="btn btn-success" onclick="openModal()">
+                <i class="fas fa-plus"></i> Agregar Llanta
+            </button>
+        </div>
+
+        <div class="filter-section">
+            <form method="GET" action="/tires" style="display: flex; gap: 12px; align-items: end;">
+                <div style="flex: 1;">
+                    <label class="form-label">Filtrar por Vehículo</label>
+                    <select class="form-control" name="vehicle_id" onchange="this.form.submit()">
+                        <option value="">Todos los vehículos</option>
+                        <% vehicles.forEach(function(vehicle) { %>
+                        <option value="<%= vehicle.id %>" <%= selectedVehicle == vehicle.id ? 'selected' : '' %>>
+                            #<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %>
+                        </option>
+                        <% }); %>
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        <!-- Semáforo de Llantas -->
+        <% if (tires.length > 0) { %>
+        <div class="section">
+            <h2 style="font-family: 'Montserrat', sans-serif; font-size: 1.5rem; margin-bottom: 20px; color: var(--dark);">
+                <i class="fas fa-traffic-light"></i> Semáforo de Estado de Llantas
+            </h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: var(--shadow); text-align: center; border-top: 4px solid #28a745;">
+                    <div style="font-size: 3rem; margin-bottom: 15px;">🟢</div>
+                    <h3 style="color: #28a745; margin-bottom: 10px;">Óptimo</h3>
+                    <p style="color: #666; font-size: 0.95rem;">Presión y profundidad dentro de los rangos recomendados</p>
+                    <div style="margin-top: 15px; font-size: 1.2rem; font-weight: 600;">
+                        <% 
+                        const optimalCount = tires.filter(t => {
+                            const presionOk = t.presion_psi && t.presion_psi >= 30 && t.presion_psi <= 35;
+                            const profundidadOk = t.profundidad_mm && t.profundidad_mm >= 3;
+                            return presionOk && profundidadOk && t.estado === 'Activo';
+                        }).length;
+                        %>
+                        <%= optimalCount %> llanta(s)
+                    </div>
+                </div>
+                <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: var(--shadow); text-align: center; border-top: 4px solid #ffc107;">
+                    <div style="font-size: 3rem; margin-bottom: 15px;">🟡</div>
+                    <h3 style="color: #ffc107; margin-bottom: 10px;">Atención</h3>
+                    <p style="color: #666; font-size: 0.95rem;">Requiere revisión o rotación próxima</p>
+                    <div style="margin-top: 15px; font-size: 1.2rem; font-weight: 600;">
+                        <% 
+                        const warningCount = tires.filter(t => {
+                            const presionWarning = t.presion_psi && (t.presion_psi < 30 || t.presion_psi > 35);
+                            const profundidadWarning = t.profundidad_mm && t.profundidad_mm < 3 && t.profundidad_mm >= 1.6;
+                            return (presionWarning || profundidadWarning) && t.estado === 'Activo';
+                        }).length;
+                        %>
+                        <%= warningCount %> llanta(s)
+                    </div>
+                </div>
+                <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: var(--shadow); text-align: center; border-top: 4px solid #dc3545;">
+                    <div style="font-size: 3rem; margin-bottom: 15px;">🔴</div>
+                    <h3 style="color: #dc3545; margin-bottom: 10px;">Crítico</h3>
+                    <p style="color: #666; font-size: 0.95rem;">Reemplazo urgente necesario</p>
+                    <div style="margin-top: 15px; font-size: 1.2rem; font-weight: 600;">
+                        <% 
+                        const criticalCount = tires.filter(t => {
+                            const profundidadCritical = t.profundidad_mm && t.profundidad_mm < 1.6;
+                            return (profundidadCritical || t.estado === 'Desgastado') && t.estado !== 'Reemplazado';
+                        }).length;
+                        %>
+                        <%= criticalCount %> llanta(s)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Métricas Detalladas -->
+            <div style="background: #f8f9fa; padding: 30px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="font-family: 'Montserrat', sans-serif; font-size: 1.3rem; margin-bottom: 25px; color: var(--primary);">
+                    Métricas de Control
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 25px;">
+                    <div>
+                        <h4 style="color: var(--accent); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-tachometer-alt"></i> PRESIÓN
+                        </h4>
+                        <p style="color: #666; line-height: 1.8; font-size: 0.9rem; margin-bottom: 10px;">Monitoreo de presión en PSI. Rango óptimo: 30-35 PSI.</p>
+                        <div style="background: white; padding: 15px; border-radius: 8px;">
+                            <% 
+                            const tiresWithPressure = tires.filter(t => t.presion_psi);
+                            const avgPressure = tiresWithPressure.length > 0 
+                                ? (tiresWithPressure.reduce((sum, t) => sum + t.presion_psi, 0) / tiresWithPressure.length).toFixed(1)
+                                : 0;
+                            const pressureStatus = avgPressure >= 30 && avgPressure <= 35 ? 'Normal' : avgPressure < 30 ? 'Baja' : 'Alta';
+                            const pressureColor = avgPressure >= 30 && avgPressure <= 35 ? '#28a745' : '#ffc107';
+                            %>
+                            <strong>Promedio:</strong> <span style="color: <%= pressureColor %>; font-weight: 600;"><%= avgPressure %> PSI</span><br>
+                            <strong>Estado:</strong> <span style="color: <%= pressureColor %>;"><%= pressureStatus %></span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="color: var(--accent); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-ruler-vertical"></i> MILÍMETROS
+                        </h4>
+                        <p style="color: #666; line-height: 1.8; font-size: 0.9rem; margin-bottom: 10px;">Profundidad de banda. Mínimo legal: 1.6mm. Recomendado: 3mm+.</p>
+                        <div style="background: white; padding: 15px; border-radius: 8px;">
+                            <% 
+                            const tiresWithDepth = tires.filter(t => t.profundidad_mm);
+                            const avgDepth = tiresWithDepth.length > 0 
+                                ? (tiresWithDepth.reduce((sum, t) => sum + t.profundidad_mm, 0) / tiresWithDepth.length).toFixed(1)
+                                : 0;
+                            let depthStatus = 'Sin datos';
+                            let depthColor = '#6c757d';
+                            if (avgDepth > 0) {
+                                if (avgDepth >= 3) {
+                                    depthStatus = 'Óptimo';
+                                    depthColor = '#28a745';
+                                } else if (avgDepth >= 1.6) {
+                                    depthStatus = 'Atención';
+                                    depthColor = '#ffc107';
+                                } else {
+                                    depthStatus = 'Crítico';
+                                    depthColor = '#dc3545';
+                                }
+                            }
+                            %>
+                            <strong>Promedio:</strong> <span style="color: <%= depthColor %>; font-weight: 600;"><%= avgDepth %> mm</span><br>
+                            <strong>Estado:</strong> <span style="color: <%= depthColor %>;"><%= depthStatus %></span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="color: var(--accent); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-sync-alt"></i> ROTACIÓN
+                        </h4>
+                        <p style="color: #666; line-height: 1.8; font-size: 0.9rem; margin-bottom: 10px;">Rotaciones cada 10,000-15,000 km para desgaste uniforme.</p>
+                        <div style="background: white; padding: 15px; border-radius: 8px;">
+                            <% 
+                            const tiresNeedingRotation = tires.filter(t => {
+                                if (!t.kilometraje_actual) return false;
+                                if (t.kilometraje_rotacion) {
+                                    const kmSinceRotation = t.kilometraje_actual - t.kilometraje_rotacion;
+                                    return kmSinceRotation >= 10000;
+                                } else if (t.kilometraje_instalacion) {
+                                    const kmSinceInstallation = t.kilometraje_actual - t.kilometraje_instalacion;
+                                    return kmSinceInstallation >= 10000;
+                                }
+                                return false;
+                            }).length;
+                            %>
+                            <strong>Pendientes:</strong> <span style="color: <%= tiresNeedingRotation > 0 ? '#ffc107' : '#28a745' %>; font-weight: 600;"><%= tiresNeedingRotation %> llanta(s)</span><br>
+                            <strong>Estado:</strong> <span style="color: <%= tiresNeedingRotation > 0 ? '#ffc107' : '#28a745' %>;"><%= tiresNeedingRotation > 0 ? 'Requiere rotación' : 'Al día' %></span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="color: var(--accent); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-dollar-sign"></i> COSTO POR KILÓMETRO
+                        </h4>
+                        <p style="color: #666; line-height: 1.8; font-size: 0.9rem; margin-bottom: 10px;">Cálculo basado en costo de llanta y km recorridos.</p>
+                        <div style="background: white; padding: 15px; border-radius: 8px;">
+                            <% 
+                            const tiresWithCostAndKm = tires.filter(t => t.costo && t.kilometraje_actual && t.kilometraje_instalacion && t.kilometraje_actual > t.kilometraje_instalacion);
+                            let avgCostPerKm = 0;
+                            if (tiresWithCostAndKm.length > 0) {
+                                let totalCost = 0;
+                                let totalKm = 0;
+                                tiresWithCostAndKm.forEach(t => {
+                                    totalCost += (t.costo || 0);
+                                    totalKm += (t.kilometraje_actual - t.kilometraje_instalacion);
+                                });
+                                avgCostPerKm = totalKm > 0 ? (totalCost / totalKm) : 0;
+                            }
+                            %>
+                            <strong>Promedio:</strong> <span style="color: var(--primary); font-weight: 600;">$<%= avgCostPerKm.toFixed(4) %>/km</span><br>
+                            <strong>Total:</strong> <span style="color: #666; font-size: 0.9rem;"><%= tiresWithCostAndKm.length %> registro(s)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <div class="section">
+            <% if (tires.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-circle"></i>
+                <h2>No hay llantas registradas</h2>
+                <p>Comienza agregando el registro de llantas para tus vehículos</p>
+                <button class="btn btn-success" onclick="openModal()" style="margin-top: 20px;">
+                    <i class="fas fa-plus"></i> Agregar Llanta
+                </button>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vehículo</th>
+                        <th>Posición</th>
+                        <th>Marca/Modelo</th>
+                        <th>Presión (PSI)</th>
+                        <th>Profundidad (mm)</th>
+                        <th>Kilometraje Instalación</th>
+                        <th>Costo</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% tires.forEach(function(tire) { %>
+                    <tr>
+                        <td>
+                            <strong>#<%= tire.numero_vehiculo %></strong><br>
+                            <span class="text-muted" style="font-size: 0.85rem;"><%= tire.marca %> <%= tire.modelo %></span>
+                        </td>
+                        <td class="font-weight-bold"><%= tire.posicion %></td>
+                        <td>
+                            <%= tire.marca || '-' %> <%= tire.modelo || '' %><br>
+                            <% if (tire.medida) { %>
+                                <span class="text-muted" style="font-size: 0.85rem;"><%= tire.medida %></span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% if (tire.presion_psi) { %>
+                                <%= tire.presion_psi %> PSI
+                                <% 
+                                const presionStatus = tire.presion_psi >= 30 && tire.presion_psi <= 35 ? 'success' : 
+                                                      tire.presion_psi < 30 || tire.presion_psi > 35 ? 'warning' : '';
+                                if (presionStatus) {
+                                %>
+                                    <span class="badge badge-<%= presionStatus %>" style="margin-left: 8px; font-size: 0.7rem;">
+                                        <%= tire.presion_psi < 30 ? 'Baja' : 'Alta' %>
+                                    </span>
+                                <% } %>
+                            <% } else { %>
+                                <span class="text-muted">-</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% if (tire.profundidad_mm) { %>
+                                <%= tire.profundidad_mm %> mm
+                                <% 
+                                const profundidadStatus = tire.profundidad_mm >= 3 ? 'success' : 
+                                                          tire.profundidad_mm >= 1.6 ? 'warning' : 'danger';
+                                %>
+                                <span class="badge badge-<%= profundidadStatus %>" style="margin-left: 8px; font-size: 0.7rem;">
+                                    <%= tire.profundidad_mm >= 3 ? 'Óptimo' : tire.profundidad_mm >= 1.6 ? 'Atención' : 'Crítico' %>
+                                </span>
+                            <% } else { %>
+                                <span class="text-muted">-</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% if (tire.kilometraje_instalacion) { %>
+                                <%= tire.kilometraje_instalacion.toLocaleString() %> km
+                                <% if (tire.kilometraje_actual) { %>
+                                    <% 
+                                    let kmSinceRotation = 0;
+                                    if (tire.kilometraje_rotacion) {
+                                        kmSinceRotation = tire.kilometraje_actual - tire.kilometraje_rotacion;
+                                    } else {
+                                        kmSinceRotation = tire.kilometraje_actual - tire.kilometraje_instalacion;
+                                    }
+                                    if (kmSinceRotation >= 10000) {
+                                    %>
+                                        <span class="badge badge-warning" style="margin-left: 8px; font-size: 0.7rem;">
+                                            Rotación pendiente (<%= Math.floor(kmSinceRotation / 1000) %>k km)
+                                        </span>
+                                    <% } %>
+                                <% } %>
+                            <% } else { %>
+                                <span class="text-muted">-</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% if (tire.costo) { %>
+                                $<%= tire.costo.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                                <% if (tire.costo && tire.kilometraje_actual && tire.kilometraje_instalacion && tire.kilometraje_actual > tire.kilometraje_instalacion) { %>
+                                    <% 
+                                    const kmRecorridos = tire.kilometraje_actual - tire.kilometraje_instalacion;
+                                    const costPerKm = tire.costo / kmRecorridos;
+                                    %>
+                                    <br>
+                                    <span class="text-muted" style="font-size: 0.8rem;">
+                                        $<%= costPerKm.toFixed(4) %>/km
+                                    </span>
+                                <% } %>
+                            <% } else { %>
+                                <span class="text-muted">-</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <span class="badge badge-<%= tire.estado === 'Activo' ? 'success' : 'warning' %>">
+                                <%= tire.estado %>
+                            </span>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="tireModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Llanta</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="tireForm">
+                    <div class="form-group">
+                        <label class="form-label">Vehículo *</label>
+                        <select class="form-control" name="vehicle_id" required>
+                            <option value="">Seleccionar vehículo</option>
+                            <% vehicles.forEach(function(vehicle) { %>
+                            <option value="<%= vehicle.id %>">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Posición *</label>
+                        <select class="form-control" name="posicion" required>
+                            <option value="">Seleccionar posición</option>
+                            <option value="Delantera Izquierda">Delantera Izquierda</option>
+                            <option value="Delantera Derecha">Delantera Derecha</option>
+                            <option value="Trasera Izquierda">Trasera Izquierda</option>
+                            <option value="Trasera Derecha">Trasera Derecha</option>
+                            <option value="Repuesto">Repuesto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Marca</label>
+                        <input type="text" class="form-control" name="marca" placeholder="Ej: Michelin, Goodyear">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Modelo</label>
+                        <input type="text" class="form-control" name="modelo" placeholder="Ej: XM2, Assurance">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Medida</label>
+                        <input type="text" class="form-control" name="medida" placeholder="Ej: 205/55R16">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Número de Serie</label>
+                        <input type="text" class="form-control" name="numero_serie">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Presión (PSI)</label>
+                        <input type="number" step="0.1" class="form-control" name="presion_psi" placeholder="Ej: 32.0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Profundidad de Banda (mm)</label>
+                        <input type="number" step="0.1" class="form-control" name="profundidad_mm" placeholder="Ej: 8.5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fecha de Instalación</label>
+                        <input type="date" class="form-control" name="fecha_instalacion">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Kilometraje de Instalación</label>
+                        <input type="number" class="form-control" name="kilometraje_instalacion" placeholder="Ej: 50000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Costo</label>
+                        <input type="number" step="0.01" class="form-control" name="costo" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estado</label>
+                        <select class="form-control" name="estado">
+                            <option value="Activo">Activo</option>
+                            <option value="Reemplazado">Reemplazado</option>
+                            <option value="Desgastado">Desgastado</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal() {
+            document.getElementById('tireModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('tireModal').style.display = 'none';
+            document.getElementById('tireForm').reset();
+        }
+
+        document.getElementById('tireForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            // Convert numeric fields
+            if (data.presion_psi) data.presion_psi = parseFloat(data.presion_psi);
+            if (data.profundidad_mm) data.profundidad_mm = parseFloat(data.profundidad_mm);
+            if (data.kilometraje_instalacion) data.kilometraje_instalacion = parseInt(data.kilometraje_instalacion);
+            if (data.costo) data.costo = parseFloat(data.costo);
+
+            try {
+                const response = await fetch('/api/tires', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('Llantas registrada exitosamente');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                alert('Error al guardar: ' + error.message);
+            }
+        });
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('tireModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
+

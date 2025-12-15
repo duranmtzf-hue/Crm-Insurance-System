@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | CRM Insurance System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        // Function to scroll to alerts - MUST be defined in head to be available before onclick handlers
+        function scrollToAlerts() {
+            const alertsSection = document.getElementById('alerts-section');
+            if (alertsSection) {
+                alertsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                console.error('Alerts section not found');
+            }
+        }
+        // Make it available globally immediately
+        window.scrollToAlerts = scrollToAlerts;
+    </script>
+    <style>
+        :root {
+            --primary: #001f3f;
+            --secondary: #87ceeb;
+            --accent: #4da6ff;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border: #dee2e6;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        header {
+            background-color: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0;
+            margin-bottom: 0;
+        }
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        .logo-text span {
+            color: var(--accent);
+        }
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .btn-pdf {
+            background-color: #dc3545;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-pdf:hover {
+            background-color: #c82333;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+        }
+        .btn-pdf i {
+            font-size: 1rem;
+        }
+        .alert-badge {
+            position: relative;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .alert-badge i {
+            font-size: 1.3rem;
+            color: var(--gray);
+            transition: color 0.2s;
+            z-index: 1;
+        }
+        .alert-badge:hover i {
+            color: var(--primary);
+        }
+        .alert-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: #dc3545;
+            color: white;
+            border-radius: 50%;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0 4px;
+            z-index: 2;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .alert-count.warning {
+            background-color: #ffc107;
+            color: #856404;
+        }
+        .alert-count.info {
+            background-color: var(--accent);
+        }
+        .user-info {
+            color: var(--dark);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        .btn {
+            padding: 10px 24px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: #003366;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .page-header {
+            margin-bottom: 30px;
+        }
+        .page-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+        .page-subtitle {
+            color: var(--gray);
+            font-size: 0.95rem;
+        }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .kpi-card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+        .kpi-card:hover {
+            box-shadow: var(--shadow);
+            border-color: #cbd5e0;
+        }
+        .kpi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        .kpi-label {
+            color: var(--gray);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .kpi-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+        .kpi-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .kpi-change {
+            font-size: 0.85rem;
+            color: var(--gray);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .kpi-change.positive {
+            color: #28a745;
+        }
+        .kpi-change.negative {
+            color: #dc3545;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 28px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .section-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background-color: #f8f9fa;
+        }
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        tbody tr {
+            transition: background-color 0.15s;
+        }
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .badge-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .alert-item {
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            border-left: 4px solid;
+            background-color: #fff;
+            border-color: #ffc107;
+            border-left-color: #ffc107;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .alert-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .alert-item-icon {
+            font-size: 1.5rem;
+            margin-top: 2px;
+        }
+        .alert-item-content {
+            flex: 1;
+        }
+        .alert-item.danger {
+            border-left-color: #dc3545;
+            background-color: #fff5f5;
+        }
+        .alert-item.danger .alert-item-icon {
+            color: #dc3545;
+        }
+        .alert-item.warning {
+            border-left-color: #ffc107;
+            background-color: #fffbf0;
+        }
+        .alert-item.warning .alert-item-icon {
+            color: #ffc107;
+        }
+        .alert-item.info {
+            border-left-color: var(--accent);
+            background-color: #f0f8ff;
+        }
+        .alert-item.info .alert-item-icon {
+            color: var(--accent);
+        }
+        .alert-title {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 4px;
+            font-size: 0.95rem;
+        }
+        .alert-desc {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray);
+        }
+        .empty-state i {
+            font-size: 3.5rem;
+            color: #dee2e6;
+            margin-bottom: 16px;
+        }
+        .empty-state h3 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.25rem;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+        .text-muted {
+            color: var(--gray);
+        }
+        .text-primary {
+            color: var(--primary);
+        }
+        .text-success {
+            color: #28a745;
+        }
+        .text-danger {
+            color: #dc3545;
+        }
+        .notifications-table {
+            font-size: 0.85rem;
+        }
+        .notifications-table th,
+        .notifications-table td {
+            padding: 10px 8px;
+        }
+        .font-weight-bold {
+            font-weight: 700;
+        }
+        @media (max-width: 768px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+            .header-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .user-menu {
+                flex-direction: column;
+                width: 100%;
+            }
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo-text">CRM <span>Insurance</span> System</div>
+            <div class="user-menu">
+                <a href="/api/download-report" class="btn-pdf" title="Descargar reporte completo en PDF">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Descargar PDF</span>
+                </a>
+                <% if (typeof alertCounts !== 'undefined' && alertCounts.hasAlerts) { %>
+                <% 
+                const alertCountClass = alertCounts.danger > 0 ? '' : alertCounts.warning > 0 ? 'warning' : 'info';
+                %>
+                <div class="alert-badge" id="alertBadge" title="Ver alertas" style="cursor: pointer;">
+                    <i class="fas fa-bell"></i>
+                    <span class="alert-count <%= alertCountClass %>">
+                        <%= alertCounts.total %>
+                    </span>
+                </div>
+                <% } %>
+                <span class="user-info"><%= user.nombre || user.username %></span>
+                <a href="/vehicles" class="btn">Vehículos</a>
+                <a href="/policies" class="btn">Pólizas</a>
+                <a href="/billing" class="btn">Facturación</a>
+                <a href="/reports" class="btn" style="background-color: var(--accent);">Reportes</a>
+                <a href="/logout" class="btn btn-danger">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">Dashboard</h1>
+            <p class="page-subtitle">Resumen ejecutivo de tu flotilla</p>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-label">Total Vehículos</div>
+                    <div class="kpi-icon">
+                        <i class="fas fa-car"></i>
+                    </div>
+                </div>
+                <div class="kpi-value"><%= stats.totalVehicles %></div>
+                <div class="kpi-change">
+                    <i class="fas fa-info-circle"></i>
+                    En tu flotilla
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-label">Vehículos Activos</div>
+                    <div class="kpi-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+                <div class="kpi-value"><%= stats.activeVehicles %></div>
+                <div class="kpi-change positive">
+                    <i class="fas fa-arrow-up"></i>
+                    <%= stats.totalVehicles > 0 ? Math.round((stats.activeVehicles / stats.totalVehicles) * 100) : 0 %>% Disponibilidad
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-label">Combustible (30 días)</div>
+                    <div class="kpi-icon">
+                        <i class="fas fa-gas-pump"></i>
+                    </div>
+                </div>
+                <div class="kpi-value">$<%= stats.totalFuelCost.toFixed(0) %></div>
+                <div class="kpi-change">
+                    <i class="fas fa-calendar"></i>
+                    Último mes
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-label">Mantenimientos</div>
+                    <div class="kpi-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                </div>
+                <div class="kpi-value"><%= stats.pendingMaintenance %></div>
+                <div class="kpi-change <%= stats.pendingMaintenance > 0 ? 'negative' : '' %>">
+                    <i class="fas fa-<%= stats.pendingMaintenance > 0 ? 'exclamation-triangle' : 'check' %>"></i>
+                    <%= stats.pendingMaintenance > 0 ? 'Pendientes' : 'Al día' %>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-label">Pólizas por Vencer</div>
+                    <div class="kpi-icon">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                </div>
+                <div class="kpi-value"><%= stats.expiringPolicies %></div>
+                <div class="kpi-change <%= stats.expiringPolicies > 0 ? 'negative' : '' %>">
+                    <i class="fas fa-<%= stats.expiringPolicies > 0 ? 'bell' : 'check-circle' %>"></i>
+                    <%= stats.expiringPolicies > 0 ? 'Próximos 30 días' : 'Todas vigentes' %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Consumo Promedio de Combustible -->
+        <% if (vehicleConsumption && vehicleConsumption.length > 0) { %>
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Consumo Promedio de Combustible (km/litro)
+                </h2>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <% 
+                const validConsumption = vehicleConsumption.filter(function(v) { return v.avgConsumption > 0; });
+                validConsumption.forEach(function(vehicle) { %>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-weight: 600; color: var(--dark); margin-bottom: 8px;">
+                        #<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %>
+                    </div>
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary); margin-bottom: 8px;">
+                        <%= vehicle.avgConsumption %> km/L
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--gray);">
+                        <%= vehicle.fuel_records_count %> registros | <%= vehicle.kmDiff.toLocaleString() %> km recorridos
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+            <% if (validConsumption.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-info-circle"></i>
+                <p class="text-muted">Agrega registros de combustible con kilometraje para calcular el consumo promedio</p>
+            </div>
+            <% } %>
+            
+            <!-- Tabla de Consumo Detallado -->
+            <% if (validConsumption.length > 0) { %>
+            <div style="margin-top: 30px;">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--dark);">
+                    <i class="fas fa-table"></i> Tabla Detallada de Consumo
+                </h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Vehículo</th>
+                                <th>Marca/Modelo</th>
+                                <th>Consumo (km/L)</th>
+                                <th>Kilometraje Recorrido</th>
+                                <th>Total Litros</th>
+                                <th>Registros</th>
+                                <th>Kilometraje Actual</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% validConsumption.forEach(function(vehicle) { %>
+                            <tr>
+                                <td><strong>#<%= vehicle.numero_vehiculo %></strong></td>
+                                <td><%= vehicle.marca %> <%= vehicle.modelo %></td>
+                                <td>
+                                    <span style="font-weight: 600; color: var(--primary); font-size: 1.1rem;">
+                                        <%= vehicle.avgConsumption %>
+                                    </span> km/L
+                                </td>
+                                <td><%= vehicle.kmDiff.toLocaleString() %> km</td>
+                                <td><%= (vehicle.total_litros || 0).toFixed(2) %> L</td>
+                                <td><%= vehicle.fuel_records_count %></td>
+                                <td><%= (vehicle.kilometraje_actual || 0).toLocaleString() %> km</td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <% } %>
+        </div>
+        <% } %>
+
+        <!-- Gráficos de Tendencias de Costos -->
+        <% if (costTrends && costTrends.length > 0) { %>
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-line"></i>
+                    Tendencias de Costos (Últimos 6 Meses)
+                </h2>
+            </div>
+            <div style="position: relative; height: 400px;">
+                <canvas id="costTrendsChart"></canvas>
+            </div>
+            
+            <!-- Tabla de Tendencias de Costos -->
+            <div style="margin-top: 30px;">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--dark);">
+                    <i class="fas fa-table"></i> Costos Mensuales Detallados
+                </h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mes</th>
+                                <th>Costo Total</th>
+                                <th>Total Litros</th>
+                                <th>Costo Promedio por Litro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% costTrends.forEach(function(trend) { %>
+                            <tr>
+                                <td><strong><%= new Date(trend.month + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) %></strong></td>
+                                <td style="font-weight: 600; color: var(--primary);">
+                                    $<%= (parseFloat(trend.total_cost) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }) %>
+                                </td>
+                                <td><%= (parseFloat(trend.total_litros) || 0).toFixed(2) %> L</td>
+                                <td>
+                                    $<%= trend.total_litros > 0 ? (parseFloat(trend.total_cost) / parseFloat(trend.total_litros)).toFixed(2) : '0.00' %>/L
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Tabla de Tendencias de Mantenimiento -->
+            <% if (maintenanceTrends && maintenanceTrends.length > 0) { %>
+            <div style="margin-top: 30px;">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--dark);">
+                    <i class="fas fa-table"></i> Costos de Mantenimiento Mensuales
+                </h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mes</th>
+                                <th>Costo Total Mantenimiento</th>
+                                <th>Cantidad de Mantenimientos</th>
+                                <th>Costo Promedio por Mantenimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% maintenanceTrends.forEach(function(trend) { %>
+                            <tr>
+                                <td><strong><%= new Date(trend.month + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) %></strong></td>
+                                <td style="font-weight: 600; color: #28a745;">
+                                    $<%= (parseFloat(trend.total_cost) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }) %>
+                                </td>
+                                <td><%= trend.count || 0 %></td>
+                                <td>
+                                    $<%= trend.count > 0 ? (parseFloat(trend.total_cost) / parseFloat(trend.count)).toFixed(2) : '0.00' %>
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <% } %>
+        </div>
+        <% } %>
+
+        <!-- Comparativas entre Vehículos -->
+        <% if (vehicleComparisons && vehicleComparisons.length > 0) { %>
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Comparativa de Costos por Vehículo
+                </h2>
+            </div>
+            <div style="position: relative; height: 400px;">
+                <canvas id="vehicleComparisonChart"></canvas>
+            </div>
+            
+            <!-- Tabla de Comparativa de Costos por Vehículo -->
+            <div style="margin-top: 30px;">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--dark);">
+                    <i class="fas fa-table"></i> Comparativa Detallada por Vehículo
+                </h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Vehículo</th>
+                                <th>Marca/Modelo</th>
+                                <th>Costo Combustible</th>
+                                <th>Costo Mantenimiento</th>
+                                <th>Costo Total</th>
+                                <th>Registros Combustible</th>
+                                <th>Registros Mantenimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% vehicleComparisons.forEach(function(vehicle) { %>
+                            <tr>
+                                <td><strong>#<%= vehicle.numero_vehiculo %></strong></td>
+                                <td><%= vehicle.marca %> <%= vehicle.modelo %></td>
+                                <td style="color: #28a745; font-weight: 600;">
+                                    $<%= (parseFloat(vehicle.total_fuel_cost) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }) %>
+                                </td>
+                                <td style="color: #ffc107; font-weight: 600;">
+                                    $<%= (parseFloat(vehicle.total_maintenance_cost) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }) %>
+                                </td>
+                                <td style="color: var(--primary); font-weight: 700; font-size: 1.05rem;">
+                                    $<%= (parseFloat(vehicle.total_fuel_cost || 0) + parseFloat(vehicle.total_maintenance_cost || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2 }) %>
+                                </td>
+                                <td><%= vehicle.fuel_records || 0 %></td>
+                                <td><%= vehicle.maintenance_records || 0 %></td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Estadísticas de Rendimiento por Período -->
+        <% if (performanceStats && performanceStats.length > 0) { %>
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-area"></i>
+                    Rendimiento por Período (Últimos 12 Meses)
+                </h2>
+            </div>
+            <div style="position: relative; height: 400px;">
+                <canvas id="performanceChart"></canvas>
+            </div>
+            
+            <!-- Tabla de Rendimiento por Período -->
+            <div style="margin-top: 30px;">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--dark);">
+                    <i class="fas fa-table"></i> Rendimiento Mensual Detallado
+                </h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Período</th>
+                                <th>Vehículos Activos</th>
+                                <th>Total Litros</th>
+                                <th>Costo Total Combustible</th>
+                                <th>Precio Promedio por Litro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% performanceStats.forEach(function(stat) { %>
+                            <tr>
+                                <td><strong><%= new Date(stat.period + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) %></strong></td>
+                                <td><%= stat.vehicles_count || 0 %></td>
+                                <td><%= (parseFloat(stat.total_litros) || 0).toFixed(2) %> L</td>
+                                <td style="font-weight: 600; color: var(--primary);">
+                                    $<%= (parseFloat(stat.total_fuel_cost) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }) %>
+                                </td>
+                                <td>
+                                    $<%= (parseFloat(stat.avg_price_per_liter) || 0).toFixed(2) %>/L
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Alertas -->
+        <div class="section" id="alerts-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-bell"></i>
+                    Alertas y Notificaciones
+                </h2>
+                <% if (typeof alertCounts !== 'undefined' && alertCounts.hasAlerts) { %>
+                <span class="text-muted" style="font-size: 0.85rem;">
+                    <%= alertCounts.danger %> urgente(s), 
+                    <%= alertCounts.warning %> advertencia(s),
+                    <%= alertCounts.info %> informativa(s)
+                </span>
+                <% } else { %>
+                <span class="text-muted" style="font-size: 0.85rem;">No hay alertas pendientes</span>
+                <% } %>
+            </div>
+            <% if (typeof alertCounts !== 'undefined' && alertCounts.hasAlerts) { %>
+                <% alerts.forEach(function(alert) { %>
+                <div class="alert-item <%= alert.priority %>">
+                    <i class="fas <%= alert.icon %> alert-item-icon"></i>
+                    <div class="alert-item-content">
+                        <div class="alert-title">
+                            <%= alert.title %>
+                        </div>
+                        <div class="alert-desc">
+                            <%= alert.description %>
+                        </div>
+                    </div>
+                </div>
+                <% }); %>
+            <% } else { %>
+            <div class="empty-state">
+                <i class="fas fa-check-circle" style="color: #28a745; font-size: 3rem; margin-bottom: 16px;"></i>
+                <p class="text-muted">No hay alertas pendientes en este momento</p>
+                <p style="font-size: 0.85rem; color: var(--gray); margin-top: 8px;">
+                    El sistema monitorea automáticamente:<br>
+                    • Pólizas próximas a vencer (30 días)<br>
+                    • Mantenimientos preventivos según kilometraje<br>
+                    • Licencias de operadores por vencer (30 días)
+                </p>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- Vehículos -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-car"></i>
+                    Mis Vehículos
+                </h2>
+                <a href="/vehicles" class="btn" style="padding: 8px 16px; font-size: 0.85rem;">Ver Todos</a>
+            </div>
+            <% if (vehicles.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-car"></i>
+                <h3>No hay vehículos registrados</h3>
+                <p class="text-muted">Comienza agregando tu primer vehículo a la flotilla</p>
+                <a href="/vehicles" class="btn" style="margin-top: 20px;">Agregar Vehículo</a>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vehículo</th>
+                        <th>Marca / Modelo</th>
+                        <th>Kilometraje</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% vehicles.slice(0, 10).forEach(function(vehicle) { %>
+                    <tr>
+                        <td class="font-weight-bold">#<%= vehicle.numero_vehiculo %></td>
+                        <td><%= vehicle.marca %> <%= vehicle.modelo %></td>
+                        <td><%= vehicle.kilometraje_actual.toLocaleString() %> km</td>
+                        <td>
+                            <span class="badge badge-<%= vehicle.estado === 'Activo' ? 'success' : 'warning' %>">
+                                <%= vehicle.estado %>
+                            </span>
+                        </td>
+                        <td>
+                            <a href="/vehicles/<%= vehicle.id %>" class="btn" style="padding: 6px 14px; font-size: 0.85rem;">
+                                Ver Detalles
+                            </a>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% if (vehicles.length > 10) { %>
+            <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                <a href="/vehicles" class="btn">Ver Todos los Vehículos (<%= vehicles.length %>)</a>
+            </div>
+            <% } %>
+            <% } %>
+        </div>
+
+        <!-- Registros Recientes de Combustible -->
+        <% if (recentFuel.length > 0) { %>
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-gas-pump"></i>
+                    Últimos Registros de Combustible
+                </h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Vehículo</th>
+                        <th>Litros</th>
+                        <th>Costo Total</th>
+                        <th>Kilometraje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% recentFuel.forEach(function(record) { %>
+                    <tr>
+                        <td><%= new Date(record.fecha).toLocaleDateString('es-ES') %></td>
+                        <td><strong>#<%= record.numero_vehiculo %></strong> - <%= record.marca %> <%= record.modelo %></td>
+                        <td><%= record.litros %> L</td>
+                        <td class="font-weight-bold">$<%= record.costo_total.toFixed(2) %></td>
+                        <td class="text-muted"><%= record.kilometraje ? record.kilometraje.toLocaleString() + ' km' : '-' %></td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
+
+        <!-- Mantenimientos Recientes -->
+        <% if (recentMaintenance.length > 0) { %>
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-tools"></i>
+                    Últimos Mantenimientos
+                </h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Vehículo</th>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Costo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% recentMaintenance.forEach(function(record) { %>
+                    <tr>
+                        <td><%= new Date(record.fecha).toLocaleDateString('es-ES') %></td>
+                        <td><strong>#<%= record.numero_vehiculo %></strong> - <%= record.marca %> <%= record.modelo %></td>
+                        <td>
+                            <span class="badge badge-<%= record.tipo === 'Preventivo' ? 'success' : 'warning' %>">
+                                <%= record.tipo %>
+                            </span>
+                        </td>
+                        <td class="text-muted"><%= record.descripcion || '-' %></td>
+                        <td class="font-weight-bold"><%= record.costo ? '$' + record.costo.toFixed(2) : '-' %></td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
+    </div>
+
+    <script>
+        // Setup alert badge click handler - must run immediately
+        (function() {
+            // Wait for DOM to be ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initAlertBadge);
+            } else {
+                initAlertBadge();
+            }
+            
+            function initAlertBadge() {
+                const alertBadge = document.getElementById('alertBadge');
+                if (alertBadge) {
+                    alertBadge.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const alertsSection = document.getElementById('alerts-section');
+                        if (alertsSection) {
+                            alertsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                            console.error('Alerts section not found');
+                            // Fallback: scroll to top of page
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                    });
+                }
+            }
+        })();
+
+        // Cost Trends Chart
+        <% if (costTrends && costTrends.length > 0) { %>
+        <% 
+        const costTrendsLabels = costTrends.map(function(t) { return t.month; });
+        const costTrendsData = costTrends.map(function(t) { return t.total_cost || 0; });
+        %>
+        const costTrendsCtx = document.getElementById('costTrendsChart');
+        if (costTrendsCtx) {
+            new Chart(costTrendsCtx, {
+                type: 'line',
+                data: {
+                    labels: <%= JSON.stringify(costTrendsLabels) %>,
+                    datasets: [
+                        {
+                            label: 'Costo Combustible',
+                            data: [<%= costTrendsData.join(',') %>],
+                            borderColor: '#4da6ff',
+                            backgroundColor: 'rgba(77, 166, 255, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        <% if (maintenanceTrends && maintenanceTrends.length > 0) { %>
+                        <% 
+                        const maintenanceTrendsData = maintenanceTrends.map(function(t) { return t.total_cost || 0; });
+                        %>
+                        {
+                            label: 'Costo Mantenimiento',
+                            data: [<%= maintenanceTrendsData.join(',') %>],
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                        <% } %>
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Evolución de Costos Mensuales'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        <% } %>
+
+        // Vehicle Comparison Chart
+        <% if (vehicleComparisons && vehicleComparisons.length > 0) { %>
+        <% 
+        const vehicleComparisonLabels = vehicleComparisons.map(function(v) { return '#' + v.numero_vehiculo; });
+        const vehicleFuelData = vehicleComparisons.map(function(v) { return v.total_fuel_cost || 0; });
+        const vehicleMaintenanceData = vehicleComparisons.map(function(v) { return v.total_maintenance_cost || 0; });
+        %>
+        const vehicleComparisonCtx = document.getElementById('vehicleComparisonChart');
+        if (vehicleComparisonCtx) {
+            new Chart(vehicleComparisonCtx, {
+                type: 'bar',
+                data: {
+                    labels: <%= JSON.stringify(vehicleComparisonLabels) %>,
+                    datasets: [
+                        {
+                            label: 'Combustible',
+                            data: [<%= vehicleFuelData.join(',') %>],
+                            backgroundColor: '#4da6ff'
+                        },
+                        {
+                            label: 'Mantenimiento',
+                            data: [<%= vehicleMaintenanceData.join(',') %>],
+                            backgroundColor: '#28a745'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Comparativa de Costos por Vehículo'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            stacked: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        <% } %>
+
+        // Performance Chart
+        <% if (performanceStats && performanceStats.length > 0) { %>
+        <% 
+        const performanceLabels = performanceStats.map(function(p) { return p.period; });
+        const performanceLitrosData = performanceStats.map(function(p) { return p.total_litros || 0; });
+        const performanceCostData = performanceStats.map(function(p) { return p.total_fuel_cost || 0; });
+        %>
+        const performanceCtx = document.getElementById('performanceChart');
+        if (performanceCtx) {
+            new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: <%= JSON.stringify(performanceLabels) %>,
+                    datasets: [
+                        {
+                            label: 'Litros Consumidos',
+                            data: [<%= performanceLitrosData.join(',') %>],
+                            borderColor: '#001f3f',
+                            backgroundColor: 'rgba(0, 31, 63, 0.1)',
+                            yAxisID: 'y',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Costo Total',
+                            data: [<%= performanceCostData.join(',') %>],
+                            borderColor: '#dc3545',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            yAxisID: 'y1',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Rendimiento y Consumo por Período'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Período'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Litros'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Costo ($)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        <% } %>
+
+        // Toast Notification System
+        const toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px;';
+        document.body.appendChild(toastContainer);
+
+        function showToast(message, type = 'info', duration = 5000) {
+            const toast = document.createElement('div');
+            const icons = {
+                'danger': 'fa-exclamation-circle',
+                'warning': 'fa-exclamation-triangle',
+                'info': 'fa-info-circle',
+                'success': 'fa-check-circle'
+            };
+            const colors = {
+                'danger': '#dc3545',
+                'warning': '#ffc107',
+                'info': '#4da6ff',
+                'success': '#28a745'
+            };
+            
+            toast.style.cssText = 
+                'background: white;' +
+                'padding: 16px 20px;' +
+                'border-radius: 8px;' +
+                'box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);' +
+                'display: flex;' +
+                'align-items: center;' +
+                'gap: 12px;' +
+                'min-width: 300px;' +
+                'max-width: 400px;' +
+                'border-left: 4px solid ' + colors[type] + ';' +
+                'animation: slideInRight 0.3s ease-out;';
+            
+            toast.innerHTML = 
+                '<i class="fas ' + icons[type] + '" style="color: ' + colors[type] + '; font-size: 1.2rem;"></i>' +
+                '<span style="flex: 1; color: var(--dark); font-size: 0.9rem;">' + message + '</span>' +
+                '<button onclick="this.parentElement.remove()" style="background: none; border: none; color: var(--gray); cursor: pointer; font-size: 1.2rem; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">\u00D7</button>';
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto remove after duration
+            setTimeout(function() {
+                toast.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(function() { toast.remove(); }, 300);
+            }, duration);
+        }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = 
+            '@keyframes slideInRight {' +
+            '    from {' +
+            '        transform: translateX(100%);' +
+            '        opacity: 0;' +
+            '    }' +
+            '    to {' +
+            '        transform: translateX(0);' +
+            '        opacity: 1;' +
+            '    }' +
+            '}' +
+            '@keyframes slideOutRight {' +
+            '    from {' +
+            '        transform: translateX(0);' +
+            '        opacity: 1;' +
+            '    }' +
+            '    to {' +
+            '        transform: translateX(100%);' +
+            '        opacity: 0;' +
+            '    }' +
+            '}';
+        document.head.appendChild(style);
+
+        // Show notifications on page load
+        window.addEventListener('load', function() {
+            <% if (typeof alertCounts !== 'undefined' && alertCounts.hasAlerts) { %>
+            <% 
+            const dangerAlertsList = alerts.filter(function(a) { return a.priority === 'danger'; });
+            const warningAlertsList = alerts.filter(function(a) { return a.priority === 'warning'; });
+            %>
+            const dangerAlerts = <%= JSON.stringify(dangerAlertsList) %>;
+            const warningAlerts = <%= JSON.stringify(warningAlertsList) %>;
+            
+            // Show danger alerts first
+            if (dangerAlerts.length > 0) {
+                setTimeout(function() {
+                    showToast(dangerAlerts.length + ' alerta(s) urgente(s) requiere(n) atención inmediata', 'danger', 7000);
+                }, 1000);
+            }
+            
+            // Show warning alerts
+            if (warningAlerts.length > 0) {
+                setTimeout(function() {
+                    showToast(warningAlerts.length + ' advertencia(s) pendiente(s)', 'warning', 6000);
+                }, 2500);
+            }
+            
+            // Show total count
+            if (<%= alerts.length %> > 0) {
+                setTimeout(function() {
+                    showToast('Tienes <%= alerts.length %> alerta(s) y notificación(es) pendiente(s)', 'info', 5000);
+                }, 4000);
+            }
+            <% } else { %>
+            // No alerts - show info message
+            setTimeout(function() {
+                showToast('Sistema de alertas activo. No hay alertas pendientes en este momento.', 'success', 4000);
+            }, 1500);
+            <% } %>
+        });
+
+    </script>
+</body>
+</html>

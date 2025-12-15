@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pólizas de Seguros | CRM Insurance System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #001f3f;
+            --secondary: #87ceeb;
+            --accent: #4da6ff;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border: #dee2e6;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        header {
+            background-color: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0;
+            margin-bottom: 0;
+        }
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        .logo-text span {
+            color: var(--accent);
+        }
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .btn {
+            padding: 10px 24px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: #003366;
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .page-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .page-title i {
+            color: var(--primary);
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 28px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background-color: #f8f9fa;
+        }
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        tbody tr {
+            transition: background-color 0.15s;
+        }
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray);
+        }
+        .empty-state i {
+            font-size: 3.5rem;
+            color: #dee2e6;
+            margin-bottom: 16px;
+        }
+        .empty-state h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+        .text-muted {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+        .font-weight-bold {
+            font-weight: 700;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background-color: #f8f9fa;
+            color: var(--dark);
+        }
+        .modal-body {
+            padding: 28px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Open Sans', sans-serif;
+            transition: border-color 0.2s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 31, 63, 0.1);
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo-text">CRM <span>Insurance</span> System</div>
+            <div class="user-menu">
+                <span><%= user.nombre || user.username %></span>
+                <a href="/dashboard" class="btn">Dashboard</a>
+                <a href="/vehicles" class="btn">Vehículos</a>
+                <a href="/logout" class="btn btn-danger">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-file-contract"></i>
+                Pólizas de Seguros
+            </h1>
+            <button class="btn btn-success" onclick="openModal()">
+                <i class="fas fa-plus"></i> Agregar Póliza
+            </button>
+        </div>
+
+        <div class="section">
+            <% if (policies.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-file-contract"></i>
+                <h2>No hay pólizas registradas</h2>
+                <p>Comienza agregando tu primera póliza de seguro</p>
+                <button class="btn btn-success" onclick="openModal()" style="margin-top: 20px;">
+                    <i class="fas fa-plus"></i> Agregar Póliza
+                </button>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Número de Póliza</th>
+                        <th>Vehículo</th>
+                        <th>Compañía</th>
+                        <th>Vigencia</th>
+                        <th>Costo Anual</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% policies.forEach(function(policy) { %>
+                    <tr>
+                        <td class="font-weight-bold"><%= policy.numero_poliza %></td>
+                        <td>
+                            <strong>#<%= policy.numero_vehiculo %></strong><br>
+                            <span class="text-muted" style="font-size: 0.85rem;"><%= policy.marca %> <%= policy.modelo %></span>
+                        </td>
+                        <td><%= policy.compania || '-' %></td>
+                        <td>
+                            <% if (policy.fecha_inicio && policy.fecha_vencimiento) { %>
+                                <div><%= new Date(policy.fecha_inicio).toLocaleDateString('es-ES') %></div>
+                                <div class="text-muted" style="font-size: 0.85rem;">
+                                    <% 
+                                    const vencimiento = new Date(policy.fecha_vencimiento);
+                                    const hoy = new Date();
+                                    const diasRestantes = Math.ceil((vencimiento - hoy) / (1000 * 60 * 60 * 24));
+                                    %>
+                                    Vence: <%= vencimiento.toLocaleDateString('es-ES') %>
+                                    <% if (diasRestantes < 30 && diasRestantes >= 0) { %>
+                                        <span class="badge badge-warning">Vence en <%= diasRestantes %> días</span>
+                                    <% } else if (diasRestantes < 0) { %>
+                                        <span class="badge badge-danger">Vencida</span>
+                                    <% } %>
+                                </div>
+                            <% } else { %>
+                                <span class="text-muted">-</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% if (policy.costo_anual) { %>
+                                $<%= policy.costo_anual.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                            <% } else { %>
+                                <span class="text-muted">-</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <span class="badge badge-<%= policy.estado === 'Vigente' ? 'success' : 'warning' %>">
+                                <%= policy.estado %>
+                            </span>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <button class="btn btn-attachments" style="padding: 4px 10px; font-size: 0.8rem; background-color: var(--accent);" data-entity-id="<%= policy.id %>" data-entity-type="policy" data-entity-name="Póliza <%= policy.numero_poliza %>">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <button class="btn btn-history" style="padding: 4px 10px; font-size: 0.8rem; background-color: #6c757d;" data-entity-id="<%= policy.id %>" data-entity-type="policy" data-entity-name="Póliza <%= policy.numero_poliza %>">
+                                    <i class="fas fa-history"></i>
+                                </button>
+                                <button class="btn btn-danger btn-delete-policy" style="padding: 4px 10px; font-size: 0.8rem;" data-policy-id="<%= policy.id %>">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="policyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Póliza</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="policyForm">
+                    <div class="form-group">
+                        <label class="form-label">Vehículo *</label>
+                        <select class="form-control" name="vehicle_id" required>
+                            <option value="">Seleccionar vehículo</option>
+                            <% vehicles.forEach(function(vehicle) { %>
+                            <option value="<%= vehicle.id %>">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Número de Póliza *</label>
+                        <input type="text" class="form-control" name="numero_poliza" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Compañía de Seguros</label>
+                        <input type="text" class="form-control" name="compania">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fecha de Inicio</label>
+                        <input type="date" class="form-control" name="fecha_inicio">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fecha de Vencimiento</label>
+                        <input type="date" class="form-control" name="fecha_vencimiento">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo de Cobertura</label>
+                        <input type="text" class="form-control" name="tipo_cobertura" placeholder="Ej: Responsabilidad Civil, Cobertura Amplia">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Costo Anual</label>
+                        <input type="number" step="0.01" class="form-control" name="costo_anual" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estado</label>
+                        <select class="form-control" name="estado">
+                            <option value="Vigente">Vigente</option>
+                            <option value="Vencida">Vencida</option>
+                            <option value="Cancelada">Cancelada</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal() {
+            document.getElementById('policyModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('policyModal').style.display = 'none';
+            document.getElementById('policyForm').reset();
+        }
+
+        document.getElementById('policyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            // Convert numeric fields
+            if (data.costo_anual) data.costo_anual = parseFloat(data.costo_anual);
+
+            try {
+                const response = await fetch('/api/policies', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('Póliza agregada exitosamente');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                alert('Error al guardar: ' + error.message);
+            }
+        });
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('policyModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Funciones para adjuntos e historial
+        let currentEntityId = null;
+        let currentEntityType = null;
+
+        function openAttachmentsModal(entityId, entityType, entityName) {
+            currentEntityId = entityId;
+            currentEntityType = entityType;
+            document.getElementById('attachmentsModalTitle').textContent = 'Adjuntos - ' + entityName;
+            document.getElementById('attachmentsModal').style.display = 'block';
+            loadAttachments();
+        }
+
+        function openHistoryModal(entityId, entityType, entityName) {
+            currentEntityId = entityId;
+            currentEntityType = entityType;
+            document.getElementById('historyModalTitle').textContent = 'Historial - ' + entityName;
+            document.getElementById('historyModal').style.display = 'block';
+            loadHistory();
+        }
+
+        async function loadAttachments() {
+            if (!currentEntityId || !currentEntityType) return;
+            
+            try {
+                const response = await fetch('/api/attachments/' + currentEntityType + '/' + currentEntityId);
+                const data = await response.json();
+                
+                const container = document.getElementById('attachmentsList');
+                if (data.success && data.attachments.length > 0) {
+                    container.innerHTML = data.attachments.map(function(att) {
+                        return '<div class="attachment-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px;"><div style="flex: 1;"><div style="font-weight: 600; margin-bottom: 4px;"><i class="fas fa-file"></i> ' + att.nombre_original + '</div><div style="font-size: 0.85rem; color: var(--gray);">' + (att.tamano / 1024).toFixed(2) + ' KB • ' + (att.categoria || 'otro') + ' • ' + new Date(att.created_at).toLocaleDateString('es-ES') + '</div></div><div style="display: flex; gap: 8px;"><a href="/api/attachments/' + att.id + '/download" class="btn" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i></a><button onclick="deleteAttachment(' + att.id + ')" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-trash"></i></button></div></div>';
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p class="text-muted">No hay adjuntos aún</p>';
+                }
+            } catch (error) {
+                console.error('Error cargando adjuntos:', error);
+            }
+        }
+
+        async function loadHistory() {
+            if (!currentEntityId || !currentEntityType) return;
+            
+            try {
+                const response = await fetch('/api/history/' + currentEntityType + '/' + currentEntityId);
+                const data = await response.json();
+                
+                const container = document.getElementById('historyList');
+                if (data.success && data.history.length > 0) {
+                    container.innerHTML = data.history.map(function(item) {
+                        return '<div class="history-item" style="padding: 12px; border-left: 3px solid var(--accent); margin-bottom: 12px; background-color: #f8f9fa; border-radius: 4px;"><div style="display: flex; justify-content: space-between; margin-bottom: 6px;"><span style="font-weight: 600;">' + item.accion + '</span><span style="font-size: 0.85rem; color: var(--gray);">' + new Date(item.created_at).toLocaleString('es-ES') + '</span></div><div style="font-size: 0.9rem; color: var(--dark); margin-bottom: 4px;">' + (item.descripcion || '') + '</div><div style="font-size: 0.8rem; color: var(--gray);">Por: ' + (item.usuario_nombre || item.username) + '</div></div>';
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p class="text-muted">No hay historial aún</p>';
+                }
+            } catch (error) {
+                console.error('Error cargando historial:', error);
+            }
+        }
+
+        async function deleteAttachment(attachmentId) {
+            if (!confirm('¿Estás seguro de eliminar este adjunto?')) return;
+            
+            try {
+                const response = await fetch('/api/attachments/' + attachmentId, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    loadAttachments();
+                } else {
+                    alert('Error al eliminar adjunto');
+                }
+            } catch (error) {
+                console.error('Error eliminando adjunto:', error);
+                alert('Error al eliminar adjunto');
+            }
+        }
+
+        async function deletePolicy(policyId) {
+            if (!confirm('¿Estás seguro de eliminar esta póliza?')) return;
+            
+            try {
+                const response = await fetch('/api/policies/' + policyId, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Póliza eliminada');
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo eliminar'));
+                }
+            } catch (error) {
+                console.error('Error eliminando póliza:', error);
+                alert('Error al eliminar póliza');
+            }
+        }
+
+        // Event listeners para botones
+        document.addEventListener('DOMContentLoaded', function() {
+            // Botones de adjuntos
+            document.querySelectorAll('.btn-attachments').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const entityId = this.getAttribute('data-entity-id');
+                    const entityType = this.getAttribute('data-entity-type');
+                    const entityName = this.getAttribute('data-entity-name');
+                    openAttachmentsModal(entityId, entityType, entityName);
+                });
+            });
+
+            // Botones de historial
+            document.querySelectorAll('.btn-history').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const entityId = this.getAttribute('data-entity-id');
+                    const entityType = this.getAttribute('data-entity-type');
+                    const entityName = this.getAttribute('data-entity-name');
+                    openHistoryModal(entityId, entityType, entityName);
+                });
+            });
+
+            // Botones de eliminar póliza
+            document.querySelectorAll('.btn-delete-policy').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const policyId = parseInt(this.getAttribute('data-policy-id'));
+                    deletePolicy(policyId);
+                });
+            });
+        });
+
+        // Manejar subida de archivos
+        var uploadForm = document.getElementById('uploadAttachmentForm');
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData();
+                const fileInput = document.getElementById('attachmentFile');
+                const descripcion = document.getElementById('attachmentDescription').value;
+                const categoria = document.getElementById('attachmentCategory').value;
+                
+                if (!fileInput.files[0]) {
+                    alert('Por favor selecciona un archivo');
+                    return;
+                }
+                
+                formData.append('file', fileInput.files[0]);
+                formData.append('entity_type', currentEntityType);
+                formData.append('entity_id', currentEntityId);
+                formData.append('descripcion', descripcion);
+                formData.append('categoria', categoria);
+                
+                try {
+                    const response = await fetch('/api/attachments', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert('Archivo subido exitosamente');
+                        uploadForm.reset();
+                        loadAttachments();
+                    } else {
+                        alert('Error: ' + (data.error || 'Error al subir archivo'));
+                    }
+                } catch (error) {
+                    console.error('Error subiendo archivo:', error);
+                    alert('Error al subir archivo');
+                }
+            });
+        }
+    </script>
+
+    <!-- Modal de Adjuntos -->
+    <div id="attachmentsModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="attachmentsModalTitle">Adjuntos</h2>
+                <button class="modal-close" onclick="document.getElementById('attachmentsModal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Subir Nuevo Archivo</h3>
+                <form id="uploadAttachmentForm" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid var(--border);">
+                    <div class="form-group">
+                        <label class="form-label">Archivo *</label>
+                        <input type="file" id="attachmentFile" class="form-control" required accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Categoría</label>
+                        <select id="attachmentCategory" class="form-control">
+                            <option value="foto_siniestro">Foto de Siniestro</option>
+                            <option value="poliza_pdf">Póliza PDF</option>
+                            <option value="documento_vehiculo">Documento de Vehículo</option>
+                            <option value="factura">Factura</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea id="attachmentDescription" class="form-control" rows="2" placeholder="Descripción del archivo"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload"></i> Subir Archivo
+                    </button>
+                </form>
+                
+                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Archivos Adjuntos</h3>
+                <div id="attachmentsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Historial -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="historyModalTitle">Historial</h2>
+                <button class="modal-close" onclick="document.getElementById('historyModal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="historyList"></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

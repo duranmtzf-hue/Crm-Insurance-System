@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= vehicle.numero_vehiculo %> - Detalles | CRM Insurance System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #001f3f;
+            --secondary: #87ceeb;
+            --accent: #4da6ff;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border: #dee2e6;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        header {
+            background-color: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0;
+            margin-bottom: 0;
+        }
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        .logo-text span {
+            color: var(--accent);
+        }
+        .btn {
+            padding: 10px 24px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: #003366;
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .page-header {
+            margin-bottom: 30px;
+        }
+        .page-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .page-title i {
+            color: var(--primary);
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 28px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .section-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .info-item {
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        .info-label {
+            font-size: 0.85rem;
+            color: var(--gray);
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--dark);
+            font-family: 'Montserrat', sans-serif;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background-color: #f8f9fa;
+        }
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        tbody tr {
+            transition: background-color 0.15s;
+        }
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .text-muted {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+        .font-weight-bold {
+            font-weight: 700;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray);
+        }
+        .empty-state i {
+            font-size: 2.5rem;
+            color: #dee2e6;
+            margin-bottom: 12px;
+        }
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background-color: #f8f9fa;
+            color: var(--dark);
+        }
+        .modal-body {
+            padding: 28px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Open Sans', sans-serif;
+            transition: border-color 0.2s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 31, 63, 0.1);
+        }
+        textarea.form-control {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        @media (max-width: 768px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            .header-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo-text">CRM <span>Insurance</span> System</div>
+            <div style="display: flex; gap: 12px;">
+                <a href="/vehicles" class="btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver
+                </a>
+                <a href="/dashboard" class="btn">Dashboard</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-car"></i>
+                Vehículo #<%= vehicle.numero_vehiculo %>
+            </h1>
+        </div>
+
+        <!-- Información del Vehículo -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-info-circle"></i>
+                Información General
+            </h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Marca</div>
+                    <div class="info-value"><%= vehicle.marca %></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Modelo</div>
+                    <div class="info-value"><%= vehicle.modelo %></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Año</div>
+                    <div class="info-value"><%= vehicle.año || '-' %></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Placas</div>
+                    <div class="info-value"><%= vehicle.placas || '-' %></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Kilometraje Actual</div>
+                    <div class="info-value"><%= vehicle.kilometraje_actual.toLocaleString() %> km</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Estado</div>
+                    <div class="info-value">
+                        <span class="badge badge-<%= vehicle.estado === 'Activo' ? 'success' : 'warning' %>">
+                            <%= vehicle.estado %>
+                        </span>
+                    </div>
+                </div>
+                <% if (vehicle.descripcion) { %>
+                <div class="info-item" style="grid-column: 1 / -1;">
+                    <div class="info-label">Descripción</div>
+                    <div class="info-value"><%= vehicle.descripcion %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.numero_serie) { %>
+                <div class="info-item">
+                    <div class="info-label">Número de Serie</div>
+                    <div class="info-value"><%= vehicle.numero_serie %></div>
+                </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Información de Seguros y Coberturas -->
+        <% if (vehicle.cobertura || vehicle.danos_materiales || vehicle.robo || vehicle.responsabilidad_civil) { %>
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-shield-alt"></i>
+                Seguros y Coberturas
+            </h2>
+            <div class="info-grid">
+                <% if (vehicle.cobertura) { %>
+                <div class="info-item">
+                    <div class="info-label">Cobertura</div>
+                    <div class="info-value"><%= vehicle.cobertura %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.danos_materiales) { %>
+                <div class="info-item">
+                    <div class="info-label">Daños Materiales</div>
+                    <div class="info-value"><%= vehicle.danos_materiales %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.robo) { %>
+                <div class="info-item">
+                    <div class="info-label">Robo</div>
+                    <div class="info-value"><%= vehicle.robo %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.responsabilidad_civil) { %>
+                <div class="info-item">
+                    <div class="info-label">Responsabilidad Civil</div>
+                    <div class="info-value"><%= vehicle.responsabilidad_civil %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.responsabilidad_exceso) { %>
+                <div class="info-item">
+                    <div class="info-label">Responsabilidad en Exceso</div>
+                    <div class="info-value"><%= vehicle.responsabilidad_exceso %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.gastos_medicos_ocupantes) { %>
+                <div class="info-item">
+                    <div class="info-label">Gastos Médicos a Ocupantes</div>
+                    <div class="info-value"><%= vehicle.gastos_medicos_ocupantes %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.asistencia_automovilistico) { %>
+                <div class="info-item">
+                    <div class="info-label">Asistencia Automovilístico</div>
+                    <div class="info-value"><%= vehicle.asistencia_automovilistico %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.defensa_juridica) { %>
+                <div class="info-item">
+                    <div class="info-label">Defensa Jurídica</div>
+                    <div class="info-value"><%= vehicle.defensa_juridica %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.responsabilidad_civil_carga) { %>
+                <div class="info-item">
+                    <div class="info-label">Responsabilidad Civil Carga</div>
+                    <div class="info-value"><%= vehicle.responsabilidad_civil_carga %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.responsabilidad_civil_ecologica) { %>
+                <div class="info-item">
+                    <div class="info-label">Responsabilidad Civil Ecológica</div>
+                    <div class="info-value"><%= vehicle.responsabilidad_civil_ecologica %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.descripcion_adaptacion) { %>
+                <div class="info-item" style="grid-column: 1 / -1;">
+                    <div class="info-label">Descripción Adaptación</div>
+                    <div class="info-value"><%= vehicle.descripcion_adaptacion %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.valor_adaptacion) { %>
+                <div class="info-item">
+                    <div class="info-label">Valor Adaptación</div>
+                    <div class="info-value">$<%= parseFloat(vehicle.valor_adaptacion).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.tipo_carga) { %>
+                <div class="info-item">
+                    <div class="info-label">Tipo de Carga</div>
+                    <div class="info-value"><%= vehicle.tipo_carga %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.descripcion_carga) { %>
+                <div class="info-item" style="grid-column: 1 / -1;">
+                    <div class="info-label">Descripción de la Carga</div>
+                    <div class="info-value"><%= vehicle.descripcion_carga %></div>
+                </div>
+                <% } %>
+                <% if (vehicle.accidente_conductor) { %>
+                <div class="info-item" style="grid-column: 1 / -1;">
+                    <div class="info-label">Accidente al Conductor</div>
+                    <div class="info-value"><%= vehicle.accidente_conductor %></div>
+                </div>
+                <% } %>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Registros de Combustible -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-gas-pump"></i>
+                    Registros de Combustible
+                </h2>
+                <button class="btn btn-success" onclick="document.getElementById('fuelModal').style.display='block'">
+                    <i class="fas fa-plus"></i>
+                    Agregar Registro
+                </button>
+            </div>
+            
+            <% if (fuelRecords.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-gas-pump"></i>
+                <p class="text-muted">No hay registros de combustible aún</p>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Litros</th>
+                        <th>Precio/Litro</th>
+                        <th>Costo Total</th>
+                        <th>Kilometraje</th>
+                        <th>Estación</th>
+                        <th>Ticket</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% fuelRecords.forEach(function(record) { %>
+                    <tr>
+                        <td><%= new Date(record.fecha).toLocaleDateString('es-ES') %></td>
+                        <td><%= record.litros %> L</td>
+                        <td class="text-muted">$<%= record.precio_litro.toFixed(2) %></td>
+                        <td class="font-weight-bold">$<%= record.costo_total.toFixed(2) %></td>
+                        <td class="text-muted"><%= record.kilometraje ? record.kilometraje.toLocaleString() + ' km' : '-' %></td>
+                        <td class="text-muted"><%= record.estacion || '-' %></td>
+                        <td class="text-muted"><%= record.ticket_gasolina || '-' %></td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+
+        <!-- Mantenimientos -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-tools"></i>
+                    Mantenimientos
+                </h2>
+                <button class="btn btn-success" onclick="document.getElementById('maintenanceModal').style.display='block'">
+                    <i class="fas fa-plus"></i>
+                    Agregar Mantenimiento
+                </button>
+            </div>
+            
+            <% if (maintenanceRecords.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-tools"></i>
+                <p class="text-muted">No hay registros de mantenimiento aún</p>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Kilometraje</th>
+                        <th>Descripción</th>
+                        <th>Costo</th>
+                        <th>Taller</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% maintenanceRecords.forEach(function(record) { %>
+                    <tr>
+                        <td><%= new Date(record.fecha).toLocaleDateString('es-ES') %></td>
+                        <td>
+                            <span class="badge badge-<%= record.tipo === 'Preventivo' ? 'success' : 'warning' %>">
+                                <%= record.tipo %>
+                            </span>
+                        </td>
+                        <td class="text-muted"><%= record.kilometraje ? record.kilometraje.toLocaleString() + ' km' : '-' %></td>
+                        <td><%= record.descripcion || '-' %></td>
+                        <td class="font-weight-bold"><%= record.costo ? '$' + record.costo.toFixed(2) : '-' %></td>
+                        <td class="text-muted"><%= record.taller || '-' %></td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+
+        <!-- Pólizas -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-file-contract"></i>
+                Pólizas de Seguro
+            </h2>
+            
+            <% if (policies.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-file-contract"></i>
+                <p class="text-muted">No hay pólizas registradas aún</p>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Número de Póliza</th>
+                        <th>Compañía</th>
+                        <th>Vigencia Inicio</th>
+                        <th>Vigencia Fin</th>
+                        <th>Tipo Cobertura</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% policies.forEach(function(policy) { %>
+                    <tr>
+                        <td class="font-weight-bold"><%= policy.numero_poliza %></td>
+                        <td><%= policy.compania || '-' %></td>
+                        <td><%= new Date(policy.fecha_inicio).toLocaleDateString('es-ES') %></td>
+                        <td><%= new Date(policy.fecha_vencimiento).toLocaleDateString('es-ES') %></td>
+                        <td class="text-muted"><%= policy.tipo_cobertura || '-' %></td>
+                        <td>
+                            <span class="badge badge-<%= policy.estado === 'Vigente' ? 'success' : 'warning' %>">
+                                <%= policy.estado %>
+                            </span>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Modal para agregar combustible -->
+    <div id="fuelModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Registro de Combustible</h2>
+                <button class="modal-close" onclick="document.getElementById('fuelModal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="fuelForm">
+                    <input type="hidden" name="vehicle_id" value="<%= vehicle.id %>">
+                    <div class="form-group">
+                        <label class="form-label" for="fecha">Fecha *</label>
+                        <input type="date" id="fecha" name="fecha" class="form-control" required value="<%= new Date().toISOString().split('T')[0] %>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="litros">Litros *</label>
+                        <input type="number" step="0.01" id="litros" name="litros" class="form-control" required placeholder="Ej: 45.5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="precio_litro">Precio por Litro *</label>
+                        <input type="number" step="0.01" id="precio_litro" name="precio_litro" class="form-control" required placeholder="Ej: 24.50">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="kilometraje">Kilometraje</label>
+                        <input type="number" id="kilometraje" name="kilometraje" class="form-control" placeholder="Ej: 45230">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="estacion">Estación de Servicio</label>
+                        <input type="text" id="estacion" name="estacion" class="form-control" placeholder="Ej: Pemex Insurgentes">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="ticket_gasolina">Ticket de Gasolina</label>
+                        <input type="text" id="ticket_gasolina" name="ticket_gasolina" class="form-control" placeholder="Número de ticket o referencia">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-success" style="flex: 1;">
+                            <i class="fas fa-check"></i>
+                            Agregar Registro
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('fuelModal').style.display='none'" style="flex: 1;">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para agregar mantenimiento -->
+    <div id="maintenanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Mantenimiento</h2>
+                <button class="modal-close" onclick="document.getElementById('maintenanceModal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="maintenanceForm">
+                    <input type="hidden" name="vehicle_id" value="<%= vehicle.id %>">
+                    <div class="form-group">
+                        <label class="form-label" for="tipo">Tipo *</label>
+                        <select id="tipo" name="tipo" class="form-control" required>
+                            <option value="Preventivo">Preventivo</option>
+                            <option value="Correctivo">Correctivo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="fecha">Fecha *</label>
+                        <input type="date" id="fecha" name="fecha" class="form-control" required value="<%= new Date().toISOString().split('T')[0] %>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="kilometraje">Kilometraje</label>
+                        <input type="number" id="kilometraje" name="kilometraje" class="form-control" placeholder="Ej: 45230">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="descripcion">Descripción</label>
+                        <textarea id="descripcion" name="descripcion" class="form-control" rows="3" placeholder="Ej: Cambio de aceite y filtros"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="costo">Costo</label>
+                        <input type="number" step="0.01" id="costo" name="costo" class="form-control" placeholder="Ej: 1250.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="taller">Taller</label>
+                        <input type="text" id="taller" name="taller" class="form-control" placeholder="Ej: Taller Automotriz XYZ">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="proximo_mantenimiento_km">Próximo Mantenimiento (km)</label>
+                        <input type="number" id="proximo_mantenimiento_km" name="proximo_mantenimiento_km" class="form-control" placeholder="Ej: 50000">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-success" style="flex: 1;">
+                            <i class="fas fa-check"></i>
+                            Agregar Mantenimiento
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('maintenanceModal').style.display='none'" style="flex: 1;">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cerrar modales al hacer click fuera
+        window.onclick = function(event) {
+            const fuelModal = document.getElementById('fuelModal');
+            const maintenanceModal = document.getElementById('maintenanceModal');
+            if (event.target == fuelModal) {
+                fuelModal.style.display = 'none';
+            }
+            if (event.target == maintenanceModal) {
+                maintenanceModal.style.display = 'none';
+            }
+        }
+
+        document.getElementById('fuelForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            // Convertir números
+            data.litros = parseFloat(data.litros);
+            data.precio_litro = parseFloat(data.precio_litro);
+            if (data.kilometraje) data.kilometraje = parseInt(data.kilometraje);
+            
+            try {
+                const response = await fetch('/api/fuel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Registro de combustible agregado exitosamente');
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'Error al agregar registro'));
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor');
+            }
+        });
+
+        document.getElementById('maintenanceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            // Convertir números
+            if (data.kilometraje) data.kilometraje = parseInt(data.kilometraje);
+            if (data.costo) data.costo = parseFloat(data.costo);
+            if (data.proximo_mantenimiento_km) data.proximo_mantenimiento_km = parseInt(data.proximo_mantenimiento_km);
+            
+            try {
+                const response = await fetch('/api/maintenance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Mantenimiento registrado exitosamente');
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'Error al registrar mantenimiento'));
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Endpoint</title>
+</head>
+<body>
+    <h1>Test Endpoint de Notificaciones</h1>
+    <button id="testBtn">Probar Endpoint</button>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('testBtn').addEventListener('click', async function() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Enviando petición...';
+            
+            try {
+                console.log('🔄 Enviando petición a /api/notifications/send-pending');
+                const startTime = Date.now();
+                
+                const response = await fetch('/api/notifications/send-pending', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                const elapsed = Date.now() - startTime;
+                console.log(`⏱️ Tiempo de respuesta: ${elapsed}ms`);
+                console.log('📡 Estado:', response.status, response.statusText);
+
+                const text = await response.text();
+                console.log('📄 Respuesta texto:', text);
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    resultDiv.innerHTML = '<pre>Error parseando JSON: ' + text + '</pre>';
+                    return;
+                }
+
+                console.log('📬 Respuesta parseada:', data);
+                resultDiv.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                resultDiv.innerHTML = '<pre style="color: red;">Error: ' + error.message + '</pre>';
+            }
+        });
+    </script>
+</body>
+</html>
+

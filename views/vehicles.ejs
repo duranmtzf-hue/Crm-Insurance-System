@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Vehículos | CRM Insurance System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #001f3f;
+            --secondary: #87ceeb;
+            --accent: #4da6ff;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border: #dee2e6;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        header {
+            background-color: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0;
+            margin-bottom: 0;
+        }
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        .logo-text span {
+            color: var(--accent);
+        }
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .btn {
+            padding: 10px 24px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: #003366;
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .page-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .page-title i {
+            color: var(--primary);
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 28px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background-color: #f8f9fa;
+        }
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        tbody tr {
+            transition: background-color 0.15s;
+        }
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray);
+        }
+        .empty-state i {
+            font-size: 3.5rem;
+            color: #dee2e6;
+            margin-bottom: 16px;
+        }
+        .empty-state h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+        .empty-state p {
+            color: var(--gray);
+            margin-bottom: 24px;
+        }
+        .text-muted {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+        .font-weight-bold {
+            font-weight: 700;
+        }
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background-color: #f8f9fa;
+            color: var(--dark);
+        }
+        .modal-body {
+            padding: 28px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Open Sans', sans-serif;
+            transition: border-color 0.2s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 31, 63, 0.1);
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            .header-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .user-menu {
+                flex-direction: column;
+                width: 100%;
+            }
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            table {
+                font-size: 0.85rem;
+            }
+            th, td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo-text">CRM <span>Insurance</span> System</div>
+            <div class="user-menu">
+                <a href="/dashboard" class="btn">Dashboard</a>
+                <a href="/logout" class="btn btn-danger">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-car"></i>
+                Mis Vehículos
+            </h1>
+            <button class="btn btn-success" onclick="document.getElementById('addVehicleModal').style.display='block'">
+                <i class="fas fa-plus"></i>
+                Agregar Vehículo
+            </button>
+        </div>
+
+        <div class="section">
+            <% if (vehicles.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-car"></i>
+                <h2>No tienes vehículos registrados</h2>
+                <p>Comienza agregando tu primer vehículo a la flotilla</p>
+                <button class="btn btn-success" onclick="document.getElementById('addVehicleModal').style.display='block'" style="margin-top: 20px;">
+                    <i class="fas fa-plus"></i>
+                    Agregar Primer Vehículo
+                </button>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Marca / Modelo</th>
+                        <th>Año</th>
+                        <th>Placas</th>
+                        <th>Kilometraje</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% vehicles.forEach(function(vehicle) { %>
+                    <tr>
+                        <td class="font-weight-bold">#<%= vehicle.numero_vehiculo %></td>
+                        <td><%= vehicle.marca %> <%= vehicle.modelo %></td>
+                        <td class="text-muted"><%= vehicle.año || '-' %></td>
+                        <td class="text-muted"><%= vehicle.placas || '-' %></td>
+                        <td><%= vehicle.kilometraje_actual.toLocaleString() %> km</td>
+                        <td>
+                            <span class="badge badge-<%= vehicle.estado === 'Activo' ? 'success' : 'warning' %>">
+                                <%= vehicle.estado %>
+                            </span>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <a href="/vehicles/<%= vehicle.id %>" class="btn" style="padding: 6px 14px; font-size: 0.85rem;">
+                                    <i class="fas fa-eye"></i>
+                                    Ver Detalles
+                                </a>
+                                <button class="btn btn-attachments" style="padding: 6px 14px; font-size: 0.85rem; background-color: var(--accent);" data-entity-id="<%= vehicle.id %>" data-entity-type="vehicle" data-entity-name="<%= vehicle.marca %> <%= vehicle.modelo %>">
+                                    <i class="fas fa-paperclip"></i>
+                                    Adjuntos
+                                </button>
+                                <button class="btn btn-history" style="padding: 6px 14px; font-size: 0.85rem; background-color: #6c757d;" data-entity-id="<%= vehicle.id %>" data-entity-type="vehicle" data-entity-name="<%= vehicle.marca %> <%= vehicle.modelo %>">
+                                    <i class="fas fa-history"></i>
+                                    Historial
+                                </button>
+                                <button class="btn btn-danger btn-delete-vehicle" style="padding: 6px 14px; font-size: 0.85rem;" data-vehicle-id="<%= vehicle.id %>">
+                                    <i class="fas fa-trash"></i>
+                                    Eliminar
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Modal para agregar vehículo -->
+    <div id="addVehicleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Vehículo</h2>
+                <button class="modal-close" onclick="document.getElementById('addVehicleModal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="addVehicleForm">
+                    <div class="form-group">
+                        <label class="form-label" for="numero_vehiculo">Número de Vehículo *</label>
+                        <input type="text" id="numero_vehiculo" name="numero_vehiculo" class="form-control" required placeholder="Ej: 1247">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="marca">Marca *</label>
+                        <input type="text" id="marca" name="marca" class="form-control" required placeholder="Ej: Toyota">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modelo">Modelo *</label>
+                        <input type="text" id="modelo" name="modelo" class="form-control" required placeholder="Ej: Hilux">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="año">Año</label>
+                        <input type="number" id="año" name="año" class="form-control" placeholder="Ej: 2022" min="1900" max="<%= new Date().getFullYear() + 1 %>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="placas">Placas</label>
+                        <input type="text" id="placas" name="placas" class="form-control" placeholder="Ej: ABC-123">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="kilometraje_actual">Kilometraje Actual</label>
+                        <input type="number" id="kilometraje_actual" name="kilometraje_actual" class="form-control" value="0" min="0" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="estado">Estado</label>
+                        <select id="estado" name="estado" class="form-control">
+                            <option value="Activo">Activo</option>
+                            <option value="Mantenimiento">Mantenimiento</option>
+                            <option value="Inactivo">Inactivo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="descripcion">Descripción</label>
+                        <textarea id="descripcion" name="descripcion" class="form-control" rows="3" placeholder="Descripción del vehículo"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="numero_serie">Número de Serie</label>
+                        <input type="text" id="numero_serie" name="numero_serie" class="form-control" placeholder="Número de serie del vehículo">
+                    </div>
+                    
+                    <hr style="margin: 30px 0; border: none; border-top: 2px solid var(--border);">
+                    <h3 style="font-family: 'Montserrat', sans-serif; font-size: 1.3rem; margin-bottom: 20px; color: var(--primary);">Información de Seguro y Coberturas</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="cobertura">Cobertura</label>
+                        <input type="text" id="cobertura" name="cobertura" class="form-control" placeholder="Tipo de cobertura">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="danos_materiales">Daños Materiales</label>
+                        <input type="text" id="danos_materiales" name="danos_materiales" class="form-control" placeholder="Información sobre daños materiales">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="robo">Robo</label>
+                        <input type="text" id="robo" name="robo" class="form-control" placeholder="Cobertura de robo">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="responsabilidad_civil">Responsabilidad Civil</label>
+                        <input type="text" id="responsabilidad_civil" name="responsabilidad_civil" class="form-control" placeholder="Responsabilidad civil">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="responsabilidad_exceso">Responsabilidad en Exceso</label>
+                        <input type="text" id="responsabilidad_exceso" name="responsabilidad_exceso" class="form-control" placeholder="Responsabilidad en exceso">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="gastos_medicos_ocupantes">Gastos Médicos a Ocupantes</label>
+                        <input type="text" id="gastos_medicos_ocupantes" name="gastos_medicos_ocupantes" class="form-control" placeholder="Gastos médicos a ocupantes">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="asistencia_automovilistico">Asistencia Automovilístico</label>
+                        <input type="text" id="asistencia_automovilistico" name="asistencia_automovilistico" class="form-control" placeholder="Asistencia automovilístico">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="defensa_juridica">Defensa Jurídica</label>
+                        <input type="text" id="defensa_juridica" name="defensa_juridica" class="form-control" placeholder="Defensa jurídica">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="responsabilidad_civil_carga">Responsabilidad Civil Carga</label>
+                        <input type="text" id="responsabilidad_civil_carga" name="responsabilidad_civil_carga" class="form-control" placeholder="Responsabilidad civil carga">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="responsabilidad_civil_ecologica">Responsabilidad Civil Ecológica</label>
+                        <input type="text" id="responsabilidad_civil_ecologica" name="responsabilidad_civil_ecologica" class="form-control" placeholder="Responsabilidad civil ecológica">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="descripcion_adaptacion">Descripción Adaptación</label>
+                        <textarea id="descripcion_adaptacion" name="descripcion_adaptacion" class="form-control" rows="2" placeholder="Descripción de adaptación"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="valor_adaptacion">Valor Adaptación</label>
+                        <input type="number" id="valor_adaptacion" name="valor_adaptacion" class="form-control" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="tipo_carga">Tipo de Carga</label>
+                        <input type="text" id="tipo_carga" name="tipo_carga" class="form-control" placeholder="Tipo de carga">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="descripcion_carga">Descripción de la Carga</label>
+                        <textarea id="descripcion_carga" name="descripcion_carga" class="form-control" rows="2" placeholder="Descripción de la carga"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="accidente_conductor">Accidente al Conductor</label>
+                        <textarea id="accidente_conductor" name="accidente_conductor" class="form-control" rows="2" placeholder="Información sobre accidente al conductor"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-success" style="flex: 1;">
+                            <i class="fas fa-check"></i>
+                            Agregar Vehículo
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('addVehicleModal').style.display='none'" style="flex: 1;">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cerrar modal al hacer click fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('addVehicleModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        document.getElementById('addVehicleForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            // Convertir números
+            if (data.año) data.año = parseInt(data.año);
+            if (data.kilometraje_actual) data.kilometraje_actual = parseInt(data.kilometraje_actual);
+            
+            try {
+                const response = await fetch('/api/vehicles', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Vehículo agregado exitosamente');
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'Error al agregar vehículo'));
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor');
+            }
+        });
+
+        // Funciones para adjuntos e historial
+        let currentEntityId = null;
+        let currentEntityType = null;
+
+        function openAttachmentsModal(entityId, entityType, entityName) {
+            currentEntityId = entityId;
+            currentEntityType = entityType;
+            document.getElementById('attachmentsModalTitle').textContent = 'Adjuntos - ' + entityName;
+            document.getElementById('attachmentsModal').style.display = 'block';
+            loadAttachments();
+        }
+
+        function openHistoryModal(entityId, entityType, entityName) {
+            currentEntityId = entityId;
+            currentEntityType = entityType;
+            document.getElementById('historyModalTitle').textContent = 'Historial - ' + entityName;
+            document.getElementById('historyModal').style.display = 'block';
+            loadHistory();
+        }
+
+        async function loadAttachments() {
+            if (!currentEntityId || !currentEntityType) return;
+            
+            try {
+                const response = await fetch('/api/attachments/' + currentEntityType + '/' + currentEntityId);
+                const data = await response.json();
+                
+                const container = document.getElementById('attachmentsList');
+                if (data.success && data.attachments.length > 0) {
+                    container.innerHTML = data.attachments.map(function(att) {
+                        return '<div class="attachment-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px;"><div style="flex: 1;"><div style="font-weight: 600; margin-bottom: 4px;"><i class="fas fa-file"></i> ' + att.nombre_original + '</div><div style="font-size: 0.85rem; color: var(--gray);">' + (att.tamano / 1024).toFixed(2) + ' KB • ' + (att.categoria || 'otro') + ' • ' + new Date(att.created_at).toLocaleDateString('es-ES') + '</div></div><div style="display: flex; gap: 8px;"><a href="/api/attachments/' + att.id + '/download" class="btn" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i></a><button onclick="deleteAttachment(' + att.id + ')" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-trash"></i></button></div></div>';
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p class="text-muted">No hay adjuntos aún</p>';
+                }
+            } catch (error) {
+                console.error('Error cargando adjuntos:', error);
+            }
+        }
+
+        async function loadHistory() {
+            if (!currentEntityId || !currentEntityType) return;
+            
+            try {
+                const response = await fetch('/api/history/' + currentEntityType + '/' + currentEntityId);
+                const data = await response.json();
+                
+                const container = document.getElementById('historyList');
+                if (data.success && data.history.length > 0) {
+                    container.innerHTML = data.history.map(function(item) {
+                        return '<div class="history-item" style="padding: 12px; border-left: 3px solid var(--accent); margin-bottom: 12px; background-color: #f8f9fa; border-radius: 4px;"><div style="display: flex; justify-content: space-between; margin-bottom: 6px;"><span style="font-weight: 600;">' + item.accion + '</span><span style="font-size: 0.85rem; color: var(--gray);">' + new Date(item.created_at).toLocaleString('es-ES') + '</span></div><div style="font-size: 0.9rem; color: var(--dark); margin-bottom: 4px;">' + (item.descripcion || '') + '</div><div style="font-size: 0.8rem; color: var(--gray);">Por: ' + (item.usuario_nombre || item.username) + '</div></div>';
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p class="text-muted">No hay historial aún</p>';
+                }
+            } catch (error) {
+                console.error('Error cargando historial:', error);
+            }
+        }
+
+        async function deleteAttachment(attachmentId) {
+            if (!confirm('¿Estás seguro de eliminar este adjunto?')) return;
+            
+            try {
+                const response = await fetch(`/api/attachments/${attachmentId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    loadAttachments();
+                } else {
+                    alert('Error al eliminar adjunto');
+                }
+            } catch (error) {
+                console.error('Error eliminando adjunto:', error);
+                alert('Error al eliminar adjunto');
+            }
+        }
+
+        // Event listeners para botones
+        document.addEventListener('DOMContentLoaded', function() {
+            // Botones de adjuntos
+            document.querySelectorAll('.btn-attachments').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const entityId = this.getAttribute('data-entity-id');
+                    const entityType = this.getAttribute('data-entity-type');
+                    const entityName = this.getAttribute('data-entity-name');
+                    openAttachmentsModal(entityId, entityType, entityName);
+                });
+            });
+
+            // Botones de historial
+            document.querySelectorAll('.btn-history').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const entityId = this.getAttribute('data-entity-id');
+                    const entityType = this.getAttribute('data-entity-type');
+                    const entityName = this.getAttribute('data-entity-name');
+                    openHistoryModal(entityId, entityType, entityName);
+                });
+            });
+
+            // Botones de eliminar vehículo
+            document.querySelectorAll('.btn-delete-vehicle').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const vehicleId = parseInt(this.getAttribute('data-vehicle-id'));
+                    deleteVehicle(vehicleId);
+                });
+            });
+        });
+
+        // Manejar subida de archivos
+        var uploadForm = document.getElementById('uploadAttachmentForm');
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const fileInput = document.getElementById('attachmentFile');
+            const descripcion = document.getElementById('attachmentDescription').value;
+            const categoria = document.getElementById('attachmentCategory').value;
+            
+            if (!fileInput.files[0]) {
+                alert('Por favor selecciona un archivo');
+                return;
+            }
+            
+            formData.append('file', fileInput.files[0]);
+            formData.append('entity_type', currentEntityType);
+            formData.append('entity_id', currentEntityId);
+            formData.append('descripcion', descripcion);
+            formData.append('categoria', categoria);
+            
+            try {
+                const response = await fetch('/api/attachments', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Archivo subido exitosamente');
+                    document.getElementById('uploadAttachmentForm').reset();
+                    loadAttachments();
+                } else {
+                    alert('Error: ' + (data.error || 'Error al subir archivo'));
+                }
+            } catch (error) {
+                console.error('Error subiendo archivo:', error);
+                alert('Error al subir archivo');
+            }
+            });
+        }
+
+        async function deleteVehicle(vehicleId) {
+            if (!confirm('¿Estás seguro de eliminar este vehículo? Esta acción no se puede deshacer.')) return;
+            
+            try {
+                const response = await fetch('/api/vehicles/' + vehicleId, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Vehículo eliminado');
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo eliminar'));
+                }
+            } catch (error) {
+                console.error('Error eliminando vehículo:', error);
+                alert('Error al eliminar vehículo');
+            }
+        }
+    </script>
+
+    <!-- Modal de Adjuntos -->
+    <div id="attachmentsModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="attachmentsModalTitle">Adjuntos</h2>
+                <button class="modal-close" onclick="document.getElementById('attachmentsModal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Subir Nuevo Archivo</h3>
+                <form id="uploadAttachmentForm" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid var(--border);">
+                    <div class="form-group">
+                        <label class="form-label">Archivo *</label>
+                        <input type="file" id="attachmentFile" class="form-control" required accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Categoría</label>
+                        <select id="attachmentCategory" class="form-control">
+                            <option value="foto_siniestro">Foto de Siniestro</option>
+                            <option value="poliza_pdf">Póliza PDF</option>
+                            <option value="documento_vehiculo">Documento de Vehículo</option>
+                            <option value="factura">Factura</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea id="attachmentDescription" class="form-control" rows="2" placeholder="Descripción del archivo"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload"></i> Subir Archivo
+                    </button>
+                </form>
+                
+                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Archivos Adjuntos</h3>
+                <div id="attachmentsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Historial -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="historyModalTitle">Historial</h2>
+                <button class="modal-close" onclick="document.getElementById('historyModal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="historyList"></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

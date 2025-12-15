@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Llantas | CRM Insurance System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com/llantas" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap/llantas " rel="stylesheet">
+    <style>
+        :root {
+            --primary: #001f3f;
+            --secondary: #87ceeb;
+            --accent: #4da6ff;
+            --light: #f5f9fc;
+            --dark: #1a2a3a;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --border-radius: 8px;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            color: var(--dark);
+            line-height: 1.6;
+            background-color: var(--light);
+        }
+        h1, h2, h3 {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        header {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-img {
+            height: 50px;
+            width: auto;
+            object-fit: contain;
+        }
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.8rem;
+            color: var(--primary);
+        }
+        .logo-text span {
+            color: var(--accent);
+        }
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+        nav a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            font-size: 1.05rem;
+            transition: color 0.3s;
+        }
+        nav a:hover {
+            color: var(--accent);
+        }
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--primary);
+            cursor: pointer;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 28px;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+            background-color: var(--accent);
+            color: white;
+        }
+        .btn:hover {
+            background-color: #3d8cd9;
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, #003366 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+        .hero h1 {
+            color: white;
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .hero p {
+            font-size: 1.3rem;
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+        .content-section {
+            padding: 80px 0;
+            background-color: white;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        .feature-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            box-shadow: var(--shadow);
+            border-top: 4px solid var(--secondary);
+        }
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--secondary);
+            margin-bottom: 20px;
+        }
+        .benefits-list {
+            list-style: none;
+            margin-top: 30px;
+        }
+        .benefits-list li {
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .benefits-list li:last-child {
+            border-bottom: none;
+        }
+        .benefits-list i {
+            color: var(--success);
+            font-size: 1.2rem;
+        }
+        footer {
+            background-color: var(--dark);
+            color: white;
+            padding: 50px 0 30px;
+            text-align: center;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .hero {
+                padding: 70px 0;
+            }
+            .content-section {
+                padding: 70px 0;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .header-container {
+                padding: 12px 0;
+            }
+            .hero {
+                padding: 60px 0;
+            }
+            .features-grid {
+                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            nav ul {
+                display: none;
+            }
+            .mobile-menu-btn {
+                display: block;
+            }
+            #mainMenu.active {
+                display: flex;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background-color: white;
+                box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+                padding: 20px;
+                z-index: 1000;
+            }
+            #mainMenu.active li {
+                margin: 10px 0;
+            }
+            .hero h1 {
+                font-size: 2.3rem;
+            }
+            .hero p {
+                font-size: 1.05rem;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .container {
+                padding: 0 14px;
+            }
+            .hero {
+                padding: 45px 0 55px;
+            }
+            .content-section {
+                padding: 60px 0;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-container">
+            <div class="logo">
+                <img src="images/logo.png" alt="CRM Insurance System Logo" class="logo-img">
+                <div class="logo-text">CRM <span>Insurance</span> System</div>
+            </div>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <nav>
+                <ul id="mainMenu">
+                    <li><a href="index.html">Inicio</a></li>
+                    <li><a href="combustible.html">Combustible</a></li>
+                    <li><a href="llantas.html">Llantas</a></li>
+                    <li><a href="mantenimiento-preventivo.html">Mantenimiento</a></li>
+                    <li><a href="operadores-licencias.html">Operadores</a></li>
+                    <li><a href="polizas-siniestros.html">Pólizas</a></li>
+                    <li><a href="dashboard-powerbi.html">Dashboard</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1><i class="fas fa-circle"></i> Gestión de Llantas</h1>
+            <p>Control completo del inventario de llantas de tu flotilla. Optimiza la vida útil de tus neumáticos con rotaciones programadas y alertas de reemplazo.</p>
+        </div>
+    </section>
+
+    <section class="content-section">
+        <div class="container">
+            <h2>Semáforo de Llantas</h2>
+            <p style="font-size: 1.1rem; margin-bottom: 30px;">Sistema visual de alertas para el estado de tus llantas</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 50px;">
+                <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: var(--shadow); text-align: center; border-top: 4px solid #28a745;">
+                    <div style="font-size: 3rem; margin-bottom: 15px;">🟢</div>
+                    <h3 style="color: #28a745; margin-bottom: 10px;">Óptimo</h3>
+                    <p style="color: #666; font-size: 0.95rem;">Presión y profundidad dentro de los rangos recomendados</p>
+                </div>
+                <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: var(--shadow); text-align: center; border-top: 4px solid #ffc107;">
+                    <div style="font-size: 3rem; margin-bottom: 15px;">🟡</div>
+                    <h3 style="color: #ffc107; margin-bottom: 10px;">Atención</h3>
+                    <p style="color: #666; font-size: 0.95rem;">Requiere revisión o rotación próxima</p>
+                </div>
+                <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: var(--shadow); text-align: center; border-top: 4px solid #dc3545;">
+                    <div style="font-size: 3rem; margin-bottom: 15px;">🔴</div>
+                    <h3 style="color: #dc3545; margin-bottom: 10px;">Crítico</h3>
+                    <p style="color: #666; font-size: 0.95rem;">Reemplazo urgente necesario</p>
+                </div>
+            </div>
+
+            <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 50px;">
+                <h2 style="margin-bottom: 30px; color: var(--primary);">Control de Llantas por Vehículo</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 25px;">
+                    <div>
+                        <h3 style="color: var(--accent); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-tachometer-alt"></i> PRESIÓN
+                        </h3>
+                        <p style="color: #666; line-height: 1.8;">Monitoreo de presión en PSI (libras por pulgada cuadrada). Rango óptimo: 30-35 PSI para vehículos ligeros, 60-80 PSI para vehículos pesados.</p>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <strong>Estado:</strong> <span id="presion-status" style="color: #28a745;">Normal</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--accent); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-ruler-vertical"></i> MILÍMETROS
+                        </h3>
+                        <p style="color: #666; line-height: 1.8;">Medición de profundidad de la banda de rodamiento. Mínimo legal: 1.6mm. Recomendado reemplazo: menos de 3mm.</p>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <strong>Estado:</strong> <span id="mm-status" style="color: #28a745;">Normal</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--accent); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-sync-alt"></i> ROTACIÓN
+                        </h3>
+                        <p style="color: #666; line-height: 1.8;">Programación de rotaciones cada 10,000-15,000 km para desgaste uniforme y maximizar vida útil de las llantas.</p>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <strong>Próxima:</strong> <span id="rotacion-status" style="color: #666;">Programada</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--accent); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-dollar-sign"></i> COSTO POR KILÓMETRO
+                        </h3>
+                        <p style="color: #666; line-height: 1.8;">Cálculo automático del costo por kilómetro basado en el costo de la llanta y los kilómetros recorridos.</p>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <strong>Promedio:</strong> <span id="costo-km" style="color: #666;">$0.XX/km</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h2>Funcionalidades del Sistema de Gestión de Llantas</h2>
+            <p style="font-size: 1.1rem; margin-bottom: 30px;">Mantén un control detallado de cada llanta de tu flotilla, desde su instalación hasta su reemplazo, optimizando costos y seguridad.</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3>Inventario por Vehículo</h3>
+                    <p>Registro completo de todas las llantas instaladas en cada vehículo, incluyendo marca, modelo, medida, número de serie y posición.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <h3>Control de Kilometraje</h3>
+                    <p>Seguimiento del kilometraje de cada llanta desde su instalación, permitiendo calcular desgaste y vida útil restante.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <h3>Programación de Rotaciones</h3>
+                    <p>Sistema automático para programar rotaciones de llantas según kilometraje o tiempo, optimizando el desgaste uniforme.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <h3>Alertas de Reemplazo</h3>
+                    <p>Alertas automáticas cuando las llantas alcanzan su límite de kilometraje o profundidad de banda de rodamiento.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h3>Historial Completo</h3>
+                    <p>Registro histórico de todas las operaciones: instalaciones, rotaciones, reparaciones y reemplazos de cada llanta.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <h3>Control de Costos</h3>
+                    <p>Análisis de costos por llanta, vehículo y período, incluyendo compras, instalaciones y mantenimientos.</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 60px;">
+                <h2>Beneficios de la Gestión de Llantas</h2>
+                <ul class="benefits-list">
+                    <li><i class="fas fa-check-circle"></i> <strong>Maximización de vida útil:</strong> Rotaciones programadas extienden la duración de las llantas</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Seguridad mejorada:</strong> Alertas preventivas evitan circular con llantas en mal estado</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Reducción de costos:</strong> Planificación de compras y mejor aprovechamiento del inventario</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Trazabilidad completa:</strong> Historial detallado de cada llanta desde su compra hasta su baja</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Prevención de accidentes:</strong> Identificación temprana de llantas con desgaste irregular</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Optimización de inventario:</strong> Control de stock y planificación de compras</li>
+                    <li><i class="fas fa-check-circle"></i> <strong>Reportes detallados:</strong> Análisis de rendimiento y costos por vehículo o flotilla completa</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin-top: 50px;">
+                <a href="index.html#contacto" class="btn">Solicitar Información</a>
+                <a href="index.html" class="back-link">← Volver al inicio</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 CRM Insurance System. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mainMenu = document.getElementById('mainMenu');
+        
+        mobileMenuBtn.addEventListener('click', function() {
+            mainMenu.classList.toggle('active');
+            
+            // Change icon
+            const icon = mobileMenuBtn.querySelector('i');
+            if (mainMenu.classList.contains('active')) {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            } else {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            }
+        });
+    </script>
+</body>
+</html>
+
