@@ -208,10 +208,12 @@ function convertSQL(sql) {
         // IMPORTANTE: El orden importa - primero los casos más específicos
         
         // date('now', '+7 days') → CURRENT_DATE + INTERVAL '7 days'
+        // Maneja: '+7 days', '+15 days', '+30 days', etc.
         converted = converted.replace(/date\('now',\s*'\+(\d+)\s+(days?|months?|years?|weeks?|hours?|minutes?|seconds?)'\s*\)/gi, 
             "CURRENT_DATE + INTERVAL '$1 $2'");
         
         // date('now', '-365 days') → CURRENT_DATE - INTERVAL '365 days'
+        // Maneja: '-365 days', '-90 days', '-60 days', '-30 days', '-12 months', '-6 months', etc.
         converted = converted.replace(/date\('now',\s*'-(\d+)\s+(days?|months?|years?|weeks?|hours?|minutes?|seconds?)'\s*\)/gi, 
             "CURRENT_DATE - INTERVAL '$1 $2'");
         
@@ -219,13 +221,15 @@ function convertSQL(sql) {
         converted = converted.replace(/date\('now'\)/gi, "CURRENT_DATE");
         
         // date(column) → column::DATE (debe ir después de date('now'))
-        converted = converted.replace(/date\(([a-zA-Z_][a-zA-Z0-9_.]+)\)/gi, "$1::DATE");
+        // Maneja: date(o.fecha_vencimiento_licencia), date(ip.fecha_vencimiento), etc.
+        converted = converted.replace(/date\(([a-zA-Z_][a-zA-Z0-9_.]*)\)/gi, "$1::DATE");
         
         // datetime('now') → CURRENT_TIMESTAMP
         converted = converted.replace(/datetime\('now'\)/gi, 'CURRENT_TIMESTAMP');
         
         // strftime('%Y-%m', column) → TO_CHAR(column, 'YYYY-MM')
-        converted = converted.replace(/strftime\('%Y-%m',\s*([a-zA-Z_][a-zA-Z0-9_.]+)\)/gi, "TO_CHAR($1, 'YYYY-MM')");
+        // Maneja: strftime('%Y-%m', fecha), strftime('%Y-%m', fr.fecha), etc.
+        converted = converted.replace(/strftime\('%Y-%m',\s*([a-zA-Z_][a-zA-Z0-9_.]*)\)/gi, "TO_CHAR($1, 'YYYY-MM')");
         
         // Convertir sqlite_master a información_schema para PostgreSQL
         converted = converted.replace(/sqlite_master/gi, 'information_schema.tables');
