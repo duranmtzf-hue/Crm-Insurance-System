@@ -1,5 +1,4 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const bodyParser = require('body-parser');
@@ -8,6 +7,7 @@ const PDFDocument = require('pdfkit');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const multer = require('multer');
+const db = require('./db'); // Database abstraction layer
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -110,65 +110,11 @@ app.use(session({
     cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 hours
 }));
 
-// Initialize database
-// En Render, el sistema de archivos es efímero, pero podemos usar el directorio del proyecto
-// La base de datos se guardará en el directorio del proyecto
-const dbPath = process.env.DATABASE_PATH || './database.sqlite';
-
-// Asegurar que el directorio existe
-const dbDir = path.dirname(dbPath);
-if (dbDir !== '.' && !fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
-}
-
-console.log('📦 Ruta de base de datos:', dbPath);
-console.log('📦 Directorio:', path.resolve(dbPath));
-
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('❌ Error abriendo base de datos:', err.message);
-        console.error('❌ Intentando crear base de datos en ubicación alternativa...');
-        
-        // Intentar en ubicación alternativa si falla
-        const altPath = './data/database.sqlite';
-        const altDir = path.dirname(altPath);
-        if (!fs.existsSync(altDir)) {
-            fs.mkdirSync(altDir, { recursive: true });
-        }
-        
-        const dbAlt = new sqlite3.Database(altPath, (errAlt) => {
-            if (errAlt) {
-                console.error('❌ Error crítico: No se pudo crear la base de datos');
-                process.exit(1);
-            } else {
-                console.log('✅ Base de datos creada en ubicación alternativa:', altPath);
-                initializeDatabase();
-            }
-        });
-        // Reemplazar db con la alternativa
-        Object.setPrototypeOf(db, dbAlt);
-        return;
-    } else {
-        console.log('✅ Conectado a base de datos SQLite');
-        initializeDatabase();
-    }
-});
-
-// Configurar modo WAL para mejor rendimiento y persistencia
-db.run('PRAGMA journal_mode = WAL;', (err) => {
-    if (err) {
-        console.warn('⚠️ No se pudo configurar modo WAL:', err.message);
-    } else {
-        console.log('✅ Modo WAL configurado para mejor persistencia');
-    }
-});
-
-// Configurar sincronización para mejor persistencia
-db.run('PRAGMA synchronous = NORMAL;', (err) => {
-    if (err) {
-        console.warn('⚠️ No se pudo configurar synchronous:', err.message);
-    }
-});
+// Database is initialized in db.js
+// Initialize database tables after a short delay to ensure connection is ready
+setTimeout(() => {
+    initializeDatabase();
+}, 1000);
 
 // Initialize database tables
 function initializeDatabase() {
@@ -519,9 +465,14 @@ function initializeDatabase() {
     // Usar un pequeño delay para asegurar que todas las tablas estén creadas
     setTimeout(() => {
         const defaultPassword = bcrypt.hashSync('admin123', 10);
-        db.run(`INSERT OR IGNORE INTO users (username, email, password, nombre, empresa) 
-                VALUES ('admin', 'admin@crm-insurance.com', ?, 'Administrador', 'CRM Insurance System')`, 
-                [defaultPassword], (err) => {
+        // INSERT compatible con SQLite y PostgreSQL
+        const insertSQL = db.type === 'postgresql'
+            ? `INSERT INTO users (username, email, password, nombre, empresa) 
+               VALUES ('admin', 'admin@crm-insurance.com', $1, 'Administrador', 'CRM Insurance System') 
+               ON CONFLICT (username) DO NOTHING`
+            : `INSERT OR IGNORE INTO users (username, email, password, nombre, empresa) 
+               VALUES ('admin', 'admin@crm-insurance.com', ?, 'Administrador', 'CRM Insurance System')`;
+        db.run(insertSQL, [defaultPassword], (err, result) => {
             if (err) {
                 console.log('Admin user already exists or error:', err.message);
                 // Si hay error, intentar verificar si la tabla existe
@@ -543,8 +494,10 @@ function initializeDatabase() {
                                 db.run(`INSERT OR IGNORE INTO users (username, email, password, nombre, empresa) 
                                         VALUES ('admin', 'admin@crm-insurance.com', ?, 'Administrador', 'CRM Insurance System')`, 
                                         [defaultPassword], (err) => {
-                                    if (!err) {
+                                    if (!err && result && result.changes > 0) {
                                         console.log('Default admin user created (username: admin, password: admin123)');
+                                    } else if (!err) {
+                                        console.log('Admin user already exists');
                                     }
                                 });
                             }
@@ -552,9 +505,13 @@ function initializeDatabase() {
                     }
                 });
             } else {
-                console.log('Default admin user created (username: admin, password: admin123)');
-                // Create sample data for testing alerts
-                createSampleData();
+                if (result && result.changes > 0) {
+                    console.log('Default admin user created (username: admin, password: admin123)');
+                    // Create sample data for testing alerts
+                    createSampleData();
+                } else {
+                    console.log('Admin user already exists');
+                }
             }
         });
         
@@ -765,16 +722,17 @@ app.post('/register', (req, res) => {
     
     const hashedPassword = bcrypt.hashSync(password, 10);
     
-    db.run('INSERT INTO users (username, email, password, nombre, empresa) VALUES (?, ?, ?, ?, ?)',
-        [username, email, hashedPassword, nombre || null, empresa || null], function(err) {
+    db.runConverted('INSERT INTO users (username, email, password, nombre, empresa) VALUES (?, ?, ?, ?, ?)',
+        [username, email, hashedPassword, nombre || null, empresa || null], (err, result) => {
         if (err) {
-            if (err.message.includes('UNIQUE constraint')) {
+            if (err.message && (err.message.includes('UNIQUE constraint') || err.message.includes('duplicate key'))) {
                 return res.render('register', { error: 'El usuario o email ya existe' });
             }
+            console.error('Error creando usuario:', err);
             return res.render('register', { error: 'Error al crear la cuenta' });
         }
         
-        req.session.userId = this.lastID;
+        req.session.userId = result.lastID;
         req.session.username = username;
         req.session.nombre = nombre;
         res.redirect('/dashboard');

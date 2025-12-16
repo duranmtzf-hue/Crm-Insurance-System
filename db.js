@@ -1,0 +1,239 @@
+// Database abstraction layer - supports both PostgreSQL and SQLite
+const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
+const path = require('path');
+const fs = require('fs');
+
+let db = null;
+let dbType = 'sqlite'; // 'sqlite' or 'postgresql'
+
+// Detectar si estamos en Render con PostgreSQL
+if (process.env.DATABASE_URL) {
+    // PostgreSQL en Render
+    dbType = 'postgresql';
+    console.log('🐘 Usando PostgreSQL (Render)');
+    
+    const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.DATABASE_URL.includes('localhost') ? false : {
+            rejectUnauthorized: false
+        }
+    });
+    
+    db = {
+        type: 'postgresql',
+        pool: pool,
+        query: (sql, params, callback) => {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            const convertedSQL = convertSQL(sql);
+            pool.query(convertedSQL, params || [], (err, result) => {
+                if (callback) {
+                    if (err) {
+                        callback(err, null);
+                    } else {
+                        callback(null, result.rows);
+                    }
+                }
+            });
+        },
+        run: (sql, params, callback) => {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            const convertedSQL = convertSQL(sql);
+            pool.query(convertedSQL, params || [], (err, result) => {
+                if (callback) {
+                    if (err) {
+                        callback(err, null);
+                    } else {
+                        // Para INSERT, PostgreSQL devuelve el id en RETURNING
+                        // Si la query tiene RETURNING, usar ese valor
+                        let lastID = null;
+                        if (result.rows && result.rows.length > 0 && result.rows[0].id) {
+                            lastID = result.rows[0].id;
+                        }
+                        callback(null, { 
+                            lastID: lastID,
+                            changes: result.rowCount || 0 
+                        });
+                    }
+                }
+            });
+        },
+        get: (sql, params, callback) => {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            const convertedSQL = convertSQL(sql);
+            pool.query(convertedSQL, params || [], (err, result) => {
+                if (callback) {
+                    if (err) {
+                        callback(err, null);
+                    } else {
+                        callback(null, result.rows[0] || null);
+                    }
+                }
+            });
+        },
+        all: (sql, params, callback) => {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            const convertedSQL = convertSQL(sql);
+            pool.query(convertedSQL, params || [], (err, result) => {
+                if (callback) {
+                    if (err) {
+                        callback(err, null);
+                    } else {
+                        callback(null, result.rows);
+                    }
+                }
+            });
+        }
+    };
+    
+    // Test connection
+    pool.query('SELECT NOW()', (err, result) => {
+        if (err) {
+            console.error('❌ Error conectando a PostgreSQL:', err.message);
+        } else {
+            console.log('✅ Conectado a PostgreSQL exitosamente');
+        }
+    });
+} else {
+    // SQLite para desarrollo local
+    dbType = 'sqlite';
+    console.log('💾 Usando SQLite (desarrollo local)');
+    
+    const dbPath = process.env.DATABASE_PATH || './database.sqlite';
+    const dbDir = path.dirname(dbPath);
+    if (dbDir !== '.' && !fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+    }
+    
+    const sqliteDb = new sqlite3.Database(dbPath, (err) => {
+        if (err) {
+            console.error('❌ Error abriendo SQLite:', err.message);
+            process.exit(1);
+        } else {
+            console.log('✅ Conectado a SQLite');
+            // Configurar modo WAL
+            sqliteDb.run('PRAGMA journal_mode = WAL;');
+            sqliteDb.run('PRAGMA synchronous = NORMAL;');
+        }
+    });
+    
+    db = {
+        type: 'sqlite',
+        db: sqliteDb,
+        query: (sql, params, callback) => {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            sqliteDb.all(sql, params || [], callback);
+        },
+        run: (sql, params, callback) => {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            sqliteDb.run(sql, params || [], function(err) {
+                if (callback) {
+                    callback(err, { lastID: this.lastID, changes: this.changes });
+                }
+            });
+        },
+        get: (sql, params, callback) => {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            sqliteDb.get(sql, params || [], callback);
+        },
+        all: (sql, params, callback) => {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            sqliteDb.all(sql, params || [], callback);
+        }
+    };
+}
+
+// Helper para convertir SQL de SQLite a PostgreSQL
+function convertSQL(sql) {
+    if (dbType === 'postgresql') {
+        let converted = sql;
+        
+        // Convertir AUTOINCREMENT a SERIAL (solo en CREATE TABLE)
+        converted = converted.replace(/INTEGER PRIMARY KEY AUTOINCREMENT/gi, 'SERIAL PRIMARY KEY');
+        converted = converted.replace(/INTEGER PRIMARY KEY/gi, 'SERIAL PRIMARY KEY');
+        
+        // Convertir DATETIME a TIMESTAMP
+        converted = converted.replace(/DATETIME/gi, 'TIMESTAMP');
+        
+        // Convertir CURRENT_TIMESTAMP para DEFAULT
+        converted = converted.replace(/DEFAULT CURRENT_TIMESTAMP/gi, 'DEFAULT CURRENT_TIMESTAMP');
+        
+        // Convertir INSERT OR IGNORE a INSERT ... ON CONFLICT DO NOTHING
+        if (converted.match(/INSERT\s+OR\s+IGNORE/i)) {
+            // Extraer tabla y valores
+            const match = converted.match(/INSERT\s+OR\s+IGNORE\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i);
+            if (match) {
+                const table = match[1];
+                const columns = match[2];
+                const values = match[3];
+                // Encontrar columnas UNIQUE para el ON CONFLICT
+                converted = `INSERT INTO ${table} (${columns}) VALUES (${values}) ON CONFLICT DO NOTHING`;
+            }
+        }
+        
+        // Convertir funciones de fecha de SQLite a PostgreSQL
+        converted = converted.replace(/date\('now'([^)]*)\)/gi, "CURRENT_DATE");
+        converted = converted.replace(/datetime\('now'\)/gi, 'CURRENT_TIMESTAMP');
+        converted = converted.replace(/strftime\('%Y-%m',\s*(\w+)\)/gi, "TO_CHAR($1, 'YYYY-MM')");
+        converted = converted.replace(/date\('now',\s*'([^']+)'\s*\)/gi, "CURRENT_DATE + INTERVAL '$1'");
+        
+        // Convertir sqlite_master a información_schema para PostgreSQL
+        converted = converted.replace(/sqlite_master/gi, 'information_schema.tables');
+        converted = converted.replace(/type='table'/gi, "table_type='BASE TABLE'");
+        
+        // Convertir ? placeholders a $1, $2, etc. (debe ser lo último)
+        let paramIndex = 1;
+        converted = converted.replace(/\?/g, () => `$${paramIndex++}`);
+        
+        return converted;
+    }
+    return sql;
+}
+
+// Helper para ejecutar queries con conversión automática
+db.queryConverted = function(sql, params, callback) {
+    const convertedSQL = convertSQL(sql);
+    return this.query(convertedSQL, params, callback);
+};
+
+db.runConverted = function(sql, params, callback) {
+    const convertedSQL = convertSQL(sql);
+    return this.run(convertedSQL, params, callback);
+};
+
+db.getConverted = function(sql, params, callback) {
+    const convertedSQL = convertSQL(sql);
+    return this.get(convertedSQL, params, callback);
+};
+
+db.allConverted = function(sql, params, callback) {
+    const convertedSQL = convertSQL(sql);
+    return this.all(convertedSQL, params, callback);
+};
+
+module.exports = db;
+
