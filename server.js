@@ -111,12 +111,62 @@ app.use(session({
 }));
 
 // Initialize database
-const db = new sqlite3.Database('./database.sqlite', (err) => {
+// En Render, el sistema de archivos es efímero, pero podemos usar el directorio del proyecto
+// La base de datos se guardará en el directorio del proyecto
+const dbPath = process.env.DATABASE_PATH || './database.sqlite';
+
+// Asegurar que el directorio existe
+const dbDir = path.dirname(dbPath);
+if (dbDir !== '.' && !fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+}
+
+console.log('📦 Ruta de base de datos:', dbPath);
+console.log('📦 Directorio:', path.resolve(dbPath));
+
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-        console.error('Error opening database:', err.message);
+        console.error('❌ Error abriendo base de datos:', err.message);
+        console.error('❌ Intentando crear base de datos en ubicación alternativa...');
+        
+        // Intentar en ubicación alternativa si falla
+        const altPath = './data/database.sqlite';
+        const altDir = path.dirname(altPath);
+        if (!fs.existsSync(altDir)) {
+            fs.mkdirSync(altDir, { recursive: true });
+        }
+        
+        const dbAlt = new sqlite3.Database(altPath, (errAlt) => {
+            if (errAlt) {
+                console.error('❌ Error crítico: No se pudo crear la base de datos');
+                process.exit(1);
+            } else {
+                console.log('✅ Base de datos creada en ubicación alternativa:', altPath);
+                initializeDatabase();
+            }
+        });
+        // Reemplazar db con la alternativa
+        Object.setPrototypeOf(db, dbAlt);
+        return;
     } else {
-        console.log('Connected to SQLite database');
+        console.log('✅ Conectado a base de datos SQLite');
         initializeDatabase();
+    }
+});
+
+// Configurar modo WAL para mejor rendimiento y persistencia
+db.run('PRAGMA journal_mode = WAL;', (err) => {
+    if (err) {
+        console.warn('⚠️ No se pudo configurar modo WAL:', err.message);
+    } else {
+        console.log('✅ Modo WAL configurado para mejor persistencia');
+    }
+});
+
+// Configurar sincronización para mejor persistencia
+db.run('PRAGMA synchronous = NORMAL;', (err) => {
+    if (err) {
+        console.warn('⚠️ No se pudo configurar synchronous:', err.message);
     }
 });
 
