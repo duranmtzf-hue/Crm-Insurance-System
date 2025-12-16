@@ -385,13 +385,16 @@
                         </td>
                         <td>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                <button class="btn btn-attachments" style="padding: 4px 10px; font-size: 0.8rem; background-color: var(--accent);" data-entity-id="<%= policy.id %>" data-entity-type="policy" data-entity-name="Póliza <%= policy.numero_poliza %>">
+                                <button class="btn btn-pdf-upload" style="padding: 6px 12px; font-size: 0.85rem; background-color: #dc3545; color: white;" data-entity-id="<%= policy.id %>" data-entity-type="policy" data-entity-name="Póliza <%= policy.numero_poliza %>" title="Adjuntar PDF de Póliza">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </button>
+                                <button class="btn btn-attachments" style="padding: 4px 10px; font-size: 0.8rem; background-color: var(--accent);" data-entity-id="<%= policy.id %>" data-entity-type="policy" data-entity-name="Póliza <%= policy.numero_poliza %>" title="Ver Adjuntos">
                                     <i class="fas fa-paperclip"></i>
                                 </button>
-                                <button class="btn btn-history" style="padding: 4px 10px; font-size: 0.8rem; background-color: #6c757d;" data-entity-id="<%= policy.id %>" data-entity-type="policy" data-entity-name="Póliza <%= policy.numero_poliza %>">
+                                <button class="btn btn-history" style="padding: 4px 10px; font-size: 0.8rem; background-color: #6c757d;" data-entity-id="<%= policy.id %>" data-entity-type="policy" data-entity-name="Póliza <%= policy.numero_poliza %>" title="Historial">
                                     <i class="fas fa-history"></i>
                                 </button>
-                                <button class="btn btn-danger btn-delete-policy" style="padding: 4px 10px; font-size: 0.8rem;" data-policy-id="<%= policy.id %>">
+                                <button class="btn btn-danger btn-delete-policy" style="padding: 4px 10px; font-size: 0.8rem;" data-policy-id="<%= policy.id %>" title="Eliminar">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -610,13 +613,23 @@
 
         // Event listeners para botones
         document.addEventListener('DOMContentLoaded', function() {
-            // Botones de adjuntos
+            // Botones de subir PDF (nuevo botón destacado)
+            document.querySelectorAll('.btn-pdf-upload').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const entityId = this.getAttribute('data-entity-id');
+                    const entityType = this.getAttribute('data-entity-type');
+                    const entityName = this.getAttribute('data-entity-name');
+                    openPdfUploadModal(entityId, entityType, entityName);
+                });
+            });
+            
+            // Botones de adjuntos (ver todos los adjuntos)
             document.querySelectorAll('.btn-attachments').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     const entityId = this.getAttribute('data-entity-id');
                     const entityType = this.getAttribute('data-entity-type');
                     const entityName = this.getAttribute('data-entity-name');
-                    openAttachmentsModal(entityId, entityType, entityName);
+                    openAttachmentsModal(entityId, entityType, entityName, false);
                 });
             });
 
