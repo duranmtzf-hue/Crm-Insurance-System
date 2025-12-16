@@ -2216,9 +2216,14 @@ app.post('/api/policies', requireAuth, (req, res) => {
             db.run(`INSERT INTO insurance_policies (vehicle_id, numero_poliza, compania, fecha_inicio, fecha_vencimiento, tipo_cobertura, costo_anual, estado)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                 [vehicle_id, numero_poliza, compania || null, fecha_inicio || null, fecha_vencimiento || null, tipo_cobertura || null, costo_anual || null, estado || 'Vigente'],
-                function(err) {
+                (err, result) => {
                     if (err) {
                         return res.status(500).json({ error: 'Error al crear póliza' });
+                    }
+
+                    const policyId = result?.lastID;
+                    if (!policyId) {
+                        return res.status(500).json({ error: 'Error: No se pudo obtener el ID de la póliza creada' });
                     }
 
                     // Encolar notificación automática de póliza nueva / próxima a vencer
@@ -2243,7 +2248,9 @@ app.post('/api/policies', requireAuth, (req, res) => {
                     );
 
                     // Registrar en historial
-                    const policyId = this.lastID;
+                    if (!policyId) {
+                        return res.status(500).json({ error: 'Error: No se pudo obtener el ID de la póliza creada' });
+                    }
                     logActivity(userId, 'vehicle', vehicle_id, 'policy_created',
                         `Póliza creada: ${numero_poliza} - ${compania || 'Sin compañía'}`, null, { numero_poliza, compania, tipo_cobertura });
                     logActivity(userId, 'policy', policyId, 'created',
