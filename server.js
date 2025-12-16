@@ -24,17 +24,31 @@ if (process.env.GMAIL_USER && process.env.GMAIL_PASS) {
         auth: {
             user: process.env.GMAIL_USER,
             pass: process.env.GMAIL_PASS
-        }
+        },
+        // Configuración para evitar timeouts en Render
+        connectionTimeout: 10000, // 10 segundos
+        greetingTimeout: 10000,
+        socketTimeout: 10000
     });
     
-    // Verificar conexión
-    mailTransporter.verify(function (error, success) {
-        if (error) {
-            console.error('❌ Error verificando configuración de email:', error);
-        } else {
-            console.log('✅ Servidor de correo configurado correctamente');
-        }
-    });
+    // Verificar conexión (con timeout y sin bloquear)
+    // Hacer la verificación de forma asíncrona y no bloqueante
+    setTimeout(() => {
+        mailTransporter.verify(function (error, success) {
+            if (error) {
+                // No mostrar error crítico si es timeout - puede ser problema de red de Render
+                if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') {
+                    console.warn('⚠️ No se pudo verificar conexión de email (timeout/red). Los emails se intentarán enviar cuando sea necesario.');
+                    console.warn('⚠️ Esto es común en Render debido a restricciones de red. La aplicación funcionará normalmente.');
+                } else {
+                    console.warn('⚠️ Error verificando configuración de email:', error.message);
+                    console.warn('⚠️ Los emails se intentarán enviar cuando sea necesario.');
+                }
+            } else {
+                console.log('✅ Servidor de correo configurado correctamente');
+            }
+        });
+    }, 3000); // Esperar 3 segundos después del inicio para no bloquear
 } else {
     console.warn('⚠️ GMAIL_USER o GMAIL_PASS no configurados - emails no se enviarán');
     console.warn('⚠️ Configure las variables de entorno para habilitar envío de correos');
