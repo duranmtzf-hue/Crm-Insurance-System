@@ -515,12 +515,26 @@
         let currentEntityId = null;
         let currentEntityType = null;
 
-        function openAttachmentsModal(entityId, entityType, entityName) {
+        function openAttachmentsModal(entityId, entityType, entityName, focusUpload) {
             currentEntityId = entityId;
             currentEntityType = entityType;
             document.getElementById('attachmentsModalTitle').textContent = 'Adjuntos - ' + entityName;
             document.getElementById('attachmentsModal').style.display = 'block';
             loadAttachments();
+            
+            // Si focusUpload es true, enfocar el campo de archivo y preseleccionar categoría PDF
+            if (focusUpload) {
+                setTimeout(() => {
+                    document.getElementById('attachmentFile').focus();
+                    document.getElementById('attachmentCategory').value = 'poliza_pdf';
+                    // Scroll al formulario de subida
+                    document.querySelector('#uploadAttachmentForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        }
+        
+        function openPdfUploadModal(entityId, entityType, entityName) {
+            openAttachmentsModal(entityId, entityType, entityName, true);
         }
 
         function openHistoryModal(entityId, entityType, entityName) {
@@ -707,11 +721,16 @@
                 </button>
             </div>
             <div class="modal-body">
-                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Subir Nuevo Archivo</h3>
+                <h3 style="margin-bottom: 15px; font-size: 1.1rem; color: var(--primary);">
+                    <i class="fas fa-file-pdf" style="color: #dc3545;"></i> Subir Nuevo Archivo
+                </h3>
                 <form id="uploadAttachmentForm" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid var(--border);">
                     <div class="form-group">
                         <label class="form-label">Archivo *</label>
-                        <input type="file" id="attachmentFile" class="form-control" required accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
+                        <input type="file" id="attachmentFile" class="form-control" required accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.txt">
+                        <small style="color: var(--gray); font-size: 0.85rem; margin-top: 4px; display: block;">
+                            Formatos permitidos: PDF, imágenes, documentos
+                        </small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Categoría</label>
@@ -725,9 +744,9 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Descripción</label>
-                        <textarea id="attachmentDescription" class="form-control" rows="2" placeholder="Descripción del archivo"></textarea>
+                        <textarea id="attachmentDescription" class="form-control" rows="2" placeholder="Descripción del archivo (opcional)"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;">
                         <i class="fas fa-upload"></i> Subir Archivo
                     </button>
                 </form>
