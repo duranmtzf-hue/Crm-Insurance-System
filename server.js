@@ -548,15 +548,17 @@ function createSampleData() {
                 // Create sample vehicle
                 db.run(`INSERT INTO vehicles (user_id, numero_vehiculo, marca, modelo, año, placas, kilometraje_actual, estado) 
                         VALUES (?, 'VH-001', 'Toyota', 'Hilux', 2020, 'ABC-123', 45000, 'Activo')`, 
-                        [userId], function(err) {
+                        [userId], (err, result) => {
                     if (err) {
                         console.log('Error creating sample vehicle:', err.message);
                         return;
                     }
                     
-                    vehicleId = this.lastID;
+                    vehicleId = result?.lastID;
                     console.log('Created vehicle with ID:', vehicleId);
-                    createSampleAlerts(userId, vehicleId);
+                    if (vehicleId) {
+                        createSampleAlerts(userId, vehicleId);
+                    }
                 });
                 return;
             }
@@ -1057,13 +1059,16 @@ app.post('/api/service-orders', requireAuth, (req, res) => {
             moneda || 'MXN',
             notas || null
         ],
-        function (err) {
+        (err, result) => {
             if (err) {
                 console.error('Error creating service order:', err);
                 return res.status(500).json({ error: 'Error al crear la orden de servicio' });
             }
             
-            const orderId = this.lastID;
+            const orderId = result?.lastID;
+            if (!orderId) {
+                return res.status(500).json({ error: 'Error: No se pudo obtener el ID de la orden creada' });
+            }
             // Registrar en historial
             logActivity(userId, 'service_order', orderId, 'created',
                 `Orden de servicio creada: ${tipo || 'N/A'}`, null, { tipo, descripcion, total });
@@ -1119,12 +1124,15 @@ app.post('/api/invoices', requireAuth, (req, res) => {
             estado || 'Borrador',
             notas || null
         ],
-        function (err) {
+        (err, result) => {
             if (err) {
                 console.error('Error creating invoice:', err);
                 return res.status(500).json({ error: 'Error al crear la factura' });
             }
-            const invoiceId = this.lastID;
+            const invoiceId = result?.lastID;
+            if (!invoiceId) {
+                return res.status(500).json({ error: 'Error: No se pudo obtener el ID de la factura creada' });
+            }
             // Registrar en historial
             logActivity(userId, 'invoice', invoiceId, 'created',
                 `Factura creada: ${folio || 'N/A'}`, null, { folio, total, estado });
@@ -1285,19 +1293,25 @@ app.post('/api/attachments', requireAuth, upload.single('file'), (req, res) => {
                 descripcion || null,
                 categoria || 'otro'
             ],
-            function (err) {
+            (err, result) => {
                 if (err) {
                     console.error('Error guardando adjunto:', err);
                     fs.unlinkSync(file.path);
                     return res.status(500).json({ error: 'Error al guardar el adjunto' });
                 }
 
+                const attachmentId = result?.lastID;
+                if (!attachmentId) {
+                    fs.unlinkSync(file.path);
+                    return res.status(500).json({ error: 'Error: No se pudo obtener el ID del adjunto creado' });
+                }
+
                 // Registrar en historial
                 logActivity(userId, entity_type, entity_id, 'attachment_added', 
                     `Se agregó el archivo: ${file.originalname}`, null, { nombre: file.originalname, categoria: categoria || 'otro' });
 
-                res.json({ success: true, id: this.lastID, file: {
-                    id: this.lastID,
+                res.json({ success: true, id: attachmentId, file: {
+                    id: attachmentId,
                     nombre_original: file.originalname,
                     tamano: file.size,
                     tipo_mime: file.mimetype,
@@ -1997,13 +2011,16 @@ app.post('/api/vehicles', requireAuth, (req, res) => {
             responsabilidad_civil_ecologica || null, descripcion_adaptacion || null, valor_adaptacion || null,
             tipo_carga || null, descripcion_carga || null, accidente_conductor || null
         ],
-        function(err) {
+        (err, result) => {
             if (err) {
                 console.error('Error creating vehicle:', err);
                 return res.status(500).json({ error: 'Error al crear vehículo: ' + err.message });
             }
             
-            const vehicleId = this.lastID;
+            const vehicleId = result?.lastID;
+            if (!vehicleId) {
+                return res.status(500).json({ error: 'Error: No se pudo obtener el ID del vehículo creado' });
+            }
             // Registrar en historial
             logActivity(userId, 'vehicle', vehicleId, 'created', 
                 `Vehículo creado: ${numero_vehiculo} - ${marca} ${modelo}`, null, req.body);
@@ -2056,15 +2073,16 @@ app.post('/api/fuel', requireAuth, (req, res) => {
         db.run(`INSERT INTO fuel_records (vehicle_id, fecha, litros, precio_litro, costo_total, kilometraje, estacion, ticket_gasolina) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [vehicle_id, fecha, litros, precio_litro, costo_total, kilometraje, estacion, ticket_gasolina || null],
-            function(err) {
+            (err, result) => {
                 if (err) {
                     console.error('Error creating fuel record:', err);
                     return res.status(500).json({ error: 'Error al registrar combustible: ' + err.message });
                 }
+                const fuelId = result?.lastID;
                 // Registrar en historial
                 logActivity(req.session.userId, 'vehicle', vehicle_id, 'fuel_record_added',
                     `Registro de combustible agregado: ${litros}L - $${costo_total.toFixed(2)}`, null, { litros, costo_total, fecha });
-                res.json({ success: true, id: this.lastID });
+                res.json({ success: true, id: fuelId });
             });
     });
 });
@@ -2081,14 +2099,15 @@ app.post('/api/maintenance', requireAuth, (req, res) => {
         db.run(`INSERT INTO maintenance_records (vehicle_id, tipo, fecha, kilometraje, descripcion, costo, taller, proximo_mantenimiento_km) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [vehicle_id, tipo, fecha, kilometraje, descripcion, costo, taller, proximo_mantenimiento_km],
-            function(err) {
+            (err, result) => {
                 if (err) {
                     return res.status(500).json({ error: 'Error al registrar mantenimiento' });
                 }
+                const maintId = result?.lastID;
                 // Registrar en historial
                 logActivity(req.session.userId, 'vehicle', vehicle_id, 'maintenance_added',
                     `Mantenimiento ${tipo} agregado: ${descripcion || 'Sin descripción'}`, null, { tipo, fecha, costo });
-                res.json({ success: true, id: this.lastID });
+                res.json({ success: true, id: maintId });
             });
     });
 });
@@ -2115,11 +2134,12 @@ app.post('/api/operators', requireAuth, (req, res) => {
     db.run(`INSERT INTO operators (user_id, nombre, licencia, fecha_vencimiento_licencia, telefono, email, estado)
             VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [userId, nombre, licencia || null, fecha_vencimiento_licencia || null, telefono || null, email || null, estado || 'Activo'],
-        function(err) {
+        (err, result) => {
             if (err) {
                 return res.status(500).json({ error: 'Error al crear operador' });
             }
-            res.json({ success: true, id: this.lastID });
+            const operatorId = result?.lastID;
+            res.json({ success: true, id: operatorId });
         });
 });
 
@@ -2579,11 +2599,12 @@ app.post('/api/claims', requireAuth, (req, res) => {
         db.run(`INSERT INTO siniestros (vehicle_id, policy_id, fecha_siniestro, tipo_siniestro, descripcion, monto_dano, estado, numero_referencia, compania_seguro)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [vehicle_id, policy_id || null, fecha_siniestro, tipo_siniestro || null, descripcion || null, monto_dano || null, estado || 'En Proceso', numero_referencia || null, compania_seguro || null],
-            function(err) {
+            (err, result) => {
                 if (err) {
                     return res.status(500).json({ error: 'Error al crear siniestro' });
                 }
-                res.json({ success: true, id: this.lastID });
+                const claimId = result?.lastID;
+                res.json({ success: true, id: claimId });
             });
     });
 });
@@ -2637,16 +2658,21 @@ app.post('/api/tires', requireAuth, (req, res) => {
         db.run(`INSERT INTO tires (vehicle_id, posicion, marca, modelo, medida, numero_serie, presion_psi, profundidad_mm, fecha_instalacion, kilometraje_instalacion, costo, estado)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [vehicle_id, posicion, marca || null, modelo || null, medida || null, numero_serie || null, presion_psi || null, profundidad_mm || null, fecha_instalacion || null, kilometraje_instalacion || null, costo || null, estado || 'Activo'],
-            function(err) {
+            (err, result) => {
                 if (err) {
                     return res.status(500).json({ error: 'Error al crear registro de llanta' });
                 }
                 
+                const tireId = result?.lastID;
+                if (!tireId) {
+                    return res.status(500).json({ error: 'Error: No se pudo obtener el ID de la llanta creada' });
+                }
+                
                 // Registrar actividad
-                logActivity(userId, 'tire', this.lastID, 'created', 
+                logActivity(userId, 'tire', tireId, 'created', 
                     `Llantas ${posicion} agregada al vehículo`, null, { posicion: posicion, marca: marca, modelo: modelo });
                 
-                res.json({ success: true, id: this.lastID });
+                res.json({ success: true, id: tireId });
             });
     });
 });
@@ -2697,10 +2723,12 @@ app.post('/api/tires/:tire_id/reviews', requireAuth, (req, res) => {
         db.run(`INSERT INTO tire_reviews (tire_id, fecha_revision, presion_psi, profundidad_mm, kilometraje, observaciones)
                 VALUES (?, ?, ?, ?, ?, ?)`,
             [tireId, fecha_revision, presion_psi || null, profundidad_mm || null, kilometraje || null, observaciones || null],
-            function(err) {
+            (err, result) => {
                 if (err) {
                     return res.status(500).json({ error: 'Error al crear revisión' });
                 }
+                
+                const reviewId = result?.lastID;
                 
                 // Actualizar datos de la llanta con la última revisión
                 const updateFields = [];
