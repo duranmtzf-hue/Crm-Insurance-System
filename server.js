@@ -2765,7 +2765,7 @@ app.post('/api/tires/:tire_id/reviews', requireAuth, (req, res) => {
                     `Revisión mensual agregada: Presión ${presion_psi || 'N/A'} PSI, Profundidad ${profundidad_mm || 'N/A'} mm, KM ${kilometraje || 'N/A'}`, 
                     null, { fecha_revision: fecha_revision, presion_psi: presion_psi, profundidad_mm: profundidad_mm, kilometraje: kilometraje });
                 
-                res.json({ success: true, id: this.lastID });
+                res.json({ success: true, id: reviewId });
             });
     });
 });
