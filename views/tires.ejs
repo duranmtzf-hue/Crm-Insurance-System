@@ -898,9 +898,12 @@
         });
 
         // Event listeners para botones de revisión e historial
-        document.addEventListener('DOMContentLoaded', function() {
+        // Usar evento inmediato si DOM ya está cargado, o esperar DOMContentLoaded
+        function attachTireButtons() {
             // Botones de revisión mensual
-            document.querySelectorAll('.btn-review').forEach(function(btn) {
+            const reviewButtons = document.querySelectorAll('.btn-review');
+            console.log('Botones de revisión encontrados:', reviewButtons.length);
+            reviewButtons.forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     const tireId = parseInt(this.getAttribute('data-tire-id'));
                     const tireInfo = this.getAttribute('data-tire-info');
@@ -909,14 +912,23 @@
             });
 
             // Botones de historial de revisiones
-            document.querySelectorAll('.btn-history-tire').forEach(function(btn) {
+            const historyButtons = document.querySelectorAll('.btn-history-tire');
+            console.log('Botones de historial encontrados:', historyButtons.length);
+            historyButtons.forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     const tireId = parseInt(this.getAttribute('data-tire-id'));
                     const tireInfo = this.getAttribute('data-tire-info');
                     openReviewsHistoryModal(tireId, tireInfo);
                 });
             });
-        });
+        }
+
+        // Intentar inmediatamente si el DOM ya está cargado
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', attachTireButtons);
+        } else {
+            attachTireButtons();
+        }
 
         window.onclick = function(event) {
             const modal = document.getElementById('tireModal');
