@@ -44,14 +44,23 @@ if (process.env.DATABASE_URL) {
                 callback = params;
                 params = [];
             }
-            const convertedSQL = convertSQL(sql);
+            let convertedSQL = convertSQL(sql);
+            
+            // Para INSERT en PostgreSQL, agregar RETURNING id si no está presente
+            if (convertedSQL.match(/^INSERT\s+INTO/i) && !convertedSQL.match(/RETURNING/i)) {
+                // Extraer el nombre de la tabla
+                const tableMatch = convertedSQL.match(/INSERT\s+INTO\s+(\w+)/i);
+                if (tableMatch) {
+                    convertedSQL += ' RETURNING id';
+                }
+            }
+            
             pool.query(convertedSQL, params || [], (err, result) => {
                 if (callback) {
                     if (err) {
                         callback(err, null);
                     } else {
                         // Para INSERT, PostgreSQL devuelve el id en RETURNING
-                        // Si la query tiene RETURNING, usar ese valor
                         let lastID = null;
                         if (result.rows && result.rows.length > 0 && result.rows[0].id) {
                             lastID = result.rows[0].id;
