@@ -452,30 +452,60 @@ function initializeDatabase() {
     )`);
 
     // Create default admin user if not exists
-    const defaultPassword = bcrypt.hashSync('admin123', 10);
-    db.run(`INSERT OR IGNORE INTO users (username, email, password, nombre, empresa) 
-            VALUES ('admin', 'admin@crm-insurance.com', ?, 'Administrador', 'CRM Insurance System')`, 
-            [defaultPassword], (err) => {
-        if (err) {
-            console.log('Admin user already exists or error:', err.message);
-        } else {
-            console.log('Default admin user created (username: admin, password: admin123)');
-            // Create sample data for testing alerts
-            createSampleData();
-        }
-    });
-    
-    // Check if admin exists and create sample data if needed
-    db.get('SELECT id FROM users WHERE username = ?', ['admin'], (err, user) => {
-        if (!err && user) {
-            // Check if sample data already exists
-            db.get('SELECT COUNT(*) as count FROM vehicles WHERE user_id = ?', [user.id], (err, result) => {
-                if (!err && result && result.count === 0) {
-                    createSampleData();
-                }
-            });
-        }
-    });
+    // Usar un pequeño delay para asegurar que todas las tablas estén creadas
+    setTimeout(() => {
+        const defaultPassword = bcrypt.hashSync('admin123', 10);
+        db.run(`INSERT OR IGNORE INTO users (username, email, password, nombre, empresa) 
+                VALUES ('admin', 'admin@crm-insurance.com', ?, 'Administrador', 'CRM Insurance System')`, 
+                [defaultPassword], (err) => {
+            if (err) {
+                console.log('Admin user already exists or error:', err.message);
+                // Si hay error, intentar verificar si la tabla existe
+                db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='users'", (err, row) => {
+                    if (err || !row) {
+                        console.error('ERROR CRÍTICO: La tabla users no existe. Reintentando creación...');
+                        // Recrear la tabla users
+                        db.run(`CREATE TABLE IF NOT EXISTS users (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            username TEXT UNIQUE NOT NULL,
+                            email TEXT UNIQUE NOT NULL,
+                            password TEXT NOT NULL,
+                            nombre TEXT,
+                            empresa TEXT,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        )`, (err) => {
+                            if (!err) {
+                                // Intentar crear admin nuevamente
+                                db.run(`INSERT OR IGNORE INTO users (username, email, password, nombre, empresa) 
+                                        VALUES ('admin', 'admin@crm-insurance.com', ?, 'Administrador', 'CRM Insurance System')`, 
+                                        [defaultPassword], (err) => {
+                                    if (!err) {
+                                        console.log('Default admin user created (username: admin, password: admin123)');
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            } else {
+                console.log('Default admin user created (username: admin, password: admin123)');
+                // Create sample data for testing alerts
+                createSampleData();
+            }
+        });
+        
+        // Check if admin exists and create sample data if needed
+        db.get('SELECT id FROM users WHERE username = ?', ['admin'], (err, user) => {
+            if (!err && user) {
+                // Check if sample data already exists
+                db.get('SELECT COUNT(*) as count FROM vehicles WHERE user_id = ?', [user.id], (err, result) => {
+                    if (!err && result && result.count === 0) {
+                        createSampleData();
+                    }
+                });
+            }
+        });
+    }, 500); // Esperar 500ms para asegurar que todas las tablas estén creadas
 }
 
 // Create sample data for testing alerts
