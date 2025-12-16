@@ -589,16 +589,24 @@
                         <td>
                             <% if (tire.costo) { %>
                                 $<%= tire.costo.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
-                                <% if (tire.costo && tire.kilometraje_actual && tire.kilometraje_instalacion && tire.kilometraje_actual > tire.kilometraje_instalacion) { %>
-                                    <% 
-                                    const kmRecorridos = tire.kilometraje_actual - tire.kilometraje_instalacion;
-                                    const costPerKm = tire.costo / kmRecorridos;
-                                    %>
-                                    <br>
-                                    <span class="text-muted" style="font-size: 0.8rem;">
-                                        $<%= costPerKm.toFixed(4) %>/km
-                                    </span>
-                                <% } %>
+                            <% } else { %>
+                                <span class="text-muted">-</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% 
+                            let costPerKm = 0;
+                            if (tire.costo && tire.kilometraje_actual && tire.kilometraje_instalacion && tire.kilometraje_actual > tire.kilometraje_instalacion) {
+                                const kmRecorridos = tire.kilometraje_actual - tire.kilometraje_instalacion;
+                                costPerKm = tire.costo / kmRecorridos;
+                            %>
+                                <span style="font-weight: 600; color: var(--primary);">
+                                    $<%= costPerKm.toFixed(4) %>/km
+                                </span>
+                                <br>
+                                <span class="text-muted" style="font-size: 0.8rem;">
+                                    <%= (tire.kilometraje_actual - tire.kilometraje_instalacion).toLocaleString() %> km
+                                </span>
                             <% } else { %>
                                 <span class="text-muted">-</span>
                             <% } %>
@@ -607,6 +615,16 @@
                             <span class="badge badge-<%= tire.estado === 'Activo' ? 'success' : 'warning' %>">
                                 <%= tire.estado %>
                             </span>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <button class="btn btn-review" style="padding: 4px 10px; font-size: 0.8rem; background-color: #17a2b8;" data-tire-id="<%= tire.id %>" data-tire-info="<%= tire.posicion %> - <%= tire.marca || '' %> <%= tire.modelo || '' %>">
+                                    <i class="fas fa-calendar-check"></i> Revisión
+                                </button>
+                                <button class="btn btn-history-tire" style="padding: 4px 10px; font-size: 0.8rem; background-color: #6c757d;" data-tire-id="<%= tire.id %>" data-tire-info="<%= tire.posicion %> - <%= tire.marca || '' %> <%= tire.modelo || '' %>">
+                                    <i class="fas fa-history"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     <% }); %>
@@ -698,6 +716,57 @@
         </div>
     </div>
 
+    <!-- Modal de Revisión Mensual -->
+    <div id="reviewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="reviewModalTitle">Agregar Revisión Mensual</h2>
+                <button class="modal-close" onclick="closeReviewModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="reviewForm">
+                    <div class="form-group">
+                        <label class="form-label">Fecha de Revisión *</label>
+                        <input type="date" class="form-control" name="fecha_revision" required id="reviewFecha">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Presión (PSI)</label>
+                        <input type="number" step="0.1" class="form-control" name="presion_psi" placeholder="Ej: 32.0" id="reviewPresion">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Profundidad de Banda (mm)</label>
+                        <input type="number" step="0.1" class="form-control" name="profundidad_mm" placeholder="Ej: 8.5" id="reviewProfundidad">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Kilometraje</label>
+                        <input type="number" class="form-control" name="kilometraje" placeholder="Ej: 55000" id="reviewKilometraje">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" name="observaciones" rows="3" placeholder="Notas adicionales sobre la revisión"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeReviewModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Guardar Revisión</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Historial de Revisiones -->
+    <div id="reviewsHistoryModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="reviewsHistoryModalTitle">Historial de Revisiones</h2>
+                <button class="modal-close" onclick="closeReviewsHistoryModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="reviewsHistoryList"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function openModal() {
             document.getElementById('tireModal').style.display = 'block';
@@ -706,6 +775,56 @@
         function closeModal() {
             document.getElementById('tireModal').style.display = 'none';
             document.getElementById('tireForm').reset();
+        }
+
+        let currentTireId = null;
+
+        function openReviewModal(tireId, tireInfo) {
+            currentTireId = tireId;
+            document.getElementById('reviewModalTitle').textContent = 'Revisión Mensual - ' + tireInfo;
+            document.getElementById('reviewModal').style.display = 'block';
+            // Establecer fecha actual por defecto
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('reviewFecha').value = today;
+        }
+
+        function closeReviewModal() {
+            document.getElementById('reviewModal').style.display = 'none';
+            document.getElementById('reviewForm').reset();
+            currentTireId = null;
+        }
+
+        function openReviewsHistoryModal(tireId, tireInfo) {
+            currentTireId = tireId;
+            document.getElementById('reviewsHistoryModalTitle').textContent = 'Historial de Revisiones - ' + tireInfo;
+            document.getElementById('reviewsHistoryModal').style.display = 'block';
+            loadReviewsHistory();
+        }
+
+        function closeReviewsHistoryModal() {
+            document.getElementById('reviewsHistoryModal').style.display = 'none';
+            currentTireId = null;
+        }
+
+        async function loadReviewsHistory() {
+            if (!currentTireId) return;
+            
+            try {
+                const response = await fetch('/api/tires/' + currentTireId + '/reviews');
+                const data = await response.json();
+                
+                const container = document.getElementById('reviewsHistoryList');
+                if (data.success && data.reviews.length > 0) {
+                    container.innerHTML = data.reviews.map(function(review) {
+                        return '<div class="history-item" style="padding: 15px; border-left: 3px solid var(--accent); margin-bottom: 12px; background-color: #f8f9fa; border-radius: 4px;"><div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span style="font-weight: 600; color: var(--primary);">' + new Date(review.fecha_revision).toLocaleDateString('es-ES') + '</span><span style="font-size: 0.85rem; color: var(--gray);">' + new Date(review.created_at).toLocaleString('es-ES') + '</span></div><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 8px;"><div><strong>Presión:</strong> ' + (review.presion_psi ? review.presion_psi + ' PSI' : 'N/A') + '</div><div><strong>Profundidad:</strong> ' + (review.profundidad_mm ? review.profundidad_mm + ' mm' : 'N/A') + '</div><div><strong>Kilometraje:</strong> ' + (review.kilometraje ? review.kilometraje.toLocaleString() + ' km' : 'N/A') + '</div></div>' + (review.observaciones ? '<div style="font-size: 0.9rem; color: var(--dark); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);"><strong>Observaciones:</strong> ' + review.observaciones + '</div>' : '') + '</div>';
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p class="text-muted">No hay revisiones registradas aún</p>';
+                }
+            } catch (error) {
+                console.error('Error cargando historial de revisiones:', error);
+                container.innerHTML = '<p class="text-muted">Error al cargar el historial</p>';
+            }
         }
 
         document.getElementById('tireForm').addEventListener('submit', async function(e) {
@@ -737,6 +856,64 @@
             } catch (error) {
                 alert('Error al guardar: ' + error.message);
             }
+        });
+
+        // Formulario de revisión mensual
+        document.getElementById('reviewForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!currentTireId) {
+                alert('Error: No se ha seleccionado una llanta');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            // Convert numeric fields
+            if (data.presion_psi) data.presion_psi = parseFloat(data.presion_psi);
+            if (data.profundidad_mm) data.profundidad_mm = parseFloat(data.profundidad_mm);
+            if (data.kilometraje) data.kilometraje = parseInt(data.kilometraje);
+
+            try {
+                const response = await fetch('/api/tires/' + currentTireId + '/reviews', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('Revisión mensual guardada exitosamente');
+                    closeReviewModal();
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Error desconocido'));
+                }
+            } catch (error) {
+                alert('Error al guardar revisión: ' + error.message);
+            }
+        });
+
+        // Event listeners para botones de revisión e historial
+        document.addEventListener('DOMContentLoaded', function() {
+            // Botones de revisión mensual
+            document.querySelectorAll('.btn-review').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const tireId = parseInt(this.getAttribute('data-tire-id'));
+                    const tireInfo = this.getAttribute('data-tire-info');
+                    openReviewModal(tireId, tireInfo);
+                });
+            });
+
+            // Botones de historial de revisiones
+            document.querySelectorAll('.btn-history-tire').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const tireId = parseInt(this.getAttribute('data-tire-id'));
+                    const tireInfo = this.getAttribute('data-tire-info');
+                    openReviewsHistoryModal(tireId, tireInfo);
+                });
+            });
         });
 
         window.onclick = function(event) {

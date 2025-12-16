@@ -213,6 +213,19 @@ function initializeDatabase() {
         FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
     )`);
 
+    // Tire monthly reviews table
+    db.run(`CREATE TABLE IF NOT EXISTS tire_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tire_id INTEGER NOT NULL,
+        fecha_revision DATE NOT NULL,
+        presion_psi REAL,
+        profundidad_mm REAL,
+        kilometraje INTEGER,
+        observaciones TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tire_id) REFERENCES tires(id)
+    )`);
+
     // Maintenance records table
     db.run(`CREATE TABLE IF NOT EXISTS maintenance_records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2576,6 +2589,95 @@ app.post('/api/tires', requireAuth, (req, res) => {
                 if (err) {
                     return res.status(500).json({ error: 'Error al crear registro de llanta' });
                 }
+                
+                // Registrar actividad
+                logActivity(userId, 'tire', this.lastID, 'created', 
+                    `Llantas ${posicion} agregada al vehículo`, null, { posicion: posicion, marca: marca, modelo: modelo });
+                
+                res.json({ success: true, id: this.lastID });
+            });
+    });
+});
+
+// Obtener revisiones mensuales de una llanta
+app.get('/api/tires/:tire_id/reviews', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const tireId = req.params.tire_id;
+    
+    // Verificar que la llanta pertenece al usuario
+    db.get(`SELECT t.id FROM tires t
+            JOIN vehicles v ON t.vehicle_id = v.id
+            WHERE t.id = ? AND v.user_id = ?`, [tireId, userId], (err, tire) => {
+        if (err || !tire) {
+            return res.status(403).json({ error: 'Llantas no encontrada' });
+        }
+        
+        db.all(`SELECT * FROM tire_reviews 
+                WHERE tire_id = ? 
+                ORDER BY fecha_revision DESC, created_at DESC`, 
+            [tireId], (err, reviews) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error al cargar revisiones' });
+            }
+            res.json({ success: true, reviews: reviews || [] });
+        });
+    });
+});
+
+// Agregar revisión mensual de llanta
+app.post('/api/tires/:tire_id/reviews', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const tireId = req.params.tire_id;
+    const { fecha_revision, presion_psi, profundidad_mm, kilometraje, observaciones } = req.body;
+    
+    if (!fecha_revision) {
+        return res.status(400).json({ error: 'Fecha de revisión es requerida' });
+    }
+    
+    // Verificar que la llanta pertenece al usuario
+    db.get(`SELECT t.id, t.vehicle_id FROM tires t
+            JOIN vehicles v ON t.vehicle_id = v.id
+            WHERE t.id = ? AND v.user_id = ?`, [tireId, userId], (err, tire) => {
+        if (err || !tire) {
+            return res.status(403).json({ error: 'Llantas no encontrada' });
+        }
+        
+        db.run(`INSERT INTO tire_reviews (tire_id, fecha_revision, presion_psi, profundidad_mm, kilometraje, observaciones)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+            [tireId, fecha_revision, presion_psi || null, profundidad_mm || null, kilometraje || null, observaciones || null],
+            function(err) {
+                if (err) {
+                    return res.status(500).json({ error: 'Error al crear revisión' });
+                }
+                
+                // Actualizar datos de la llanta con la última revisión
+                const updateFields = [];
+                const updateValues = [];
+                if (presion_psi !== null && presion_psi !== undefined) {
+                    updateFields.push('presion_psi = ?');
+                    updateValues.push(presion_psi);
+                }
+                if (profundidad_mm !== null && profundidad_mm !== undefined) {
+                    updateFields.push('profundidad_mm = ?');
+                    updateValues.push(profundidad_mm);
+                }
+                
+                if (updateFields.length > 0) {
+                    updateValues.push(tireId);
+                    db.run(`UPDATE tires SET ${updateFields.join(', ')} WHERE id = ?`, updateValues);
+                }
+                
+                // Actualizar kilometraje del vehículo si se proporciona
+                if (kilometraje !== null && kilometraje !== undefined && tire.vehicle_id) {
+                    db.run(`UPDATE vehicles SET kilometraje_actual = ? WHERE id = ? AND kilometraje_actual < ?`, 
+                        [kilometraje, tire.vehicle_id, kilometraje]);
+                }
+                
+                // Registrar actividad
+                logActivity(userId, 'tire', tireId, 'review_added', 
+                    `Revisión mensual agregada: Presión ${presion_psi || 'N/A'} PSI, Profundidad ${profundidad_mm || 'N/A'} mm, KM ${kilometraje || 'N/A'}`, 
+                    null, { fecha_revision: fecha_revision, presion_psi: presion_psi, profundidad_mm: profundidad_mm, kilometraje: kilometraje });
+                
                 res.json({ success: true, id: this.lastID });
             });
     });
