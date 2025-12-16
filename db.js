@@ -205,34 +205,27 @@ function convertSQL(sql) {
         }
         
         // Convertir funciones de fecha de SQLite a PostgreSQL
-        // date('now') → CURRENT_DATE
-        converted = converted.replace(/date\('now'\)/gi, "CURRENT_DATE");
+        // IMPORTANTE: El orden importa - primero los casos más específicos
         
         // date('now', '+7 days') → CURRENT_DATE + INTERVAL '7 days'
-        converted = converted.replace(/date\('now',\s*'\+(\d+)\s+(\w+)'\s*\)/gi, "CURRENT_DATE + INTERVAL '$1 $2'");
+        converted = converted.replace(/date\('now',\s*'\+(\d+)\s+(days?|months?|years?|weeks?|hours?|minutes?|seconds?)'\s*\)/gi, 
+            "CURRENT_DATE + INTERVAL '$1 $2'");
         
         // date('now', '-365 days') → CURRENT_DATE - INTERVAL '365 days'
-        converted = converted.replace(/date\('now',\s*'-(\d+)\s+(\w+)'\s*\)/gi, "CURRENT_DATE - INTERVAL '$1 $2'");
+        converted = converted.replace(/date\('now',\s*'-(\d+)\s+(days?|months?|years?|weeks?|hours?|minutes?|seconds?)'\s*\)/gi, 
+            "CURRENT_DATE - INTERVAL '$1 $2'");
         
-        // date('now', '-1 month') → CURRENT_DATE - INTERVAL '1 month'
-        converted = converted.replace(/date\('now',\s*'-(\d+)\s+month'\s*\)/gi, "CURRENT_DATE - INTERVAL '$1 month'");
-        converted = converted.replace(/date\('now',\s*'-(\d+)\s+months'\s*\)/gi, "CURRENT_DATE - INTERVAL '$1 months'");
+        // date('now') → CURRENT_DATE (debe ir después de los casos con intervalos)
+        converted = converted.replace(/date\('now'\)/gi, "CURRENT_DATE");
         
-        // date('now', '+1 month') → CURRENT_DATE + INTERVAL '1 month'
-        converted = converted.replace(/date\('now',\s*'\+(\d+)\s+month'\s*\)/gi, "CURRENT_DATE + INTERVAL '$1 month'");
-        converted = converted.replace(/date\('now',\s*'\+(\d+)\s+months'\s*\)/gi, "CURRENT_DATE + INTERVAL '$1 months'");
-        
-        // date(column) → column::DATE
-        converted = converted.replace(/date\(([a-zA-Z_][a-zA-Z0-9_.]*)\)/gi, "$1::DATE");
+        // date(column) → column::DATE (debe ir después de date('now'))
+        converted = converted.replace(/date\(([a-zA-Z_][a-zA-Z0-9_.]+)\)/gi, "$1::DATE");
         
         // datetime('now') → CURRENT_TIMESTAMP
         converted = converted.replace(/datetime\('now'\)/gi, 'CURRENT_TIMESTAMP');
         
         // strftime('%Y-%m', column) → TO_CHAR(column, 'YYYY-MM')
-        converted = converted.replace(/strftime\('%Y-%m',\s*([a-zA-Z_][a-zA-Z0-9_.]*)\)/gi, "TO_CHAR($1, 'YYYY-MM')");
-        
-        // BETWEEN date('now') AND date('now', '+30 days') → BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '30 days')
-        // Esto se maneja con las conversiones anteriores
+        converted = converted.replace(/strftime\('%Y-%m',\s*([a-zA-Z_][a-zA-Z0-9_.]+)\)/gi, "TO_CHAR($1, 'YYYY-MM')");
         
         // Convertir sqlite_master a información_schema para PostgreSQL
         converted = converted.replace(/sqlite_master/gi, 'information_schema.tables');
