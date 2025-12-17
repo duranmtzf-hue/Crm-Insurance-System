@@ -1499,7 +1499,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
     const userId = req.session.userId;
     
     // Get user vehicles
-    db.all('SELECT * FROM vehicles WHERE user_id = ?', [userId], (err, vehicles) => {
+    db.allConverted('SELECT * FROM vehicles WHERE user_id = ?', [userId], (err, vehicles) => {
         if (err) {
             return res.status(500).send('Error al cargar vehículos');
         }
@@ -1510,7 +1510,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
         
         if (vehicleIds.length === 0) {
             // Get operator alerts even if no vehicles (including expired licenses)
-            db.all(`SELECT 
+            db.allConverted(`SELECT 
                     o.nombre,
                     o.licencia,
                     o.fecha_vencimiento_licencia,
@@ -1586,7 +1586,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
         }
         
         // Get fuel records
-        db.all(`SELECT fr.*, v.numero_vehiculo, v.marca, v.modelo 
+        db.allConverted(`SELECT fr.*, v.numero_vehiculo, v.marca, v.modelo 
                 FROM fuel_records fr 
                 JOIN vehicles v ON fr.vehicle_id = v.id 
                 WHERE fr.vehicle_id IN (${placeholders}) 
@@ -1599,7 +1599,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
             }
             
             // Get maintenance records
-            db.all(`SELECT mr.*, v.numero_vehiculo, v.marca, v.modelo 
+            db.allConverted(`SELECT mr.*, v.numero_vehiculo, v.marca, v.modelo 
                     FROM maintenance_records mr 
                     JOIN vehicles v ON mr.vehicle_id = v.id 
                     WHERE mr.vehicle_id IN (${placeholders}) 
@@ -1879,7 +1879,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
                                                         }
                                                         
                                                         // Get vehicle comparisons
-                                                        db.all(`SELECT 
+                                                        db.allConverted(`SELECT 
                                                             v.id,
                                                             v.numero_vehiculo,
                                                             v.marca,
@@ -1893,7 +1893,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
                                                             LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id
                                                             WHERE v.id IN (${placeholders})
                                                             GROUP BY v.id
-                                                            ORDER BY (total_fuel_cost + total_maintenance_cost) DESC`, 
+                                                            ORDER BY (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0)) DESC`, 
                                                             vehicleIds, (err, vehicleComparisons) => {
                                                             
                                                             // Handle errors
@@ -2962,7 +2962,7 @@ app.get('/reports', requireAuth, (req, res) => {
                     vehicleIds, (err, monthlyTrends) => {
                     
                     // Get vehicle comparisons
-                    db.all(`SELECT 
+                    db.allConverted(`SELECT 
                         v.id,
                         v.numero_vehiculo,
                         v.marca,
@@ -2977,7 +2977,7 @@ app.get('/reports', requireAuth, (req, res) => {
                         LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
                         WHERE v.id IN (${placeholders})
                         GROUP BY v.id
-                        ORDER BY total_cost DESC`, 
+                        ORDER BY (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0)) DESC`, 
                         vehicleIds, (err, vehicleComparisons) => {
                             
                             res.render('reports', {
