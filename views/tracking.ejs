@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema de rastreo GPS de flotilla vehicular">
+    <meta name="theme-color" content="#001f3f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CRM Insurance">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/logo.png">
+    <link rel="apple-touch-icon" href="/images/logo.png">
+    <title>Rastreo GPS | CRM Insurance System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary: #001f3f;
+            --secondary: #87ceeb;
+            --accent: #4da6ff;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border: #dee2e6;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        header {
+            background-color: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0;
+            margin-bottom: 0;
+        }
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo img {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+            display: block;
+        }
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        .logo-text span {
+            color: var(--accent);
+        }
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            color: var(--dark);
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .page-header {
+            margin-bottom: 30px;
+        }
+        .page-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+        .page-subtitle {
+            color: var(--gray);
+            font-size: 1rem;
+        }
+        .tracking-controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .control-group label {
+            font-size: 0.85rem;
+            color: var(--gray);
+            font-weight: 600;
+        }
+        .control-group select,
+        .control-group input {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse 2s infinite;
+        }
+        .status-dot.active {
+            background: #28a745;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .map-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            height: 600px;
+            position: relative;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .vehicle-list {
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .vehicle-list h3 {
+            font-family: 'Montserrat', sans-serif;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+        .vehicle-item {
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .vehicle-info {
+            flex: 1;
+        }
+        .vehicle-info strong {
+            display: block;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        .vehicle-info small {
+            color: var(--gray);
+            font-size: 0.85rem;
+        }
+        .location-info {
+            text-align: right;
+        }
+        .location-info .coordinates {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+        .location-info .time {
+            font-size: 0.75rem;
+            color: var(--gray);
+            margin-top: 5px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray);
+        }
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: var(--border);
+        }
+        @media (max-width: 768px) {
+            .tracking-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .control-group {
+                width: 100%;
+            }
+            .map-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <img src="/images/logo.png" alt="Logo">
+                <div class="logo-text">CRM <span>Insurance</span> System</div>
+            </div>
+            <div class="user-menu">
+                <span class="user-info"><%= user.nombre || user.username %></span>
+                <a href="/dashboard" class="btn">Dashboard</a>
+                <a href="/vehicles" class="btn">Vehículos</a>
+                <a href="/logout" class="btn btn-danger">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-map-marker-alt"></i>
+                Rastreo GPS de Flotilla
+            </h1>
+            <p class="page-subtitle">Monitorea la ubicación de tus vehículos en tiempo real</p>
+        </div>
+
+        <div class="tracking-controls">
+            <div class="control-group">
+                <label>Vehículo</label>
+                <select id="vehicleFilter">
+                    <option value="">Todos los vehículos</option>
+                    <% vehicles.forEach(function(vehicle) { %>
+                    <option value="<%= vehicle.id %>">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></option>
+                    <% }); %>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Período</label>
+                <select id="timeFilter">
+                    <option value="1">Última hora</option>
+                    <option value="6">Últimas 6 horas</option>
+                    <option value="24" selected>Últimas 24 horas</option>
+                    <option value="48">Últimas 48 horas</option>
+                    <option value="168">Última semana</option>
+                </select>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot" id="trackingStatus"></div>
+                <span id="trackingStatusText">Rastreo inactivo</span>
+            </div>
+            <button class="btn btn-success" id="startTrackingBtn">
+                <i class="fas fa-play"></i> Iniciar Rastreo
+            </button>
+            <button class="btn btn-warning" id="stopTrackingBtn" style="display: none;">
+                <i class="fas fa-stop"></i> Detener Rastreo
+            </button>
+            <button class="btn" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <div class="vehicle-list">
+            <h3><i class="fas fa-car"></i> Últimas Ubicaciones</h3>
+            <div id="vehicleListContent">
+                <div class="empty-state">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <p>No hay ubicaciones registradas aún</p>
+                    <p style="font-size: 0.85rem; margin-top: 10px;">Inicia el rastreo para comenzar a recibir ubicaciones</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let markers = {};
+        let trackingInterval = null;
+        let currentVehicleId = null;
+        let watchId = null;
+
+        // Inicializar mapa
+        function initMap() {
+            map = L.map('map').setView([25.5383, -103.4026], 13); // Torreón, Coahuila por defecto
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+        }
+
+        // Obtener ubicación actual del dispositivo
+        function getCurrentLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocalización no soportada'));
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            altitude: position.coords.altitude,
+                            heading: position.coords.heading,
+                            speed: position.coords.speed
+                        });
+                    },
+                    (error) => {
+                        reject(error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
+
+        // Enviar ubicación al servidor
+        async function sendLocation(vehicleId = null) {
+            try {
+                const location = await getCurrentLocation();
+                const deviceInfo = navigator.userAgent;
+
+                const response = await fetch('/api/location', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        vehicle_id: vehicleId,
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                        accuracy: location.accuracy,
+                        altitude: location.altitude,
+                        heading: location.heading,
+                        speed: location.speed,
+                        device_info: deviceInfo
+                    })
+                });
+
+                if (response.ok) {
+                    console.log('Ubicación enviada correctamente');
+                    updateMap();
+                    updateVehicleList();
+                } else {
+                    console.error('Error al enviar ubicación');
+                }
+            } catch (error) {
+                console.error('Error obteniendo ubicación:', error);
+                alert('Error al obtener ubicación. Asegúrate de permitir el acceso a la ubicación.');
+            }
+        }
+
+        // Cargar y mostrar ubicaciones en el mapa
+        async function updateMap() {
+            const vehicleId = document.getElementById('vehicleFilter').value;
+            const hours = document.getElementById('timeFilter').value;
+            
+            let url = `/api/location?hours=${hours}`;
+            if (vehicleId) {
+                url = `/api/location/vehicle/${vehicleId}?hours=${hours}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                const locations = await response.json();
+
+                // Limpiar marcadores anteriores
+                Object.values(markers).forEach(marker => map.removeLayer(marker));
+                markers = {};
+
+                if (locations.length === 0) {
+                    return;
+                }
+
+                // Agrupar por vehículo
+                const locationsByVehicle = {};
+                locations.forEach(loc => {
+                    const key = loc.vehicle_id || 'user';
+                    if (!locationsByVehicle[key]) {
+                        locationsByVehicle[key] = [];
+                    }
+                    locationsByVehicle[key].push(loc);
+                });
+
+                // Crear marcadores y rutas
+                Object.keys(locationsByVehicle).forEach(key => {
+                    const vehicleLocations = locationsByVehicle[key].sort((a, b) => 
+                        new Date(a.timestamp) - new Date(b.timestamp)
+                    );
+                    
+                    const latest = vehicleLocations[vehicleLocations.length - 1];
+                    const vehicleName = latest.numero_vehiculo 
+                        ? `#${latest.numero_vehiculo} - ${latest.marca} ${latest.modelo}`
+                        : 'Mi ubicación';
+
+                    // Crear ruta
+                    const route = vehicleLocations.map(loc => [loc.latitude, loc.longitude]);
+                    if (route.length > 1) {
+                        L.polyline(route, {
+                            color: '#4da6ff',
+                            weight: 3,
+                            opacity: 0.7
+                        }).addTo(map);
+                    }
+
+                    // Crear marcador para la última ubicación
+                    const icon = L.divIcon({
+                        className: 'vehicle-marker',
+                        html: `<div style="background: #001f3f; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+                            <i class="fas fa-car" style="font-size: 14px;"></i>
+                        </div>`,
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+
+                    const marker = L.marker([latest.latitude, latest.longitude], { icon })
+                        .addTo(map)
+                        .bindPopup(`
+                            <strong>${vehicleName}</strong><br>
+                            ${latest.placas ? `Placas: ${latest.placas}<br>` : ''}
+                            Coordenadas: ${latest.latitude.toFixed(6)}, ${latest.longitude.toFixed(6)}<br>
+                            Precisión: ${latest.accuracy ? latest.accuracy.toFixed(0) + 'm' : 'N/A'}<br>
+                            Fecha: ${new Date(latest.timestamp).toLocaleString('es-MX')}
+                        `);
+
+                    markers[key] = marker;
+                });
+
+                // Ajustar vista del mapa
+                if (locations.length > 0) {
+                    const bounds = locations.map(loc => [loc.latitude, loc.longitude]);
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+            } catch (error) {
+                console.error('Error cargando ubicaciones:', error);
+            }
+        }
+
+        // Actualizar lista de vehículos
+        async function updateVehicleList() {
+            try {
+                const response = await fetch('/api/location/latest');
+                const locations = await response.json();
+
+                const container = document.getElementById('vehicleListContent');
+                
+                if (locations.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-map-marked-alt"></i>
+                            <p>No hay ubicaciones registradas aún</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = locations.map(loc => {
+                    const vehicleName = loc.numero_vehiculo 
+                        ? `#${loc.numero_vehiculo} - ${loc.marca} ${loc.modelo}`
+                        : 'Mi ubicación';
+                    const time = new Date(loc.timestamp).toLocaleString('es-MX');
+                    
+                    return `
+                        <div class="vehicle-item">
+                            <div class="vehicle-info">
+                                <strong>${vehicleName}</strong>
+                                <small>${loc.placas || 'Sin placas'}</small>
+                            </div>
+                            <div class="location-info">
+                                <div class="coordinates">${loc.latitude.toFixed(6)}, ${loc.longitude.toFixed(6)}</div>
+                                <div class="time">${time}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error actualizando lista:', error);
+            }
+        }
+
+        // Iniciar rastreo continuo
+        function startTracking() {
+            const vehicleId = document.getElementById('vehicleFilter').value || null;
+            currentVehicleId = vehicleId;
+
+            // Enviar ubicación inmediatamente
+            sendLocation(vehicleId);
+
+            // Configurar rastreo cada 30 segundos
+            trackingInterval = setInterval(() => {
+                sendLocation(vehicleId);
+            }, 30000);
+
+            // Usar watchPosition para actualizaciones más frecuentes
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        // Actualizar cada 10 segundos con watchPosition
+                        const now = Date.now();
+                        if (!window.lastWatchUpdate || (now - window.lastWatchUpdate) > 10000) {
+                            sendLocation(vehicleId);
+                            window.lastWatchUpdate = now;
+                        }
+                    },
+                    (error) => {
+                        console.error('Error en watchPosition:', error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 5000
+                    }
+                );
+            }
+
+            document.getElementById('startTrackingBtn').style.display = 'none';
+            document.getElementById('stopTrackingBtn').style.display = 'inline-flex';
+            document.getElementById('trackingStatus').classList.add('active');
+            document.getElementById('trackingStatusText').textContent = 'Rastreo activo';
+        }
+
+        // Detener rastreo
+        function stopTracking() {
+            if (trackingInterval) {
+                clearInterval(trackingInterval);
+                trackingInterval = null;
+            }
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+
+            document.getElementById('startTrackingBtn').style.display = 'inline-flex';
+            document.getElementById('stopTrackingBtn').style.display = 'none';
+            document.getElementById('trackingStatus').classList.remove('active');
+            document.getElementById('trackingStatusText').textContent = 'Rastreo inactivo';
+        }
+
+        // Event listeners
+        document.getElementById('startTrackingBtn').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    () => {
+                        startTracking();
+                    },
+                    () => {
+                        alert('Por favor, permite el acceso a la ubicación para usar el rastreo GPS.');
+                    }
+                );
+            } else {
+                alert('Tu navegador no soporta geolocalización.');
+            }
+        });
+
+        document.getElementById('stopTrackingBtn').addEventListener('click', stopTracking);
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            updateMap();
+            updateVehicleList();
+        });
+
+        document.getElementById('vehicleFilter').addEventListener('change', updateMap);
+        document.getElementById('timeFilter').addEventListener('change', updateMap);
+
+        // Inicializar
+        initMap();
+        
+        // Verificar si hay un parámetro de vehículo en la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const vehicleParam = urlParams.get('vehicle');
+        if (vehicleParam) {
+            document.getElementById('vehicleFilter').value = vehicleParam;
+        }
+        
+        updateMap();
+        updateVehicleList();
+
+        // Actualizar cada minuto
+        setInterval(() => {
+            if (!trackingInterval) {
+                updateMap();
+                updateVehicleList();
+            }
+        }, 60000);
+    </script>
+</body>
+</html>
+

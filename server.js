@@ -496,6 +496,24 @@ function initializeDatabase() {
         FOREIGN KEY (user_id) REFERENCES users(id)
     )`);
 
+    // --- Rastreo de ubicación GPS ---
+    db.runConverted(`CREATE TABLE IF NOT EXISTS location_tracking (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        vehicle_id INTEGER,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        accuracy REAL,
+        altitude REAL,
+        heading REAL,
+        speed REAL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        device_info TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+    )`);
+
     // Create default admin user if not exists
     // Usar un pequeño delay para asegurar que todas las tablas estén creadas
     setTimeout(() => {
@@ -2472,6 +2490,169 @@ app.delete('/api/policies/:id', requireAuth, (req, res) => {
                 `Póliza ${policy.numero_poliza} eliminada`, { numero_poliza: policy.numero_poliza }, null);
             
             res.json({ success: true });
+        });
+    });
+});
+
+// --- Rastreo de Ubicación GPS ---
+// Endpoint para recibir ubicaciones desde el dispositivo
+app.post('/api/location', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const { vehicle_id, latitude, longitude, accuracy, altitude, heading, speed, device_info } = req.body;
+    
+    if (!latitude || !longitude) {
+        return res.status(400).json({ error: 'Latitud y longitud son requeridas' });
+    }
+    
+    // Si se proporciona vehicle_id, verificar que pertenezca al usuario
+    if (vehicle_id) {
+        db.getConverted('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicle_id, userId], (err, vehicle) => {
+            if (err || !vehicle) {
+                return res.status(403).json({ error: 'Vehículo no encontrado' });
+            }
+            insertLocation();
+        });
+    } else {
+        insertLocation();
+    }
+    
+    function insertLocation() {
+        db.runConverted(`INSERT INTO location_tracking 
+                (user_id, vehicle_id, latitude, longitude, accuracy, altitude, heading, speed, device_info, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+            [userId, vehicle_id || null, latitude, longitude, accuracy || null, altitude || null, heading || null, speed || null, device_info || null],
+            (err, result) => {
+                if (err) {
+                    console.error('Error guardando ubicación:', err);
+                    return res.status(500).json({ error: 'Error al guardar ubicación: ' + err.message });
+                }
+                res.json({ success: true, id: result?.lastID });
+            });
+    }
+});
+
+// Obtener todas las ubicaciones del usuario (últimas 24 horas por defecto)
+app.get('/api/location', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const hours = parseInt(req.query.hours) || 24;
+    
+    const query = db.type === 'postgresql'
+        ? `SELECT l.*, v.numero_vehiculo, v.marca, v.modelo, v.placas
+           FROM location_tracking l
+           LEFT JOIN vehicles v ON l.vehicle_id = v.id
+           WHERE l.user_id = $1 
+           AND l.timestamp >= NOW() - INTERVAL '${hours} hours'
+           ORDER BY l.timestamp DESC`
+        : `SELECT l.*, v.numero_vehiculo, v.marca, v.modelo, v.placas
+           FROM location_tracking l
+           LEFT JOIN vehicles v ON l.vehicle_id = v.id
+           WHERE l.user_id = ? 
+           AND l.timestamp >= datetime('now', '-' || ? || ' hours')
+           ORDER BY l.timestamp DESC`;
+    
+    const params = db.type === 'postgresql' ? [userId] : [userId, hours];
+    
+    db.allConverted(query, params, (err, locations) => {
+        if (err) {
+            console.error('Error obteniendo ubicaciones:', err);
+            return res.status(500).json({ error: 'Error al obtener ubicaciones' });
+        }
+        res.json(locations || []);
+    });
+});
+
+// Obtener ubicaciones de un vehículo específico
+app.get('/api/location/vehicle/:vehicleId', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const vehicleId = req.params.vehicleId;
+    const hours = parseInt(req.query.hours) || 24;
+    
+    // Verificar que el vehículo pertenezca al usuario
+    db.getConverted('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, vehicle) => {
+        if (err || !vehicle) {
+            return res.status(403).json({ error: 'Vehículo no encontrado' });
+        }
+        
+        const query = db.type === 'postgresql'
+            ? `SELECT l.*, v.numero_vehiculo, v.marca, v.modelo, v.placas
+               FROM location_tracking l
+               JOIN vehicles v ON l.vehicle_id = v.id
+               WHERE l.vehicle_id = $1 AND l.user_id = $2
+               AND l.timestamp >= NOW() - INTERVAL '${hours} hours'
+               ORDER BY l.timestamp DESC`
+            : `SELECT l.*, v.numero_vehiculo, v.marca, v.modelo, v.placas
+               FROM location_tracking l
+               JOIN vehicles v ON l.vehicle_id = v.id
+               WHERE l.vehicle_id = ? AND l.user_id = ?
+               AND l.timestamp >= datetime('now', '-' || ? || ' hours')
+               ORDER BY l.timestamp DESC`;
+        
+        const params = db.type === 'postgresql' ? [vehicleId, userId] : [vehicleId, userId, hours];
+        
+        db.allConverted(query, params, (err, locations) => {
+            if (err) {
+                console.error('Error obteniendo ubicaciones:', err);
+                return res.status(500).json({ error: 'Error al obtener ubicaciones' });
+            }
+            res.json(locations || []);
+        });
+    });
+});
+
+// Obtener la última ubicación de cada vehículo del usuario
+app.get('/api/location/latest', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    
+    // Usar subquery compatible con SQLite y PostgreSQL
+    if (db.type === 'postgresql') {
+        db.allConverted(`SELECT DISTINCT ON (l.vehicle_id) l.*, v.numero_vehiculo, v.marca, v.modelo, v.placas
+                FROM location_tracking l
+                LEFT JOIN vehicles v ON l.vehicle_id = v.id
+                WHERE l.user_id = $1
+                ORDER BY l.vehicle_id, l.timestamp DESC`,
+            [userId], (err, locations) => {
+                if (err) {
+                    console.error('Error obteniendo últimas ubicaciones:', err);
+                    return res.status(500).json({ error: 'Error al obtener ubicaciones' });
+                }
+                res.json(locations || []);
+            });
+    } else {
+        // SQLite - usar subquery
+        db.allConverted(`SELECT l.*, v.numero_vehiculo, v.marca, v.modelo, v.placas
+                FROM location_tracking l
+                LEFT JOIN vehicles v ON l.vehicle_id = v.id
+                WHERE l.user_id = ?
+                AND l.id IN (
+                    SELECT MAX(id) 
+                    FROM location_tracking 
+                    WHERE user_id = ? AND vehicle_id IS NOT NULL
+                    GROUP BY vehicle_id
+                )
+                ORDER BY l.timestamp DESC`,
+            [userId, userId], (err, locations) => {
+                if (err) {
+                    console.error('Error obteniendo últimas ubicaciones:', err);
+                    return res.status(500).json({ error: 'Error al obtener ubicaciones' });
+                }
+                res.json(locations || []);
+            });
+    }
+});
+
+// Vista de rastreo GPS
+app.get('/tracking', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    
+    // Obtener vehículos del usuario
+    db.allConverted('SELECT * FROM vehicles WHERE user_id = ? ORDER BY numero_vehiculo', [userId], (err, vehicles) => {
+        if (err) {
+            return res.status(500).send('Error al cargar vehículos');
+        }
+        
+        res.render('tracking', { 
+            user: req.session, 
+            vehicles: vehicles || [] 
         });
     });
 });
