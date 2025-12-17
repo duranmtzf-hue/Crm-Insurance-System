@@ -10,6 +10,23 @@
 
     <title>CRM Insurance System | Control de Flotas</title>
 
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CRM Insurance">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="shortcut icon" href="/images/logo.png">
+    <link rel="apple-touch-icon" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="96x96" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="128x128" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="256x256" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="384x384" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/images/logo.png">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -445,6 +462,18 @@
             display: flex;
 
             gap: 15px;
+
+            flex-wrap: wrap;
+
+        }
+
+        #installPWA {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 8px;
 
         }
 
@@ -1287,6 +1316,9 @@
                 <div class="hero-btns">
 
                     <a href="combustible.html" class="btn btn-secondary">Ver Servicios</a>
+                    <button id="installPWA" class="btn btn-primary" style="display: none;">
+                        <i class="fas fa-download"></i> Instalar App
+                    </button>
 
                 </div>
 
@@ -2153,6 +2185,83 @@
 
             });
 
+        });
+
+        // PWA Installation
+        let deferredPrompt;
+        const installPWA = document.getElementById('installPWA');
+
+        // Verificar si ya está instalada
+        function checkIfInstalled() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                               window.navigator.standalone === true ||
+                               document.referrer.includes('android-app://');
+            
+            if (isStandalone) {
+                installPWA.style.display = 'none';
+                return true;
+            }
+            return false;
+        }
+
+        // Si no está instalada, mostrar el botón
+        if (!checkIfInstalled()) {
+            // En móviles, siempre mostrar el botón si no está instalada
+            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                installPWA.style.display = 'inline-flex';
+            }
+        }
+
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker registrado:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('Error registrando Service Worker:', error);
+                    });
+            });
+        }
+
+        // Evento beforeinstallprompt (Chrome, Edge, etc.)
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installPWA.style.display = 'inline-flex';
+        });
+
+        // Manejar clic en el botón de instalación
+        installPWA.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Chrome/Edge - usar el prompt nativo
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`Usuario ${outcome === 'accepted' ? 'aceptó' : 'rechazó'} la instalación`);
+                deferredPrompt = null;
+                installPWA.style.display = 'none';
+            } else {
+                // Para otros navegadores o si el prompt no está disponible
+                // Mostrar instrucciones según el dispositivo
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                const isAndroid = /Android/.test(navigator.userAgent);
+                
+                if (isIOS) {
+                    alert('Para instalar la app en iOS:\n1. Toca el botón de compartir (cuadrado con flecha)\n2. Selecciona "Añadir a pantalla de inicio"\n3. Toca "Añadir"');
+                } else if (isAndroid) {
+                    alert('Para instalar la app en Android:\n1. Toca el menú (3 puntos) en la esquina superior derecha\n2. Selecciona "Instalar aplicación" o "Añadir a pantalla de inicio"\n3. Confirma la instalación');
+                } else {
+                    alert('Para instalar la app:\n1. Busca el ícono de instalación en la barra de direcciones\n2. O usa el menú del navegador para "Instalar aplicación"');
+                }
+            }
+        });
+
+        // Cuando la app se instala
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA instalada');
+            installPWA.style.display = 'none';
+            deferredPrompt = null;
         });
 
     </script>
