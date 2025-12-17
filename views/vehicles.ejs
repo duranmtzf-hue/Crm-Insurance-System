@@ -636,8 +636,21 @@
             }
         }
 
+        let isSubmittingVehicle = false;
         document.getElementById('addVehicleForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            // Prevenir doble envío
+            if (isSubmittingVehicle) {
+                return;
+            }
+            
+            isSubmittingVehicle = true;
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Agregando...';
+            
             const formData = new FormData(this);
             const data = Object.fromEntries(formData);
             
@@ -656,13 +669,21 @@
                 
                 if (response.ok) {
                     alert('Vehículo agregado exitosamente');
+                    document.getElementById('addVehicleModal').style.display = 'none';
+                    this.reset();
                     window.location.reload();
                 } else {
                     const error = await response.json();
                     alert('Error: ' + (error.error || 'Error al agregar vehículo'));
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                    isSubmittingVehicle = false;
                 }
             } catch (error) {
                 alert('Error al conectar con el servidor');
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalText;
+                isSubmittingVehicle = false;
             }
         });
 
