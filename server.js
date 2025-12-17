@@ -147,16 +147,33 @@ setTimeout(() => {
 // Initialize database tables
 function initializeDatabase() {
     // Session table for PostgreSQL (solo si estamos usando PostgreSQL)
+    // La tabla se crea automáticamente por connect-pg-simple, pero la creamos por si acaso
     if (process.env.DATABASE_URL) {
-        db.runConverted(`CREATE TABLE IF NOT EXISTS session (
+        const { Pool } = require('pg');
+        const sessionPool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: process.env.DATABASE_URL.includes('localhost') ? false : {
+                rejectUnauthorized: false
+            }
+        });
+        
+        // Crear tabla de sesiones con SQL directo de PostgreSQL
+        sessionPool.query(`CREATE TABLE IF NOT EXISTS session (
             sid VARCHAR NOT NULL COLLATE "default",
             sess JSON NOT NULL,
             expire TIMESTAMP(6) NOT NULL,
             CONSTRAINT session_pkey PRIMARY KEY (sid)
-        )`);
-        // Crear índice para limpiar sesiones expiradas
-        db.run(`CREATE INDEX IF NOT EXISTS IDX_session_expire ON session (expire)`, (err) => {
-            // Ignore error if index already exists
+        )`, (err) => {
+            if (err && !err.message.includes('already exists')) {
+                console.error('Error creando tabla de sesiones:', err.message);
+            } else {
+                console.log('✅ Tabla de sesiones lista');
+            }
+        });
+        
+        // Crear índice
+        sessionPool.query(`CREATE INDEX IF NOT EXISTS IDX_session_expire ON session (expire)`, (err) => {
+            // Ignore error
         });
     }
     
