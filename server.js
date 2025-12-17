@@ -1999,12 +1999,17 @@ app.get('/vehicles/:id', requireAuth, (req, res) => {
                 // Get insurance policies
                 db.allConverted('SELECT * FROM insurance_policies WHERE vehicle_id = ? ORDER BY fecha_vencimiento DESC', [vehicleId], (err, policies) => {
                     
-                    res.render('vehicle-detail', {
-                        user: req.session,
-                        vehicle: vehicle,
-                        fuelRecords: fuelRecords || [],
-                        maintenanceRecords: maintenanceRecords || [],
-                        policies: policies || []
+                    // Get tires
+                    db.allConverted('SELECT * FROM tires WHERE vehicle_id = ? ORDER BY fecha_instalacion DESC', [vehicleId], (err, tires) => {
+                        
+                        res.render('vehicle-detail', {
+                            user: req.session,
+                            vehicle: vehicle,
+                            fuelRecords: fuelRecords || [],
+                            maintenanceRecords: maintenanceRecords || [],
+                            policies: policies || [],
+                            tires: tires || []
+                        });
                     });
                 });
             });

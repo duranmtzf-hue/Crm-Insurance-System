@@ -529,10 +529,16 @@
 
         <!-- Pólizas -->
         <div class="section">
-            <h2 class="section-title">
-                <i class="fas fa-file-contract"></i>
-                Pólizas de Seguro
-            </h2>
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-file-contract"></i>
+                    Pólizas de Seguro
+                </h2>
+                <button class="btn btn-success" onclick="window.location.href='/policies'">
+                    <i class="fas fa-plus"></i>
+                    Agregar Póliza
+                </button>
+            </div>
             
             <% if (policies.length === 0) { %>
             <div class="empty-state">
@@ -562,6 +568,63 @@
                         <td>
                             <span class="badge badge-<%= policy.estado === 'Vigente' ? 'success' : 'warning' %>">
                                 <%= policy.estado %>
+                            </span>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+
+        <!-- Llantas -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-circle"></i>
+                    Llantas
+                </h2>
+                <button class="btn btn-success" onclick="window.location.href='/tires'">
+                    <i class="fas fa-plus"></i>
+                    Agregar Llanta
+                </button>
+            </div>
+            
+            <% if (!tires || tires.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-circle"></i>
+                <p class="text-muted">No hay llantas registradas aún</p>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Posición</th>
+                        <th>Marca/Modelo</th>
+                        <th>Presión (PSI)</th>
+                        <th>Profundidad (mm)</th>
+                        <th>Kilometraje Instalación</th>
+                        <th>Costo</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% tires.forEach(function(tire) { %>
+                    <tr>
+                        <td class="font-weight-bold"><%= tire.posicion %></td>
+                        <td>
+                            <%= tire.marca || '-' %> <%= tire.modelo || '' %><br>
+                            <% if (tire.medida) { %>
+                                <span class="text-muted" style="font-size: 0.85rem;"><%= tire.medida %></span>
+                            <% } %>
+                        </td>
+                        <td><%= tire.presion_psi ? tire.presion_psi + ' PSI' : '-' %></td>
+                        <td><%= tire.profundidad_mm ? tire.profundidad_mm + ' mm' : '-' %></td>
+                        <td class="text-muted"><%= tire.kilometraje_instalacion ? tire.kilometraje_instalacion.toLocaleString() + ' km' : '-' %></td>
+                        <td class="font-weight-bold"><%= tire.costo ? '$' + tire.costo.toFixed(2) : '-' %></td>
+                        <td>
+                            <span class="badge badge-<%= tire.estado === 'Activo' ? 'success' : 'warning' %>">
+                                <%= tire.estado || 'Activo' %>
                             </span>
                         </td>
                     </tr>
