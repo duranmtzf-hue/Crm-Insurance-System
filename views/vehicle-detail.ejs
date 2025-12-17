@@ -662,6 +662,7 @@
                         <th>Monto del Daño</th>
                         <th>Estado</th>
                         <th>Número de Referencia</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -682,6 +683,12 @@
                             </span>
                         </td>
                         <td class="text-muted"><%= claim.numero_referencia || '-' %></td>
+                        <td>
+                            <button class="btn btn-attachments" style="padding: 6px 12px; font-size: 0.85rem; background-color: var(--accent);" data-entity-id="<%= claim.id %>" data-entity-type="claim" data-entity-name="Siniestro <%= claim.numero_referencia || claim.id %>">
+                                <i class="fas fa-paperclip"></i>
+                                Adjuntos
+                            </button>
+                        </td>
                     </tr>
                     <% }); %>
                 </tbody>
@@ -988,6 +995,48 @@
         </div>
     </div>
 
+    <!-- Modal de Adjuntos -->
+    <div id="attachmentsModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="attachmentsModalTitle">Adjuntos</h2>
+                <button class="modal-close" onclick="document.getElementById('attachmentsModal').style.display='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Subir Nuevo Archivo</h3>
+                <form id="uploadAttachmentForm" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid var(--border);">
+                    <div class="form-group">
+                        <label class="form-label">Archivo *</label>
+                        <input type="file" id="attachmentFile" class="form-control" required accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Categoría</label>
+                        <select id="attachmentCategory" class="form-control">
+                            <option value="foto_siniestro">Foto de Siniestro</option>
+                            <option value="poliza_pdf">Póliza PDF</option>
+                            <option value="documento_vehiculo">Documento de Vehículo</option>
+                            <option value="factura">Factura</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea id="attachmentDescription" class="form-control" rows="2" placeholder="Descripción opcional del archivo"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-upload"></i> Subir Archivo
+                        </button>
+                    </div>
+                </form>
+                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Archivos Adjuntos</h3>
+                <div id="attachmentsList"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Cerrar modales al hacer click fuera
         window.onclick = function(event) {
@@ -1011,7 +1060,117 @@
             if (event.target == claimModal) {
                 claimModal.style.display = 'none';
             }
+            if (event.target == document.getElementById('attachmentsModal')) {
+                document.getElementById('attachmentsModal').style.display = 'none';
+            }
         }
+
+        // Funciones para adjuntos
+        let currentEntityId = null;
+        let currentEntityType = null;
+
+        function openAttachmentsModal(entityId, entityType, entityName) {
+            currentEntityId = entityId;
+            currentEntityType = entityType;
+            document.getElementById('attachmentsModalTitle').textContent = 'Adjuntos - ' + entityName;
+            document.getElementById('attachmentsModal').style.display = 'block';
+            loadAttachments();
+        }
+
+        async function loadAttachments() {
+            if (!currentEntityId || !currentEntityType) return;
+            
+            try {
+                const response = await fetch('/api/attachments/' + currentEntityType + '/' + currentEntityId);
+                const data = await response.json();
+                
+                const container = document.getElementById('attachmentsList');
+                if (data.success && data.attachments.length > 0) {
+                    container.innerHTML = data.attachments.map(function(att) {
+                        return '<div class="attachment-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px;"><div style="flex: 1;"><div style="font-weight: 600; margin-bottom: 4px;"><i class="fas fa-file"></i> ' + att.nombre_original + '</div><div style="font-size: 0.85rem; color: var(--gray);">' + (att.tamano / 1024).toFixed(2) + ' KB • ' + (att.categoria || 'otro') + ' • ' + new Date(att.created_at).toLocaleDateString('es-ES') + '</div></div><div style="display: flex; gap: 8px;"><a href="/api/attachments/' + att.id + '/download" class="btn" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i></a><button onclick="deleteAttachment(' + att.id + ')" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-trash"></i></button></div></div>';
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p class="text-muted">No hay adjuntos aún</p>';
+                }
+            } catch (error) {
+                console.error('Error cargando adjuntos:', error);
+            }
+        }
+
+        async function deleteAttachment(attachmentId) {
+            if (!confirm('¿Estás seguro de eliminar este adjunto?')) return;
+            
+            try {
+                const response = await fetch(`/api/attachments/${attachmentId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    loadAttachments();
+                } else {
+                    alert('Error al eliminar adjunto');
+                }
+            } catch (error) {
+                console.error('Error eliminando adjunto:', error);
+                alert('Error al eliminar adjunto');
+            }
+        }
+
+        // Event listeners para botones de adjuntos
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.btn-attachments').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const entityId = this.getAttribute('data-entity-id');
+                    const entityType = this.getAttribute('data-entity-type');
+                    const entityName = this.getAttribute('data-entity-name');
+                    openAttachmentsModal(entityId, entityType, entityName);
+                });
+            });
+
+            // Manejar subida de archivos
+            var uploadForm = document.getElementById('uploadAttachmentForm');
+            if (uploadForm) {
+                uploadForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData();
+                    const fileInput = document.getElementById('attachmentFile');
+                    const descripcion = document.getElementById('attachmentDescription').value;
+                    const categoria = document.getElementById('attachmentCategory').value;
+                    
+                    if (!fileInput.files[0]) {
+                        alert('Por favor selecciona un archivo');
+                        return;
+                    }
+                    
+                    formData.append('file', fileInput.files[0]);
+                    formData.append('entity_type', currentEntityType);
+                    formData.append('entity_id', currentEntityId);
+                    formData.append('descripcion', descripcion);
+                    formData.append('categoria', categoria);
+                    
+                    try {
+                        const response = await fetch('/api/attachments', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            alert('Archivo subido exitosamente');
+                            document.getElementById('uploadAttachmentForm').reset();
+                            loadAttachments();
+                        } else {
+                            alert('Error: ' + (data.error || 'Error al subir archivo'));
+                        }
+                    } catch (error) {
+                        console.error('Error subiendo archivo:', error);
+                        alert('Error al subir archivo');
+                    }
+                });
+            }
+        });
 
         document.getElementById('fuelForm').addEventListener('submit', async function(e) {
             e.preventDefault();
