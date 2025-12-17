@@ -472,7 +472,7 @@ function initializeDatabase() {
     )`);
 
     // --- Adjuntos (archivos) ---
-    db.run(`CREATE TABLE IF NOT EXISTS attachments (
+    db.runConverted(`CREATE TABLE IF NOT EXISTS attachments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         entity_type TEXT NOT NULL, -- vehicle, client, policy, claim, maintenance, service_order, invoice
