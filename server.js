@@ -2002,13 +2002,18 @@ app.get('/vehicles/:id', requireAuth, (req, res) => {
                     // Get tires
                     db.allConverted('SELECT * FROM tires WHERE vehicle_id = ? ORDER BY fecha_instalacion DESC', [vehicleId], (err, tires) => {
                         
-                        res.render('vehicle-detail', {
-                            user: req.session,
-                            vehicle: vehicle,
-                            fuelRecords: fuelRecords || [],
-                            maintenanceRecords: maintenanceRecords || [],
-                            policies: policies || [],
-                            tires: tires || []
+                        // Get claims (siniestros)
+                        db.allConverted('SELECT * FROM siniestros WHERE vehicle_id = ? ORDER BY fecha_siniestro DESC', [vehicleId], (err, claims) => {
+                            
+                            res.render('vehicle-detail', {
+                                user: req.session,
+                                vehicle: vehicle,
+                                fuelRecords: fuelRecords || [],
+                                maintenanceRecords: maintenanceRecords || [],
+                                policies: policies || [],
+                                tires: tires || [],
+                                claims: claims || []
+                            });
                         });
                     });
                 });
@@ -2645,7 +2650,7 @@ app.post('/api/claims', requireAuth, (req, res) => {
             return res.status(403).json({ error: 'Vehículo no encontrado' });
         }
         
-        db.run(`INSERT INTO siniestros (vehicle_id, policy_id, fecha_siniestro, tipo_siniestro, descripcion, monto_dano, estado, numero_referencia, compania_seguro)
+        db.runConverted(`INSERT INTO siniestros (vehicle_id, policy_id, fecha_siniestro, tipo_siniestro, descripcion, monto_dano, estado, numero_referencia, compania_seguro)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [vehicle_id, policy_id || null, fecha_siniestro, tipo_siniestro || null, descripcion || null, monto_dano || null, estado || 'En Proceso', numero_referencia || null, compania_seguro || null],
             (err, result) => {
