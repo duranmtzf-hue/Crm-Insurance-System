@@ -99,6 +99,15 @@ const upload = multer({
 app.use(express.static(__dirname));
 app.use('/images', express.static(path.join(__dirname, 'images')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/public', express.static(path.join(__dirname, 'public')));
+// PWA files
+app.get('/manifest.json', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
+});
+app.get('/sw.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+});
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -1324,7 +1333,7 @@ app.post('/api/attachments', requireAuth, upload.single('file'), (req, res) => {
             return res.status(403).json({ error: 'Entidad no encontrada o no autorizada' });
         }
 
-        db.run(
+        db.runConverted(
             `INSERT INTO attachments (user_id, entity_type, entity_id, nombre_archivo, nombre_original, tipo_mime, tamano, ruta_archivo, descripcion, categoria)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
@@ -1373,7 +1382,7 @@ app.get('/api/attachments/:entity_type/:entity_id', requireAuth, (req, res) => {
     const userId = req.session.userId;
     const { entity_type, entity_id } = req.params;
 
-    db.all(
+    db.allConverted(
         `SELECT id, nombre_original, tipo_mime, tamano, descripcion, categoria, created_at
          FROM attachments
          WHERE entity_type = ? AND entity_id = ? AND user_id = ?
@@ -1394,7 +1403,7 @@ app.get('/api/attachments/:id/download', requireAuth, (req, res) => {
     const userId = req.session.userId;
     const attachmentId = req.params.id;
 
-    db.get(
+    db.getConverted(
         `SELECT * FROM attachments WHERE id = ? AND user_id = ?`,
         [attachmentId, userId],
         (err, attachment) => {
@@ -1420,7 +1429,7 @@ app.delete('/api/attachments/:id', requireAuth, (req, res) => {
     const userId = req.session.userId;
     const attachmentId = req.params.id;
 
-    db.get(
+    db.getConverted(
         `SELECT * FROM attachments WHERE id = ? AND user_id = ?`,
         [attachmentId, userId],
         (err, attachment) => {
@@ -1438,7 +1447,7 @@ app.delete('/api/attachments/:id', requireAuth, (req, res) => {
                 `Se eliminó el archivo: ${attachment.nombre_original}`, { nombre: attachment.nombre_original }, null);
 
             // Eliminar registro de la base de datos
-            db.run(
+            db.runConverted(
                 `DELETE FROM attachments WHERE id = ? AND user_id = ?`,
                 [attachmentId, userId],
                 (err) => {

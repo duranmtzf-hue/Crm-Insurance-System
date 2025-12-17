@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema de gestión de flotilla vehicular con control de seguros, mantenimientos y operadores">
+    <meta name="theme-color" content="#001f3f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CRM Insurance">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="apple-touch-icon" href="/images/logo.png">
     <title>Dashboard | CRM Insurance System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
@@ -552,6 +560,9 @@
                 </div>
                 <% } %>
                 <span class="user-info"><%= user.nombre || user.username %></span>
+                <button id="installBtn" class="btn" style="display: none; background-color: #28a745;">
+                    <i class="fas fa-download"></i> Instalar App
+                </button>
                 <a href="/vehicles" class="btn">Vehículos</a>
                 <a href="/billing" class="btn">Facturación</a>
                 <a href="/reports" class="btn" style="background-color: var(--accent);">Reportes</a>
@@ -1423,6 +1434,50 @@
             }, 1500);
             <% } %>
         });
+
+        // PWA - Service Worker y Instalación
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker registrado:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('Error registrando Service Worker:', error);
+                    });
+            });
+        }
+
+        // Botón de instalación PWA
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'inline-flex';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`Usuario ${outcome === 'accepted' ? 'aceptó' : 'rechazó'} la instalación`);
+                deferredPrompt = null;
+                installBtn.style.display = 'none';
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA instalada');
+            installBtn.style.display = 'none';
+            deferredPrompt = null;
+        });
+
+        // Verificar si ya está instalada
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            installBtn.style.display = 'none';
+        }
 
     </script>
 </body>
