@@ -1687,19 +1687,19 @@ app.get('/dashboard', requireAuth, (req, res) => {
                                         // Debug: Log alert counts
                                         console.log('Alert counts - Policies:', (policyAlerts || []).length, 
                                                    'Maintenance:', (maintenanceAlerts || []).length);
-                                            
-                                            // Calculate alert counts for template
-                                            const alertCounts = {
-                                                total: alerts.length,
-                                                danger: alerts.filter(a => a.priority === 'danger').length,
-                                                warning: alerts.filter(a => a.priority === 'warning').length,
-                                                info: alerts.filter(a => a.priority === 'info').length,
-                                                hasAlerts: alerts.length > 0
-                                            };
-                                            
-                                            // Calculate advanced statistics
-                                            // Fuel consumption per vehicle (km/litro)
-                                            db.all(`SELECT 
+                                        
+                                        // Calculate alert counts for template
+                                        const alertCounts = {
+                                            total: alerts.length,
+                                            danger: alerts.filter(a => a.priority === 'danger').length,
+                                            warning: alerts.filter(a => a.priority === 'warning').length,
+                                            info: alerts.filter(a => a.priority === 'info').length,
+                                            hasAlerts: alerts.length > 0
+                                        };
+                                        
+                                        // Calculate advanced statistics
+                                        // Fuel consumption per vehicle (km/litro)
+                                        db.all(`SELECT 
                                                 v.id,
                                                 v.numero_vehiculo,
                                                 v.marca,
@@ -1861,7 +1861,6 @@ app.get('/dashboard', requireAuth, (req, res) => {
             });
         });
     });
-});
 
 app.get('/vehicles', requireAuth, (req, res) => {
     const userId = req.session.userId;
@@ -3095,20 +3094,20 @@ app.get('/api/download-report', requireAuth, (req, res) => {
                             : 'SELECT * FROM siniestros WHERE 1=0';
                         
                         db.all(claimsQuery, vehicleIds, (err, claims) => {
-                                if (err) claims = [];
+                            if (err) claims = [];
+                            
+                            // Get tires
+                            const tiresQuery = vehicleIds.length > 0
+                                ? `SELECT t.*, v.numero_vehiculo, v.marca, v.modelo FROM tires t 
+                                   JOIN vehicles v ON t.vehicle_id = v.id 
+                                   WHERE t.vehicle_id IN (${placeholders}) ORDER BY t.fecha_instalacion DESC`
+                                : 'SELECT * FROM tires WHERE 1=0';
+                            
+                            db.all(tiresQuery, vehicleIds, (err, tires) => {
+                                if (err) tires = [];
                                 
-                                // Get tires
-                                const tiresQuery = vehicleIds.length > 0
-                                    ? `SELECT t.*, v.numero_vehiculo, v.marca, v.modelo FROM tires t 
-                                       JOIN vehicles v ON t.vehicle_id = v.id 
-                                       WHERE t.vehicle_id IN (${placeholders}) ORDER BY t.fecha_instalacion DESC`
-                                    : 'SELECT * FROM tires WHERE 1=0';
-                                
-                                db.all(tiresQuery, vehicleIds, (err, tires) => {
-                                    if (err) tires = [];
-                                    
-                                    // Generate PDF
-                                    const doc = new PDFDocument({ 
+                                // Generate PDF
+                                const doc = new PDFDocument({ 
                                         margin: 50,
                                         size: 'A4',
                                         info: {
@@ -3511,9 +3510,8 @@ app.get('/api/download-report', requireAuth, (req, res) => {
                                        .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
                                        .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
                                     
-                                    // Finalize PDF
-                                    doc.end();
-                                });
+                                // Finalize PDF
+                                doc.end();
                             });
                         });
                     });
