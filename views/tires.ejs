@@ -51,6 +51,16 @@
             justify-content: space-between;
             align-items: center;
         }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo img {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+        }
         .logo-text {
             font-family: 'Montserrat', sans-serif;
             font-weight: 700;
@@ -451,7 +461,10 @@
 <body>
     <header>
         <div class="header-container">
-            <div class="logo-text">CRM <span>Insurance</span> System</div>
+            <div class="logo">
+                <img src="/images/logo.png" alt="Logo">
+                <div class="logo-text">CRM <span>Insurance</span> System</div>
+            </div>
             <div class="user-menu">
                 <span><%= user.nombre || user.username %></span>
                 <a href="/dashboard" class="btn">Dashboard</a>
