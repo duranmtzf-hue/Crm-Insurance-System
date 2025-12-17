@@ -2002,18 +2002,13 @@ app.get('/vehicles/:id', requireAuth, (req, res) => {
                     // Get tires
                     db.allConverted('SELECT * FROM tires WHERE vehicle_id = ? ORDER BY fecha_instalacion DESC', [vehicleId], (err, tires) => {
                         
-                        // Get claims (siniestros)
-                        db.allConverted('SELECT * FROM siniestros WHERE vehicle_id = ? ORDER BY fecha_siniestro DESC', [vehicleId], (err, claims) => {
-                            
-                            res.render('vehicle-detail', {
-                                user: req.session,
-                                vehicle: vehicle,
-                                fuelRecords: fuelRecords || [],
-                                maintenanceRecords: maintenanceRecords || [],
-                                policies: policies || [],
-                                tires: tires || [],
-                                claims: claims || []
-                            });
+                        res.render('vehicle-detail', {
+                            user: req.session,
+                            vehicle: vehicle,
+                            fuelRecords: fuelRecords || [],
+                            maintenanceRecords: maintenanceRecords || [],
+                            policies: policies || [],
+                            tires: tires || []
                         });
                     });
                 });

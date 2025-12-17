@@ -634,66 +634,46 @@
             <% } %>
         </div>
 
-        <!-- Siniestros -->
+        <!-- Adjuntos -->
         <div class="section">
             <div class="section-header">
                 <h2 class="section-title">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Siniestros
+                    <i class="fas fa-paperclip"></i>
+                    Adjuntos
                 </h2>
-                <button class="btn btn-success" onclick="document.getElementById('claimModal').style.display='block'">
-                    <i class="fas fa-plus"></i>
-                    Agregar Siniestro
-                </button>
             </div>
             
-            <% if (!claims || claims.length === 0) { %>
-            <div class="empty-state">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p class="text-muted">No hay siniestros registrados aún</p>
+            <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid var(--border);">
+                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Subir Nuevo Archivo</h3>
+                <form id="uploadAttachmentForm">
+                    <div class="form-group">
+                        <label class="form-label">Archivo *</label>
+                        <input type="file" id="attachmentFile" class="form-control" required accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Categoría</label>
+                        <select id="attachmentCategory" class="form-control">
+                            <option value="foto_siniestro">Foto de Siniestro</option>
+                            <option value="poliza_pdf">Póliza PDF</option>
+                            <option value="documento_vehiculo">Documento de Vehículo</option>
+                            <option value="factura">Factura</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea id="attachmentDescription" class="form-control" rows="2" placeholder="Descripción del archivo"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload"></i> Subir Archivo
+                    </button>
+                </form>
             </div>
-            <% } else { %>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Tipo</th>
-                        <th>Descripción</th>
-                        <th>Monto del Daño</th>
-                        <th>Estado</th>
-                        <th>Número de Referencia</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% claims.forEach(function(claim) { %>
-                    <tr>
-                        <td><%= new Date(claim.fecha_siniestro).toLocaleDateString('es-ES') %></td>
-                        <td><%= claim.tipo_siniestro || '-' %></td>
-                        <td><%= claim.descripcion || '-' %></td>
-                        <td class="font-weight-bold"><%= claim.monto_dano ? '$' + claim.monto_dano.toFixed(2) : '-' %></td>
-                        <td>
-                            <% 
-                            const estadoClass = claim.estado === 'Resuelto' ? 'success' : 
-                                                 claim.estado === 'En Proceso' ? 'info' : 
-                                                 claim.estado === 'Rechazado' ? 'danger' : 'warning';
-                            %>
-                            <span class="badge badge-<%= estadoClass %>">
-                                <%= claim.estado || 'En Proceso' %>
-                            </span>
-                        </td>
-                        <td class="text-muted"><%= claim.numero_referencia || '-' %></td>
-                        <td>
-                            <button class="btn btn-attachments" style="padding: 6px 12px; font-size: 0.85rem; background-color: var(--accent);" data-entity-id="<%= claim.id %>" data-entity-type="claim" data-entity-name="Siniestro <%= claim.numero_referencia || claim.id %>">
-                                <i class="fas fa-paperclip"></i>
-                                Adjuntos
-                            </button>
-                        </td>
-                    </tr>
-                    <% }); %>
-                </tbody>
-            </table>
-            <% } %>
+            
+            <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Archivos Adjuntos</h3>
+            <div id="attachmentsList">
+                <p class="text-muted">Cargando adjuntos...</p>
+            </div>
         </div>
     </div>
 
@@ -932,110 +912,6 @@
         </div>
     </div>
 
-    <!-- Modal para agregar siniestro -->
-    <div id="claimModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Agregar Siniestro</h2>
-                <button class="modal-close" onclick="document.getElementById('claimModal').style.display='none'">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="claimForm">
-                    <input type="hidden" name="vehicle_id" value="<%= vehicle.id %>">
-                    <div class="form-group">
-                        <label class="form-label">Fecha del Siniestro *</label>
-                        <input type="date" class="form-control" name="fecha_siniestro" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Tipo de Siniestro</label>
-                        <select class="form-control" name="tipo_siniestro">
-                            <option value="">Seleccionar tipo</option>
-                            <option value="Colisión">Colisión</option>
-                            <option value="Robo">Robo</option>
-                            <option value="Vandalismo">Vandalismo</option>
-                            <option value="Daño por Granizo">Daño por Granizo</option>
-                            <option value="Incendio">Incendio</option>
-                            <option value="Inundación">Inundación</option>
-                            <option value="Otro">Otro</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Descripción</label>
-                        <textarea class="form-control" name="descripcion" rows="4" placeholder="Describe el siniestro..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Monto del Daño</label>
-                        <input type="number" step="0.01" class="form-control" name="monto_dano" placeholder="0.00">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Estado</label>
-                        <select class="form-control" name="estado">
-                            <option value="En Proceso">En Proceso</option>
-                            <option value="Resuelto">Resuelto</option>
-                            <option value="Rechazado">Rechazado</option>
-                            <option value="Pendiente">Pendiente</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Número de Referencia</label>
-                        <input type="text" class="form-control" name="numero_referencia" placeholder="Número de referencia de la aseguradora">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Compañía de Seguros</label>
-                        <input type="text" class="form-control" name="compania_seguro" placeholder="Nombre de la compañía">
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('claimModal').style.display='none'">Cancelar</button>
-                        <button type="submit" class="btn btn-success">Guardar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Adjuntos -->
-    <div id="attachmentsModal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <div class="modal-header">
-                <h2 id="attachmentsModalTitle">Adjuntos</h2>
-                <button class="modal-close" onclick="document.getElementById('attachmentsModal').style.display='none'">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Subir Nuevo Archivo</h3>
-                <form id="uploadAttachmentForm" style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid var(--border);">
-                    <div class="form-group">
-                        <label class="form-label">Archivo *</label>
-                        <input type="file" id="attachmentFile" class="form-control" required accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Categoría</label>
-                        <select id="attachmentCategory" class="form-control">
-                            <option value="foto_siniestro">Foto de Siniestro</option>
-                            <option value="poliza_pdf">Póliza PDF</option>
-                            <option value="documento_vehiculo">Documento de Vehículo</option>
-                            <option value="factura">Factura</option>
-                            <option value="otro">Otro</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Descripción</label>
-                        <textarea id="attachmentDescription" class="form-control" rows="2" placeholder="Descripción opcional del archivo"></textarea>
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-upload"></i> Subir Archivo
-                        </button>
-                    </div>
-                </form>
-                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Archivos Adjuntos</h3>
-                <div id="attachmentsList"></div>
-            </div>
-        </div>
-    </div>
 
     <script>
         // Cerrar modales al hacer click fuera
@@ -1289,33 +1165,6 @@
             }
         });
 
-        // Formulario de siniestro
-        document.getElementById('claimForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData);
-            
-            // Convertir números
-            if (data.monto_dano) data.monto_dano = parseFloat(data.monto_dano);
-            
-            try {
-                const response = await fetch('/api/claims', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                
-                if (response.ok) {
-                    alert('Siniestro agregado exitosamente');
-                    window.location.reload();
-                } else {
-                    const error = await response.json();
-                    alert('Error: ' + (error.error || 'Error al agregar siniestro'));
-                }
-            } catch (error) {
-                alert('Error al conectar con el servidor');
-            }
-        });
     </script>
 </body>
 </html>
