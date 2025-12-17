@@ -145,8 +145,22 @@ setTimeout(() => {
 
 // Initialize database tables
 function initializeDatabase() {
+    // Session table for PostgreSQL (solo si estamos usando PostgreSQL)
+    if (process.env.DATABASE_URL) {
+        db.runConverted(`CREATE TABLE IF NOT EXISTS session (
+            sid VARCHAR NOT NULL COLLATE "default",
+            sess JSON NOT NULL,
+            expire TIMESTAMP(6) NOT NULL,
+            CONSTRAINT session_pkey PRIMARY KEY (sid)
+        )`);
+        // Crear índice para limpiar sesiones expiradas
+        db.run(`CREATE INDEX IF NOT EXISTS IDX_session_expire ON session (expire)`, (err) => {
+            // Ignore error if index already exists
+        });
+    }
+    
     // Users table
-    db.run(`CREATE TABLE IF NOT EXISTS users (
+    db.runConverted(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
