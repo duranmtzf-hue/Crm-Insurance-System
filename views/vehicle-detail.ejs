@@ -430,24 +430,6 @@
                     <div class="info-value">$<%= parseFloat(vehicle.valor_adaptacion).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
                 </div>
                 <% } %>
-                <% if (vehicle.tipo_carga) { %>
-                <div class="info-item">
-                    <div class="info-label">Tipo de Carga</div>
-                    <div class="info-value"><%= vehicle.tipo_carga %></div>
-                </div>
-                <% } %>
-                <% if (vehicle.descripcion_carga) { %>
-                <div class="info-item" style="grid-column: 1 / -1;">
-                    <div class="info-label">Descripción de la Carga</div>
-                    <div class="info-value"><%= vehicle.descripcion_carga %></div>
-                </div>
-                <% } %>
-                <% if (vehicle.accidente_conductor) { %>
-                <div class="info-item" style="grid-column: 1 / -1;">
-                    <div class="info-label">Accidente al Conductor</div>
-                    <div class="info-value"><%= vehicle.accidente_conductor %></div>
-                </div>
-                <% } %>
             </div>
         </div>
 

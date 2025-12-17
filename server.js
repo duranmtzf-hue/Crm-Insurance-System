@@ -191,17 +191,13 @@ function initializeDatabase() {
         descripcion TEXT,
         numero_serie TEXT,
         valor_adaptacion REAL,
-        tipo_carga TEXT,
-        descripcion_carga TEXT,
-        accidente_conductor TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
     )`);
     
     // Add new columns to vehicles table if they don't exist (for existing databases)
     const vehicleTextColumns = [
-        'descripcion', 'numero_serie',
-        'tipo_carga', 'descripcion_carga', 'accidente_conductor'
+        'descripcion', 'numero_serie'
     ];
     
     vehicleTextColumns.forEach(column => {
@@ -2048,19 +2044,16 @@ app.post('/api/vehicles', requireAuth, (req, res) => {
     const userId = req.session.userId;
     const { 
         numero_vehiculo, marca, modelo, año, placas, kilometraje_actual, estado,
-        descripcion, numero_serie, valor_adaptacion,
-        tipo_carga, descripcion_carga, accidente_conductor
+        descripcion, numero_serie, valor_adaptacion
     } = req.body;
     
     db.runConverted(`INSERT INTO vehicles (
         user_id, numero_vehiculo, marca, modelo, año, placas, kilometraje_actual, estado,
-        descripcion, numero_serie, valor_adaptacion,
-        tipo_carga, descripcion_carga, accidente_conductor
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        descripcion, numero_serie, valor_adaptacion
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             userId, numero_vehiculo, marca, modelo, año, placas, kilometraje_actual || 0, estado || 'Activo',
-            descripcion || null, numero_serie || null, valor_adaptacion || null,
-            tipo_carga || null, descripcion_carga || null, accidente_conductor || null
+            descripcion || null, numero_serie || null, valor_adaptacion || null
         ],
         (err, result) => {
             if (err) {
