@@ -131,9 +131,10 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: process.env.NODE_ENV === 'production', // true en HTTPS
+        secure: false, // false para permitir HTTP (Render puede usar HTTP internamente)
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        httpOnly: true
+        httpOnly: true,
+        sameSite: 'lax' // Mejor compatibilidad
     }
 }));
 
@@ -740,8 +741,13 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     
-    db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, username], (err, user) => {
+    if (!username || !password) {
+        return res.render('login', { error: 'Usuario y contraseña son requeridos' });
+    }
+    
+    db.getConverted('SELECT * FROM users WHERE username = ? OR email = ?', [username, username], (err, user) => {
         if (err) {
+            console.error('Error en login (DB):', err);
             return res.render('login', { error: 'Error en la base de datos' });
         }
         
@@ -750,12 +756,21 @@ app.post('/login', (req, res) => {
         }
         
         if (bcrypt.compareSync(password, user.password)) {
+            // Guardar sesión
             req.session.userId = user.id;
             req.session.username = user.username;
             req.session.nombre = user.nombre;
-            res.redirect('/dashboard');
+            
+            // Guardar la sesión explícitamente antes de redirigir
+            req.session.save((err) => {
+                if (err) {
+                    console.error('Error guardando sesión:', err);
+                    return res.render('login', { error: 'Error al iniciar sesión. Intenta de nuevo.' });
+                }
+                res.redirect('/dashboard');
+            });
         } else {
-            res.render('login', { error: 'Usuario o contraseña incorrectos' });
+            return res.render('login', { error: 'Usuario o contraseña incorrectos' });
         }
     });
 });
