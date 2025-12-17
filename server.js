@@ -181,17 +181,6 @@ function initializeDatabase() {
         operador_id INTEGER,
         descripcion TEXT,
         numero_serie TEXT,
-        cobertura TEXT,
-        danos_materiales TEXT,
-        robo TEXT,
-        responsabilidad_civil TEXT,
-        responsabilidad_exceso TEXT,
-        gastos_medicos_ocupantes TEXT,
-        asistencia_automovilistico TEXT,
-        defensa_juridica TEXT,
-        responsabilidad_civil_carga TEXT,
-        responsabilidad_civil_ecologica TEXT,
-        descripcion_adaptacion TEXT,
         valor_adaptacion REAL,
         tipo_carga TEXT,
         descripcion_carga TEXT,
@@ -202,10 +191,7 @@ function initializeDatabase() {
     
     // Add new columns to vehicles table if they don't exist (for existing databases)
     const vehicleTextColumns = [
-        'descripcion', 'numero_serie', 'cobertura', 'danos_materiales', 'robo',
-        'responsabilidad_civil', 'responsabilidad_exceso', 'gastos_medicos_ocupantes',
-        'asistencia_automovilistico', 'defensa_juridica', 'responsabilidad_civil_carga',
-        'responsabilidad_civil_ecologica', 'descripcion_adaptacion',
+        'descripcion', 'numero_serie',
         'tipo_carga', 'descripcion_carga', 'accidente_conductor'
     ];
     
@@ -2048,27 +2034,18 @@ app.post('/api/vehicles', requireAuth, (req, res) => {
     const userId = req.session.userId;
     const { 
         numero_vehiculo, marca, modelo, año, placas, kilometraje_actual, estado,
-        descripcion, numero_serie, cobertura, danos_materiales, robo,
-        responsabilidad_civil, responsabilidad_exceso, gastos_medicos_ocupantes,
-        asistencia_automovilistico, defensa_juridica, responsabilidad_civil_carga,
-        responsabilidad_civil_ecologica, descripcion_adaptacion, valor_adaptacion,
+        descripcion, numero_serie, valor_adaptacion,
         tipo_carga, descripcion_carga, accidente_conductor
     } = req.body;
     
     db.run(`INSERT INTO vehicles (
         user_id, numero_vehiculo, marca, modelo, año, placas, kilometraje_actual, estado,
-        descripcion, numero_serie, cobertura, danos_materiales, robo,
-        responsabilidad_civil, responsabilidad_exceso, gastos_medicos_ocupantes,
-        asistencia_automovilistico, defensa_juridica, responsabilidad_civil_carga,
-        responsabilidad_civil_ecologica, descripcion_adaptacion, valor_adaptacion,
+        descripcion, numero_serie, valor_adaptacion,
         tipo_carga, descripcion_carga, accidente_conductor
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             userId, numero_vehiculo, marca, modelo, año, placas, kilometraje_actual || 0, estado || 'Activo',
-            descripcion || null, numero_serie || null, cobertura || null, danos_materiales || null, robo || null,
-            responsabilidad_civil || null, responsabilidad_exceso || null, gastos_medicos_ocupantes || null,
-            asistencia_automovilistico || null, defensa_juridica || null, responsabilidad_civil_carga || null,
-            responsabilidad_civil_ecologica || null, descripcion_adaptacion || null, valor_adaptacion || null,
+            descripcion || null, numero_serie || null, valor_adaptacion || null,
             tipo_carga || null, descripcion_carga || null, accidente_conductor || null
         ],
         (err, result) => {
