@@ -920,7 +920,6 @@
             const maintenanceModal = document.getElementById('maintenanceModal');
             const policyModal = document.getElementById('policyModal');
             const tireModal = document.getElementById('tireModal');
-            const claimModal = document.getElementById('claimModal');
             if (event.target == fuelModal) {
                 fuelModal.style.display = 'none';
             }
@@ -933,31 +932,14 @@
             if (event.target == tireModal) {
                 tireModal.style.display = 'none';
             }
-            if (event.target == claimModal) {
-                claimModal.style.display = 'none';
-            }
-            if (event.target == document.getElementById('attachmentsModal')) {
-                document.getElementById('attachmentsModal').style.display = 'none';
-            }
         }
 
-        // Funciones para adjuntos
-        let currentEntityId = null;
-        let currentEntityType = null;
-
-        function openAttachmentsModal(entityId, entityType, entityName) {
-            currentEntityId = entityId;
-            currentEntityType = entityType;
-            document.getElementById('attachmentsModalTitle').textContent = 'Adjuntos - ' + entityName;
-            document.getElementById('attachmentsModal').style.display = 'block';
-            loadAttachments();
-        }
+        // Funciones para adjuntos del vehículo
+        const vehicleId = <%= vehicle.id %>;
 
         async function loadAttachments() {
-            if (!currentEntityId || !currentEntityType) return;
-            
             try {
-                const response = await fetch('/api/attachments/' + currentEntityType + '/' + currentEntityId);
+                const response = await fetch('/api/attachments/vehicle/' + vehicleId);
                 const data = await response.json();
                 
                 const container = document.getElementById('attachmentsList');
@@ -970,6 +952,7 @@
                 }
             } catch (error) {
                 console.error('Error cargando adjuntos:', error);
+                document.getElementById('attachmentsList').innerHTML = '<p class="text-muted">Error al cargar adjuntos</p>';
             }
         }
 
@@ -992,16 +975,9 @@
             }
         }
 
-        // Event listeners para botones de adjuntos
+        // Cargar adjuntos al iniciar
         document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.btn-attachments').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    const entityId = this.getAttribute('data-entity-id');
-                    const entityType = this.getAttribute('data-entity-type');
-                    const entityName = this.getAttribute('data-entity-name');
-                    openAttachmentsModal(entityId, entityType, entityName);
-                });
-            });
+            loadAttachments();
 
             // Manejar subida de archivos
             var uploadForm = document.getElementById('uploadAttachmentForm');
@@ -1020,8 +996,8 @@
                     }
                     
                     formData.append('file', fileInput.files[0]);
-                    formData.append('entity_type', currentEntityType);
-                    formData.append('entity_id', currentEntityId);
+                    formData.append('entity_type', 'vehicle');
+                    formData.append('entity_id', vehicleId);
                     formData.append('descripcion', descripcion);
                     formData.append('categoria', categoria);
                     
