@@ -2239,7 +2239,7 @@ app.post('/api/policies', requireAuth, (req, res) => {
     }
     
     // Verify vehicle belongs to user
-    db.get('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicle_id, userId], (err, vehicle) => {
+    db.getConverted('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicle_id, userId], (err, vehicle) => {
         if (err || !vehicle) {
             return res.status(403).json({ error: 'Vehículo no encontrado' });
         }
@@ -2255,7 +2255,7 @@ app.post('/api/policies', requireAuth, (req, res) => {
             console.log('📧 MailTransporter configurado:', !!mailTransporter);
             console.log('📧 GMAIL_USER configurado:', !!process.env.GMAIL_USER);
 
-            db.run(`INSERT INTO insurance_policies (vehicle_id, numero_poliza, compania, fecha_inicio, fecha_vencimiento, tipo_cobertura, costo_anual, estado)
+            db.runConverted(`INSERT INTO insurance_policies (vehicle_id, numero_poliza, compania, fecha_inicio, fecha_vencimiento, tipo_cobertura, costo_anual, estado)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                 [vehicle_id, numero_poliza, compania || null, fecha_inicio || null, fecha_vencimiento || null, tipo_cobertura || null, costo_anual || null, estado || 'Vigente'],
                 (err, result) => {
@@ -2640,7 +2640,7 @@ app.post('/api/claims', requireAuth, (req, res) => {
     }
     
     // Verify vehicle belongs to user
-    db.get('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicle_id, userId], (err, vehicle) => {
+    db.getConverted('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicle_id, userId], (err, vehicle) => {
         if (err || !vehicle) {
             return res.status(403).json({ error: 'Vehículo no encontrado' });
         }
@@ -2699,12 +2699,12 @@ app.post('/api/tires', requireAuth, (req, res) => {
     }
     
     // Verify vehicle belongs to user
-    db.get('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicle_id, userId], (err, vehicle) => {
+    db.getConverted('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicle_id, userId], (err, vehicle) => {
         if (err || !vehicle) {
             return res.status(403).json({ error: 'Vehículo no encontrado' });
         }
         
-        db.run(`INSERT INTO tires (vehicle_id, posicion, marca, modelo, medida, numero_serie, presion_psi, profundidad_mm, fecha_instalacion, kilometraje_instalacion, costo, estado)
+        db.runConverted(`INSERT INTO tires (vehicle_id, posicion, marca, modelo, medida, numero_serie, presion_psi, profundidad_mm, fecha_instalacion, kilometraje_instalacion, costo, estado)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [vehicle_id, posicion, marca || null, modelo || null, medida || null, numero_serie || null, presion_psi || null, profundidad_mm || null, fecha_instalacion || null, kilometraje_instalacion || null, costo || null, estado || 'Activo'],
             (err, result) => {
