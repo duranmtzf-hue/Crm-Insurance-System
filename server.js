@@ -203,7 +203,7 @@ function initializeDatabase() {
     });
     
     // Tires table for tire management
-    db.run(`CREATE TABLE IF NOT EXISTS tires (
+    db.runConverted(`CREATE TABLE IF NOT EXISTS tires (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         vehicle_id INTEGER NOT NULL,
         posicion TEXT NOT NULL,
@@ -222,6 +222,14 @@ function initializeDatabase() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
     )`);
+    
+    // Asegurar que las columnas existan (para bases de datos existentes)
+    db.run(`ALTER TABLE tires ADD COLUMN kilometraje_rotacion INTEGER`, (err) => {
+        // Ignore error if column already exists
+    });
+    db.run(`ALTER TABLE tires ADD COLUMN fecha_rotacion DATE`, (err) => {
+        // Ignore error if column already exists
+    });
 
     // Tire monthly reviews table
     db.runConverted(`CREATE TABLE IF NOT EXISTS tire_reviews (
