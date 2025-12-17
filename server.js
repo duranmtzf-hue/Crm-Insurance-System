@@ -190,7 +190,6 @@ function initializeDatabase() {
         operador_id INTEGER,
         descripcion TEXT,
         numero_serie TEXT,
-        valor_adaptacion REAL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
     )`);
@@ -206,10 +205,6 @@ function initializeDatabase() {
         });
     });
     
-    // Add valor_adaptacion as REAL type
-    db.run(`ALTER TABLE vehicles ADD COLUMN valor_adaptacion REAL`, (err) => {
-        // Ignore error if column already exists
-    });
 
     // Fuel records table
     db.run(`CREATE TABLE IF NOT EXISTS fuel_records (
@@ -2044,16 +2039,16 @@ app.post('/api/vehicles', requireAuth, (req, res) => {
     const userId = req.session.userId;
     const { 
         numero_vehiculo, marca, modelo, año, placas, kilometraje_actual, estado,
-        descripcion, numero_serie, valor_adaptacion
+        descripcion, numero_serie
     } = req.body;
     
     db.runConverted(`INSERT INTO vehicles (
         user_id, numero_vehiculo, marca, modelo, año, placas, kilometraje_actual, estado,
-        descripcion, numero_serie, valor_adaptacion
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        descripcion, numero_serie
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             userId, numero_vehiculo, marca, modelo, año, placas, kilometraje_actual || 0, estado || 'Activo',
-            descripcion || null, numero_serie || null, valor_adaptacion || null
+            descripcion || null, numero_serie || null
         ],
         (err, result) => {
             if (err) {
