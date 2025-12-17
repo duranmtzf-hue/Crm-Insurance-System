@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const bodyParser = require('body-parser');
 const path = require('path');
 const PDFDocument = require('pdfkit');
@@ -103,11 +104,37 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Session configuration
+// Usar PostgreSQL para almacenar sesiones en producción, MemoryStore en desarrollo
+let sessionStore = null;
+if (process.env.DATABASE_URL) {
+    // PostgreSQL en producción (Render)
+    const { Pool } = require('pg');
+    const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.DATABASE_URL.includes('localhost') ? false : {
+            rejectUnauthorized: false
+        }
+    });
+    sessionStore = new pgSession({
+        pool: pool,
+        tableName: 'session' // nombre de la tabla
+    });
+    console.log('✅ Sesiones configuradas con PostgreSQL');
+} else {
+    // SQLite en desarrollo - usar MemoryStore (solo para desarrollo)
+    console.log('⚠️ Usando MemoryStore para sesiones (solo desarrollo)');
+}
+
 app.use(session({
-    secret: 'crm-insurance-secret-key-2024',
+    store: sessionStore || undefined, // undefined = MemoryStore (solo desarrollo)
+    secret: process.env.SESSION_SECRET || 'crm-insurance-secret-key-2024',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 hours
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production', // true en HTTPS
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: true
+    }
 }));
 
 // Database is initialized in db.js
@@ -130,7 +157,7 @@ function initializeDatabase() {
     )`);
 
     // Vehicles table
-    db.run(`CREATE TABLE IF NOT EXISTS vehicles (
+    db.runConverted(`CREATE TABLE IF NOT EXISTS vehicles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         numero_vehiculo TEXT NOT NULL,
