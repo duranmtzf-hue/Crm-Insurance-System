@@ -684,37 +684,6 @@ function createSampleAlerts(userId, vehicleId) {
         });
     });
     
-    // Delete existing sample operators first
-    db.run('DELETE FROM operators WHERE licencia IN (?, ?)', ['LIC-001', 'LIC-002'], () => {
-        // Create operator with license expiring in 8 days (danger alert)
-        const operatorExpiringDate = new Date(today);
-        operatorExpiringDate.setDate(today.getDate() + 8);
-        db.run(`INSERT INTO operators 
-                (user_id, nombre, licencia, fecha_vencimiento_licencia, telefono, email, estado) 
-                VALUES (?, 'Juan Pérez', 'LIC-001', ?, '555-1234', 'juan@example.com', 'Activo')`, 
-                [userId, operatorExpiringDate.toISOString().split('T')[0]], (err) => {
-            if (err) {
-                console.log('Error creating sample operator:', err.message);
-            } else {
-                console.log('Created operator with license expiring in 8 days');
-            }
-        });
-        
-        // Create operator with license expiring in 20 days (warning alert)
-        const operatorWarningDate = new Date(today);
-        operatorWarningDate.setDate(today.getDate() + 20);
-        db.run(`INSERT INTO operators 
-                (user_id, nombre, licencia, fecha_vencimiento_licencia, telefono, email, estado) 
-                VALUES (?, 'María González', 'LIC-002', ?, '555-5678', 'maria@example.com', 'Activo')`, 
-                [userId, operatorWarningDate.toISOString().split('T')[0]], (err) => {
-            if (err) {
-                console.log('Error creating sample operator:', err.message);
-            } else {
-                console.log('Created operator with license expiring in 20 days');
-            }
-        });
-    });
-    
     console.log('Sample alerts data created successfully');
 }
 
@@ -1521,80 +1490,36 @@ app.get('/dashboard', requireAuth, (req, res) => {
         const placeholders = vehicleIds.map(() => '?').join(',');
         
         if (vehicleIds.length === 0) {
-            // Get operator alerts even if no vehicles (including expired licenses)
-            db.allConverted(`SELECT 
-                    o.nombre,
-                    o.licencia,
-                    o.fecha_vencimiento_licencia,
-                    CASE 
-                        WHEN date(o.fecha_vencimiento_licencia) < date('now') THEN 'danger'
-                        WHEN date(o.fecha_vencimiento_licencia) <= date('now', '+7 days') THEN 'danger'
-                        WHEN date(o.fecha_vencimiento_licencia) <= date('now', '+15 days') THEN 'warning'
-                        ELSE 'info'
-                    END as priority
-                    FROM operators o
-                    WHERE o.user_id = ?
-                    AND o.fecha_vencimiento_licencia IS NOT NULL
-                    AND (date(o.fecha_vencimiento_licencia) < date('now') OR date(o.fecha_vencimiento_licencia) <= date('now', '+30 days'))
-                    AND o.estado = 'Activo'
-                    ORDER BY o.fecha_vencimiento_licencia ASC`, 
-                    [userId], (err, operatorAlerts) => {
-                
-                const allAlerts = [];
-                (operatorAlerts || []).forEach(alert => {
-                    const vencimiento = new Date(alert.fecha_vencimiento_licencia);
-                    const hoy = new Date();
-                    const diasDiferencia = Math.ceil((vencimiento - hoy) / (1000 * 60 * 60 * 24));
-                    const estadoTexto = diasDiferencia < 0 
-                        ? `VENCIDA hace ${Math.abs(diasDiferencia)} días`
-                        : diasDiferencia === 0 
-                            ? 'Vence HOY'
-                            : `Vence en ${diasDiferencia} días`;
-                    
-                    allAlerts.push({
-                        type: 'operator',
-                        icon: 'fa-id-card',
-                        title: diasDiferencia < 0 
-                            ? `Licencia VENCIDA: ${alert.nombre}`
-                            : `Licencia por vencer: ${alert.nombre}`,
-                        description: `Licencia ${alert.licencia} - ${estadoTexto} (${vencimiento.toLocaleDateString('es-ES')})`,
-                        priority: alert.priority,
-                        date: alert.fecha_vencimiento_licencia
-                    });
-                });
-                
-                const alertCounts = {
-                    total: allAlerts.length,
-                    danger: allAlerts.filter(a => a.priority === 'danger').length,
-                    warning: allAlerts.filter(a => a.priority === 'warning').length,
-                    info: allAlerts.filter(a => a.priority === 'info').length,
-                    hasAlerts: allAlerts.length > 0
-                };
-                
-                return res.render('dashboard', {
-                    user: req.session,
-                    vehicles: [],
-                    stats: {
-                        totalVehicles: 0,
-                        activeVehicles: 0,
-                        totalFuelCost: 0,
-                        pendingMaintenance: 0,
-                        expiringPolicies: 0
-                    },
-                    recentFuel: [],
-                    recentMaintenance: [],
-                    alerts: allAlerts,
-                    alertCounts: alertCounts,
-                    vehicleConsumption: [],
-                    costTrends: [],
-                    maintenanceTrends: [],
-                    vehicleComparisons: [],
-                    performanceStats: [],
-                    notificationsHistory: [],
-                    hasNotificationsHistory: false
-                });
+            const alertCounts = {
+                total: 0,
+                danger: 0,
+                warning: 0,
+                info: 0,
+                hasAlerts: false
+            };
+            
+            return res.render('dashboard', {
+                user: req.session,
+                vehicles: [],
+                stats: {
+                    totalVehicles: 0,
+                    activeVehicles: 0,
+                    totalFuelCost: 0,
+                    pendingMaintenance: 0,
+                    expiringPolicies: 0
+                },
+                recentFuel: [],
+                recentMaintenance: [],
+                alerts: [],
+                alertCounts: alertCounts,
+                vehicleConsumption: [],
+                costTrends: [],
+                maintenanceTrends: [],
+                vehicleComparisons: [],
+                performanceStats: [],
+                notificationsHistory: [],
+                hasNotificationsHistory: false
             });
-            return;
         }
         
         // Get fuel records
@@ -1722,94 +1647,46 @@ app.get('/dashboard', requireAuth, (req, res) => {
                                             console.error('Error getting maintenance alerts:', err);
                                         }
                                         
-                                        // 3. Operator license alerts (including expired licenses)
-                                        db.all(`SELECT 
-                                                o.nombre,
-                                                o.licencia,
-                                                o.fecha_vencimiento_licencia,
-                                                CASE 
-                                                    WHEN date(o.fecha_vencimiento_licencia) < date('now') THEN 'danger'
-                                                    WHEN date(o.fecha_vencimiento_licencia) <= date('now', '+7 days') THEN 'danger'
-                                                    WHEN date(o.fecha_vencimiento_licencia) <= date('now', '+15 days') THEN 'warning'
-                                                    ELSE 'info'
-                                                END as priority
-                                                FROM operators o
-                                                WHERE o.user_id = ?
-                                                AND o.fecha_vencimiento_licencia IS NOT NULL
-                                                AND (date(o.fecha_vencimiento_licencia) < date('now') OR date(o.fecha_vencimiento_licencia) <= date('now', '+30 days'))
-                                                AND o.estado = 'Activo'
-                                                ORDER BY o.fecha_vencimiento_licencia ASC`, 
-                                                [userId], (err, operatorAlerts) => {
-                                            
-                                            // Handle errors
-                                            if (err) {
-                                                console.error('Error getting operator alerts:', err);
-                                            }
-                                            
-                                            // Debug: Log alert counts
-                                            console.log('Alert counts - Policies:', (policyAlerts || []).length, 
-                                                       'Maintenance:', (maintenanceAlerts || []).length, 
-                                                       'Operators:', (operatorAlerts || []).length);
-                                            
-                                            // Combine all alerts into a structured format
-                                            const allAlerts = [];
-                                            
-                                            // Add policy alerts
-                                            (policyAlerts || []).forEach(alert => {
-                                                allAlerts.push({
-                                                    type: 'policy',
-                                                    icon: 'fa-shield-alt',
-                                                    title: `Póliza próxima a vencer: ${alert.numero_vehiculo}`,
-                                                    description: `${alert.marca} ${alert.modelo} - Vence: ${new Date(alert.fecha_vencimiento).toLocaleDateString('es-ES')}`,
-                                                    priority: alert.priority,
-                                                    date: alert.fecha_vencimiento
-                                                });
+                                        // Combine all alerts into a structured format
+                                        const allAlerts = [];
+                                        
+                                        // Add policy alerts
+                                        (policyAlerts || []).forEach(alert => {
+                                            allAlerts.push({
+                                                type: 'policy',
+                                                icon: 'fa-shield-alt',
+                                                title: `Póliza próxima a vencer: ${alert.numero_vehiculo}`,
+                                                description: `${alert.marca} ${alert.modelo} - Vence: ${new Date(alert.fecha_vencimiento).toLocaleDateString('es-ES')}`,
+                                                priority: alert.priority,
+                                                date: alert.fecha_vencimiento
                                             });
-                                            
-                                            // Add maintenance alerts
-                                            (maintenanceAlerts || []).forEach(alert => {
-                                                const kmStatus = alert.km_overdue > 0 
-                                                    ? `${Math.abs(alert.km_overdue).toLocaleString()} km vencidos`
-                                                    : `Faltan ${Math.abs(alert.km_overdue).toLocaleString()} km`;
-                                                allAlerts.push({
-                                                    type: 'maintenance',
-                                                    icon: 'fa-tools',
-                                                    title: `Mantenimiento preventivo: ${alert.numero_vehiculo}`,
-                                                    description: `${alert.marca} ${alert.modelo} - ${kmStatus} (KM actual: ${alert.kilometraje_actual.toLocaleString()})`,
-                                                    priority: alert.priority,
-                                                    kmOverdue: alert.km_overdue
-                                                });
+                                        });
+                                        
+                                        // Add maintenance alerts
+                                        (maintenanceAlerts || []).forEach(alert => {
+                                            const kmStatus = alert.km_overdue > 0 
+                                                ? `${Math.abs(alert.km_overdue).toLocaleString()} km vencidos`
+                                                : `Faltan ${Math.abs(alert.km_overdue).toLocaleString()} km`;
+                                            allAlerts.push({
+                                                type: 'maintenance',
+                                                icon: 'fa-tools',
+                                                title: `Mantenimiento preventivo: ${alert.numero_vehiculo}`,
+                                                description: `${alert.marca} ${alert.modelo} - ${kmStatus} (KM actual: ${alert.kilometraje_actual.toLocaleString()})`,
+                                                priority: alert.priority,
+                                                kmOverdue: alert.km_overdue
                                             });
-                                            
-                                            // Add operator license alerts
-                                            (operatorAlerts || []).forEach(alert => {
-                                                const vencimiento = new Date(alert.fecha_vencimiento_licencia);
-                                                const hoy = new Date();
-                                                const diasDiferencia = Math.ceil((vencimiento - hoy) / (1000 * 60 * 60 * 24));
-                                                const estadoTexto = diasDiferencia < 0 
-                                                    ? `VENCIDA hace ${Math.abs(diasDiferencia)} días`
-                                                    : diasDiferencia === 0 
-                                                        ? 'Vence HOY'
-                                                        : `Vence en ${diasDiferencia} días`;
-                                                
-                                                allAlerts.push({
-                                                    type: 'operator',
-                                                    icon: 'fa-id-card',
-                                                    title: diasDiferencia < 0 
-                                                        ? `Licencia VENCIDA: ${alert.nombre}`
-                                                        : `Licencia por vencer: ${alert.nombre}`,
-                                                    description: `Licencia ${alert.licencia} - ${estadoTexto} (${vencimiento.toLocaleDateString('es-ES')})`,
-                                                    priority: alert.priority,
-                                                    date: alert.fecha_vencimiento_licencia
-                                                });
-                                            });
-                                            
-                                            // Sort alerts by priority (danger first, then warning, then info)
-                                            const priorityOrder = { 'danger': 0, 'warning': 1, 'info': 2 };
-                                            allAlerts.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-                                            
-                                            // Store alerts for rendering (define in outer scope)
-                                            const alerts = allAlerts;
+                                        });
+                                        
+                                        // Sort alerts by priority (danger first, then warning, then info)
+                                        const priorityOrder = { 'danger': 0, 'warning': 1, 'info': 2 };
+                                        allAlerts.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+                                        
+                                        // Store alerts for rendering (define in outer scope)
+                                        const alerts = allAlerts;
+                                        
+                                        // Debug: Log alert counts
+                                        console.log('Alert counts - Policies:', (policyAlerts || []).length, 
+                                                   'Maintenance:', (maintenanceAlerts || []).length);
                                             
                                             // Calculate alert counts for template
                                             const alertCounts = {
@@ -1989,9 +1866,8 @@ app.get('/dashboard', requireAuth, (req, res) => {
 app.get('/vehicles', requireAuth, (req, res) => {
     const userId = req.session.userId;
     
-    db.all(`SELECT v.*, o.nombre as operador_nombre 
+    db.all(`SELECT v.*
             FROM vehicles v 
-            LEFT JOIN operators o ON v.operador_id = o.id 
             WHERE v.user_id = ? 
             ORDER BY v.numero_vehiculo`, 
             [userId], (err, vehicles) => {
@@ -2248,36 +2124,6 @@ app.post('/api/maintenance', requireAuth, (req, res) => {
     });
 });
 
-// Operators routes
-app.get('/operators', requireAuth, (req, res) => {
-    const userId = req.session.userId;
-    db.all('SELECT * FROM operators WHERE user_id = ? ORDER BY nombre', [userId], (err, operators) => {
-        if (err) {
-            return res.status(500).send('Error al cargar operadores');
-        }
-        res.render('operators', { user: req.session, operators: operators || [] });
-    });
-});
-
-app.post('/api/operators', requireAuth, (req, res) => {
-    const userId = req.session.userId;
-    const { nombre, licencia, fecha_vencimiento_licencia, telefono, email, estado } = req.body;
-    
-    if (!nombre) {
-        return res.status(400).json({ error: 'El nombre es requerido' });
-    }
-    
-    db.run(`INSERT INTO operators (user_id, nombre, licencia, fecha_vencimiento_licencia, telefono, email, estado)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [userId, nombre, licencia || null, fecha_vencimiento_licencia || null, telefono || null, email || null, estado || 'Activo'],
-        (err, result) => {
-            if (err) {
-                return res.status(500).json({ error: 'Error al crear operador' });
-            }
-            const operatorId = result?.lastID;
-            res.json({ success: true, id: operatorId });
-        });
-});
 
 // Insurance Policies routes
 app.get('/policies', requireAuth, (req, res) => {
@@ -2717,15 +2563,6 @@ app.delete('/api/invoices/:id', requireAuth, (req, res) => {
     });
 });
 
-app.get('/api/operators', requireAuth, (req, res) => {
-    const userId = req.session.userId;
-    db.all('SELECT * FROM operators WHERE user_id = ? ORDER BY nombre', [userId], (err, operators) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error al cargar operadores' });
-        }
-        res.json(operators || []);
-    });
-});
 
 app.get('/api/dashboard-stats', requireAuth, (req, res) => {
     const userId = req.session.userId;
@@ -3249,18 +3086,15 @@ app.get('/api/download-report', requireAuth, (req, res) => {
                     db.all(policyQuery, vehicleIds, (err, policies) => {
                         if (err) policies = [];
                         
-                        // Get operators
-                        db.all('SELECT * FROM operators WHERE user_id = ? ORDER BY nombre', [userId], (err, operators) => {
-                            if (err) operators = [];
-                            
-                            // Get claims (siniestros)
-                            const claimsQuery = vehicleIds.length > 0
-                                ? `SELECT s.*, v.numero_vehiculo, v.marca, v.modelo FROM siniestros s 
-                                   JOIN vehicles v ON s.vehicle_id = v.id 
-                                   WHERE s.vehicle_id IN (${placeholders}) ORDER BY s.fecha_siniestro DESC`
-                                : 'SELECT * FROM siniestros WHERE 1=0';
-                            
-                            db.all(claimsQuery, vehicleIds, (err, claims) => {
+                        // Get claims (siniestros)
+                        const operators = []; // Operators removed from system
+                        const claimsQuery = vehicleIds.length > 0
+                            ? `SELECT s.*, v.numero_vehiculo, v.marca, v.modelo FROM siniestros s 
+                               JOIN vehicles v ON s.vehicle_id = v.id 
+                               WHERE s.vehicle_id IN (${placeholders}) ORDER BY s.fecha_siniestro DESC`
+                            : 'SELECT * FROM siniestros WHERE 1=0';
+                        
+                        db.all(claimsQuery, vehicleIds, (err, claims) => {
                                 if (err) claims = [];
                                 
                                 // Get tires
@@ -3359,11 +3193,6 @@ app.get('/api/download-report', requireAuth, (req, res) => {
                                        .text('Total Vehículos', 55, yPos + 5);
                                     doc.fontSize(18).text(`${vehicles.length}`, 55, yPos + 20);
                                     
-                                    drawBox(50 + boxWidth + 20, yPos, boxWidth, boxHeight, '#fff3e0');
-                                    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
-                                       .text('Total Operadores', 55 + boxWidth + 20, yPos + 5);
-                                    doc.fontSize(18).text(`${(operators || []).length}`, 55 + boxWidth + 20, yPos + 20);
-                                    
                                     yPos += boxHeight + 15;
                                     
                                     // Second row boxes
@@ -3421,8 +3250,8 @@ app.get('/api/download-report', requireAuth, (req, res) => {
                                         yPos += 30;
                                         
                                         // Table headers
-                                        const vCols = [80, 100, 80, 60, 80, 60, 60];
-                                        const vHeaders = ['# Vehículo', 'Marca/Modelo', 'Año', 'Placas', 'Kilometraje', 'Estado', 'Operador'];
+                                        const vCols = [80, 100, 80, 60, 80, 60];
+                                        const vHeaders = ['# Vehículo', 'Marca/Modelo', 'Año', 'Placas', 'Kilometraje', 'Estado'];
                                         let xPos = 50;
                                         
                                         vHeaders.forEach((header, i) => {
@@ -3456,8 +3285,6 @@ app.get('/api/download-report', requireAuth, (req, res) => {
                                             drawTableCell(xPos, yPos, vCols[4], 18, `${(vehicle.kilometraje_actual || 0).toLocaleString()} km`);
                                             xPos += vCols[4];
                                             drawTableCell(xPos, yPos, vCols[5], 18, vehicle.estado || '-');
-                                            xPos += vCols[5];
-                                            drawTableCell(xPos, yPos, vCols[6], 18, '-'); // Operator would need join
                                             yPos += 18;
                                         });
                                         
@@ -3625,70 +3452,6 @@ app.get('/api/download-report', requireAuth, (req, res) => {
                                         doc.addPage();
                                     }
                                     
-                                    // Operators Section with table
-                                    if (operators && operators.length > 0) {
-                                        yPos = 50;
-                                        doc.fontSize(18).font('Helvetica-Bold')
-                                           .fillColor('#001f3f')
-                                           .text('OPERADORES Y LICENCIAS', 50, yPos);
-                                        yPos += 30;
-                                        
-                                        const oCols = [100, 80, 80, 90, 80, 100];
-                                        const oHeaders = ['Nombre', 'Licencia', 'Vencimiento', 'Estado Licencia', 'Teléfono', 'Email'];
-                                        let xPos = 50;
-                                        
-                                        oHeaders.forEach((header, i) => {
-                                            drawTableHeader(xPos, yPos, oCols[i], 20, header);
-                                            xPos += oCols[i];
-                                        });
-                                        yPos += 20;
-                                        
-                                        operators.forEach((operator, index) => {
-                                            if (yPos > doc.page.height - 80) {
-                                                doc.addPage();
-                                                yPos = 50;
-                                                xPos = 50;
-                                                oHeaders.forEach((header, i) => {
-                                                    drawTableHeader(xPos, yPos, oCols[i], 20, header);
-                                                    xPos += oCols[i];
-                                                });
-                                                yPos += 20;
-                                            }
-                                            
-                                            xPos = 50;
-                                            drawTableCell(xPos, yPos, oCols[0], 18, operator.nombre || '-', true);
-                                            xPos += oCols[0];
-                                            drawTableCell(xPos, yPos, oCols[1], 18, operator.licencia || '-');
-                                            xPos += oCols[1];
-                                            
-                                            let estadoLicencia = 'N/A';
-                                            let estadoColor = 'black';
-                                            if (operator.fecha_vencimiento_licencia) {
-                                                const vencimiento = new Date(operator.fecha_vencimiento_licencia);
-                                                const hoy = new Date();
-                                                const diasDiferencia = Math.ceil((vencimiento - hoy) / (1000 * 60 * 60 * 24));
-                                                estadoLicencia = diasDiferencia < 0 ? `VENCIDA (${Math.abs(diasDiferencia)} días)` : 
-                                                                 diasDiferencia <= 7 ? `Por vencer (${diasDiferencia} días)` : 
-                                                                 diasDiferencia <= 30 ? `Vigente (${diasDiferencia} días)` : 'Vigente';
-                                                estadoColor = diasDiferencia < 0 ? '#dc3545' : diasDiferencia <= 7 ? '#ffc107' : '#28a745';
-                                                drawTableCell(xPos, yPos, oCols[2], 18, new Date(operator.fecha_vencimiento_licencia).toLocaleDateString('es-ES'));
-                                            } else {
-                                                drawTableCell(xPos, yPos, oCols[2], 18, '-');
-                                            }
-                                            xPos += oCols[2];
-                                            
-                                            doc.fillColor(estadoColor).fontSize(8).font('Helvetica-Bold')
-                                               .text(estadoLicencia, xPos + 5, yPos + 5);
-                                            doc.fillColor('black');
-                                            xPos += oCols[3];
-                                            drawTableCell(xPos, yPos, oCols[4], 18, operator.telefono || '-');
-                                            xPos += oCols[4];
-                                            drawTableCell(xPos, yPos, oCols[5], 18, (operator.email || '-').substring(0, 20));
-                                            yPos += 18;
-                                        });
-                                        
-                                        doc.addPage();
-                                    }
                                     
                                     // Claims Section with table
                                     if (claims && claims.length > 0) {
