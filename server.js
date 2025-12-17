@@ -224,7 +224,7 @@ function initializeDatabase() {
     )`);
 
     // Tire monthly reviews table
-    db.run(`CREATE TABLE IF NOT EXISTS tire_reviews (
+    db.runConverted(`CREATE TABLE IF NOT EXISTS tire_reviews (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tire_id INTEGER NOT NULL,
         fecha_revision DATE NOT NULL,
@@ -2634,7 +2634,7 @@ app.get('/tires', requireAuth, (req, res) => {
     
     query += ' ORDER BY t.fecha_instalacion DESC';
     
-    db.all(query, params, (err, tires) => {
+    db.allConverted(query, params, (err, tires) => {
         if (err) {
             return res.status(500).send('Error al cargar llantas');
         }
