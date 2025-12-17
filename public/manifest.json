@@ -8,6 +8,8 @@
   "display_override": ["standalone", "fullscreen"],
   "background_color": "#001f3f",
   "theme_color": "#001f3f",
+  "dir": "ltr",
+  "lang": "es",
   "orientation": "portrait-primary",
   "icons": [
     {

@@ -636,56 +636,70 @@
             }
         }
 
-        let isSubmittingVehicle = false;
-        document.getElementById('addVehicleForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        // Prevenir múltiples event listeners
+        const addVehicleForm = document.getElementById('addVehicleForm');
+        if (addVehicleForm && !addVehicleForm.dataset.listenerAttached) {
+            addVehicleForm.dataset.listenerAttached = 'true';
+            let isSubmittingVehicle = false;
             
-            // Prevenir doble envío
-            if (isSubmittingVehicle) {
-                return;
-            }
-            
-            isSubmittingVehicle = true;
-            const submitButton = this.querySelector('button[type="submit"]');
-            const originalText = submitButton.innerHTML;
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Agregando...';
-            
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData);
-            
-            // Convertir números
-            if (data.año) data.año = parseInt(data.año);
-            if (data.kilometraje_actual) data.kilometraje_actual = parseInt(data.kilometraje_actual);
-            
-            try {
-                const response = await fetch('/api/vehicles', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
+            addVehicleForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
                 
-                if (response.ok) {
-                    alert('Vehículo agregado exitosamente');
-                    document.getElementById('addVehicleModal').style.display = 'none';
-                    this.reset();
-                    window.location.reload();
-                } else {
-                    const error = await response.json();
-                    alert('Error: ' + (error.error || 'Error al agregar vehículo'));
+                // Prevenir doble envío
+                if (isSubmittingVehicle) {
+                    console.log('Ya se está procesando el envío');
+                    return false;
+                }
+                
+                isSubmittingVehicle = true;
+                const submitButton = this.querySelector('button[type="submit"]');
+                const originalText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Agregando...';
+                
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData);
+                
+                // Convertir números
+                if (data.año) data.año = parseInt(data.año);
+                if (data.kilometraje_actual) data.kilometraje_actual = parseInt(data.kilometraje_actual);
+                
+                try {
+                    const response = await fetch('/api/vehicles', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success) {
+                            alert('Vehículo agregado exitosamente');
+                            document.getElementById('addVehicleModal').style.display = 'none';
+                            this.reset();
+                            window.location.reload();
+                            return false;
+                        }
+                    } else {
+                        const error = await response.json();
+                        alert('Error: ' + (error.error || 'Error al agregar vehículo'));
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalText;
+                        isSubmittingVehicle = false;
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error al conectar con el servidor');
                     submitButton.disabled = false;
                     submitButton.innerHTML = originalText;
                     isSubmittingVehicle = false;
                 }
-            } catch (error) {
-                alert('Error al conectar con el servidor');
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalText;
-                isSubmittingVehicle = false;
-            }
-        });
+                return false;
+            });
+        }
 
         // Funciones para adjuntos e historial
         let currentEntityId = null;

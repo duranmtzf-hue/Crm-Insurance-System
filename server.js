@@ -2038,12 +2038,36 @@ app.get('/api/vehicles', requireAuth, (req, res) => {
     });
 });
 
+// Cache para prevenir duplicados en la misma sesión
+const recentVehicleSubmissions = new Map();
+
 app.post('/api/vehicles', requireAuth, (req, res) => {
     const userId = req.session.userId;
     const { 
         numero_vehiculo, marca, modelo, año, placas, kilometraje_actual, estado,
         descripcion, numero_serie
     } = req.body;
+    
+    // Crear una clave única para esta solicitud
+    const requestKey = `${userId}-${numero_vehiculo}-${Date.now()}`;
+    const submissionKey = `${userId}-${numero_vehiculo}-${marca}-${modelo}`;
+    
+    // Verificar si hay una solicitud duplicada reciente (últimos 2 segundos)
+    if (recentVehicleSubmissions.has(submissionKey)) {
+        const lastSubmission = recentVehicleSubmissions.get(submissionKey);
+        if (Date.now() - lastSubmission < 2000) {
+            console.log('Solicitud duplicada detectada, ignorando...');
+            return res.status(409).json({ error: 'Solicitud duplicada detectada' });
+        }
+    }
+    
+    // Registrar esta solicitud
+    recentVehicleSubmissions.set(submissionKey, Date.now());
+    
+    // Limpiar entradas antiguas después de 5 segundos
+    setTimeout(() => {
+        recentVehicleSubmissions.delete(submissionKey);
+    }, 5000);
     
     db.runConverted(`INSERT INTO vehicles (
         user_id, numero_vehiculo, marca, modelo, año, placas, kilometraje_actual, estado,
@@ -2056,11 +2080,13 @@ app.post('/api/vehicles', requireAuth, (req, res) => {
         (err, result) => {
             if (err) {
                 console.error('Error creating vehicle:', err);
+                recentVehicleSubmissions.delete(submissionKey);
                 return res.status(500).json({ error: 'Error al crear vehículo: ' + err.message });
             }
             
             const vehicleId = result?.lastID;
             if (!vehicleId) {
+                recentVehicleSubmissions.delete(submissionKey);
                 return res.status(500).json({ error: 'Error: No se pudo obtener el ID del vehículo creado' });
             }
             // Registrar en historial
