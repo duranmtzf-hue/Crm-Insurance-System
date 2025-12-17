@@ -2094,24 +2094,69 @@ app.delete('/api/vehicles/:id', requireAuth, (req, res) => {
         // Obtener datos antes de eliminar para el historial
         const vehicleData = { ...vehicle };
 
-        // Eliminar registros relacionados primero (o marcar como eliminados)
-        // Por ahora solo eliminamos el vehículo y registramos en historial
-        db.runConverted('DELETE FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, result) => {
-            if (err) {
-                console.error('Error eliminando vehículo:', err);
-                return res.status(500).json({ error: 'Error al eliminar vehículo: ' + err.message });
-            }
+        // Eliminar registros relacionados primero (en orden inverso de dependencias)
+        // 1. Eliminar attachments relacionados con el vehículo
+        db.runConverted('DELETE FROM attachments WHERE entity_type = ? AND entity_id = ?', ['vehicle', vehicleId], (err) => {
+            if (err) console.error('Error eliminando attachments:', err);
+            
+            // 2. Eliminar tire_reviews (depende de tires)
+            db.runConverted('DELETE FROM tire_reviews WHERE tire_id IN (SELECT id FROM tires WHERE vehicle_id = ?)', [vehicleId], (err) => {
+                if (err) console.error('Error eliminando tire_reviews:', err);
+                
+                // 3. Eliminar tires
+                db.runConverted('DELETE FROM tires WHERE vehicle_id = ?', [vehicleId], (err) => {
+                    if (err) console.error('Error eliminando tires:', err);
+                    
+                    // 4. Eliminar siniestros
+                    db.runConverted('DELETE FROM siniestros WHERE vehicle_id = ?', [vehicleId], (err) => {
+                        if (err) console.error('Error eliminando siniestros:', err);
+                        
+                        // 5. Eliminar service_orders (puede depender de siniestros, pero ya los eliminamos)
+                        db.runConverted('DELETE FROM service_orders WHERE vehicle_id = ?', [vehicleId], (err) => {
+                            if (err) console.error('Error eliminando service_orders:', err);
+                            
+                            // 6. Eliminar invoices relacionadas con service_orders del vehículo
+                            db.runConverted('DELETE FROM invoices WHERE service_order_id IN (SELECT id FROM service_orders WHERE vehicle_id = ?)', [vehicleId], (err) => {
+                                if (err) console.error('Error eliminando invoices:', err);
+                                
+                                // 7. Eliminar insurance_policies
+                                db.runConverted('DELETE FROM insurance_policies WHERE vehicle_id = ?', [vehicleId], (err) => {
+                                    if (err) console.error('Error eliminando insurance_policies:', err);
+                                    
+                                    // 8. Eliminar maintenance_records
+                                    db.runConverted('DELETE FROM maintenance_records WHERE vehicle_id = ?', [vehicleId], (err) => {
+                                        if (err) console.error('Error eliminando maintenance_records:', err);
+                                        
+                                        // 9. Eliminar fuel_records
+                                        db.runConverted('DELETE FROM fuel_records WHERE vehicle_id = ?', [vehicleId], (err) => {
+                                            if (err) console.error('Error eliminando fuel_records:', err);
+                                            
+                                            // 10. Finalmente eliminar el vehículo
+                                            db.runConverted('DELETE FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, result) => {
+                                                if (err) {
+                                                    console.error('Error eliminando vehículo:', err);
+                                                    return res.status(500).json({ error: 'Error al eliminar vehículo: ' + err.message });
+                                                }
 
-            // Registrar en historial (sin bloquear si falla)
-            try {
-                logActivity(userId, 'vehicle', vehicleId, 'deleted',
-                    `Vehículo eliminado: ${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, vehicleData, null);
-            } catch (logErr) {
-                console.error('Error registrando en historial:', logErr);
-                // No fallar la eliminación si el historial falla
-            }
+                                                // Registrar en historial (sin bloquear si falla)
+                                                try {
+                                                    logActivity(userId, 'vehicle', vehicleId, 'deleted',
+                                                        `Vehículo eliminado: ${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, vehicleData, null);
+                                                } catch (logErr) {
+                                                    console.error('Error registrando en historial:', logErr);
+                                                    // No fallar la eliminación si el historial falla
+                                                }
 
-            res.json({ success: true, message: 'Vehículo eliminado exitosamente' });
+                                                res.json({ success: true, message: 'Vehículo eliminado exitosamente' });
+                                            });
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
         });
     });
 });
