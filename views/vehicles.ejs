@@ -822,19 +822,27 @@
             
             try {
                 const response = await fetch('/api/vehicles/' + vehicleId, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+                    throw new Error(errorData.error || `Error ${response.status}`);
+                }
                 
                 const data = await response.json();
                 if (data.success) {
-                    alert('Vehículo eliminado');
+                    alert('Vehículo eliminado exitosamente');
                     window.location.reload();
                 } else {
                     alert('Error: ' + (data.error || 'No se pudo eliminar'));
                 }
             } catch (error) {
                 console.error('Error eliminando vehículo:', error);
-                alert('Error al eliminar vehículo');
+                alert('Error al eliminar vehículo: ' + error.message);
             }
         }
     </script>

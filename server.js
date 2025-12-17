@@ -1263,7 +1263,7 @@ app.delete('/api/invoices/:id', requireAuth, (req, res) => {
 
 // --- Funciones helper para historial ---
 function logActivity(userId, entityType, entityId, accion, descripcion, datosAnteriores, datosNuevos) {
-    db.run(
+    db.runConverted(
         `INSERT INTO activity_history (user_id, entity_type, entity_id, accion, descripcion, datos_anteriores, datos_nuevos)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -2099,14 +2099,19 @@ app.delete('/api/vehicles/:id', requireAuth, (req, res) => {
         db.runConverted('DELETE FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, result) => {
             if (err) {
                 console.error('Error eliminando vehículo:', err);
-                return res.status(500).json({ error: 'Error al eliminar vehículo' });
+                return res.status(500).json({ error: 'Error al eliminar vehículo: ' + err.message });
             }
 
-            // Registrar en historial
-            logActivity(userId, 'vehicle', vehicleId, 'deleted',
-                `Vehículo eliminado: ${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, vehicleData, null);
+            // Registrar en historial (sin bloquear si falla)
+            try {
+                logActivity(userId, 'vehicle', vehicleId, 'deleted',
+                    `Vehículo eliminado: ${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, vehicleData, null);
+            } catch (logErr) {
+                console.error('Error registrando en historial:', logErr);
+                // No fallar la eliminación si el historial falla
+            }
 
-            res.json({ success: true });
+            res.json({ success: true, message: 'Vehículo eliminado exitosamente' });
         });
     });
 });
