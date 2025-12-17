@@ -115,11 +115,16 @@ if (process.env.DATABASE_URL) {
             rejectUnauthorized: false
         }
     });
-    sessionStore = new pgSession({
-        pool: pool,
-        tableName: 'session', // nombre de la tabla
-        createTableIfMissing: true // Dejar que connect-pg-simple cree la tabla automáticamente
-    });
+    try {
+        sessionStore = new pgSession({
+            pool: pool,
+            tableName: 'session', // nombre de la tabla
+            createTableIfMissing: true // Dejar que connect-pg-simple cree la tabla automáticamente
+        });
+    } catch (err) {
+        console.error('Error configurando store de sesiones:', err);
+        sessionStore = null; // Fallback a MemoryStore si hay error
+    }
     console.log('✅ Sesiones configuradas con PostgreSQL');
 } else {
     // SQLite en desarrollo - usar MemoryStore (solo para desarrollo)
