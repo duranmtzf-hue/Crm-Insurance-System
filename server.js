@@ -1985,19 +1985,19 @@ app.get('/vehicles/:id', requireAuth, (req, res) => {
     const vehicleId = req.params.id;
     const userId = req.session.userId;
     
-    db.get('SELECT * FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, vehicle) => {
+    db.getConverted('SELECT * FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, vehicle) => {
         if (err || !vehicle) {
             return res.status(404).send('Vehículo no encontrado');
         }
         
         // Get fuel records
-        db.all('SELECT * FROM fuel_records WHERE vehicle_id = ? ORDER BY fecha DESC', [vehicleId], (err, fuelRecords) => {
+        db.allConverted('SELECT * FROM fuel_records WHERE vehicle_id = ? ORDER BY fecha DESC', [vehicleId], (err, fuelRecords) => {
             
             // Get maintenance records
-            db.all('SELECT * FROM maintenance_records WHERE vehicle_id = ? ORDER BY fecha DESC', [vehicleId], (err, maintenanceRecords) => {
+            db.allConverted('SELECT * FROM maintenance_records WHERE vehicle_id = ? ORDER BY fecha DESC', [vehicleId], (err, maintenanceRecords) => {
                 
                 // Get insurance policies
-                db.all('SELECT * FROM insurance_policies WHERE vehicle_id = ? ORDER BY fecha_vencimiento DESC', [vehicleId], (err, policies) => {
+                db.allConverted('SELECT * FROM insurance_policies WHERE vehicle_id = ? ORDER BY fecha_vencimiento DESC', [vehicleId], (err, policies) => {
                     
                     res.render('vehicle-detail', {
                         user: req.session,
@@ -2038,11 +2038,11 @@ app.post('/api/vehicles', requireAuth, (req, res) => {
         tipo_carga, descripcion_carga, accidente_conductor
     } = req.body;
     
-    db.run(`INSERT INTO vehicles (
+    db.runConverted(`INSERT INTO vehicles (
         user_id, numero_vehiculo, marca, modelo, año, placas, kilometraje_actual, estado,
         descripcion, numero_serie, valor_adaptacion,
         tipo_carga, descripcion_carga, accidente_conductor
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             userId, numero_vehiculo, marca, modelo, año, placas, kilometraje_actual || 0, estado || 'Activo',
             descripcion || null, numero_serie || null, valor_adaptacion || null,
@@ -2072,7 +2072,7 @@ app.delete('/api/vehicles/:id', requireAuth, (req, res) => {
     const vehicleId = req.params.id;
 
     // Verificar que el vehículo pertenece al usuario
-    db.get('SELECT * FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, vehicle) => {
+    db.getConverted('SELECT * FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, vehicle) => {
         if (err || !vehicle) {
             return res.status(404).json({ error: 'Vehículo no encontrado' });
         }
@@ -2082,7 +2082,7 @@ app.delete('/api/vehicles/:id', requireAuth, (req, res) => {
 
         // Eliminar registros relacionados primero (o marcar como eliminados)
         // Por ahora solo eliminamos el vehículo y registramos en historial
-        db.run('DELETE FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], function(err) {
+        db.runConverted('DELETE FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, result) => {
             if (err) {
                 console.error('Error eliminando vehículo:', err);
                 return res.status(500).json({ error: 'Error al eliminar vehículo' });

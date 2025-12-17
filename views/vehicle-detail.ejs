@@ -402,10 +402,7 @@
                     <div class="info-value"><%= vehicle.numero_serie %></div>
                 </div>
                 <% } %>
-            </div>
-        </div>
-
-        <% if (vehicle.valor_adaptacion) { %>
+                <% if (vehicle.valor_adaptacion) { %>
                 <div class="info-item">
                     <div class="info-label">Valor Adaptación</div>
                     <div class="info-value">$<%= parseFloat(vehicle.valor_adaptacion).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
@@ -431,7 +428,6 @@
                 <% } %>
             </div>
         </div>
-        <% } %>
 
         <!-- Registros de Combustible -->
         <div class="section">
