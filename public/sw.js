@@ -1,5 +1,5 @@
 // Service Worker para CRM Insurance System
-const CACHE_NAME = 'crm-insurance-v2';
+const CACHE_NAME = 'crm-insurance-v3';
 const urlsToCache = [
   '/',
   '/dashboard',
@@ -7,9 +7,9 @@ const urlsToCache = [
   '/policies',
   '/tires',
   '/claims',
-  '/operators',
   '/billing',
   '/reports',
+  '/tracking',
   '/login',
   '/register',
   '/images/logo.png',
@@ -18,13 +18,30 @@ const urlsToCache = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
 ];
 
+// Timeout para peticiones de red (3 segundos - más agresivo para conexiones lentas)
+const NETWORK_TIMEOUT = 3000;
+
+// Función helper para fetch con timeout
+function fetchWithTimeout(request, timeout = NETWORK_TIMEOUT) {
+  return Promise.race([
+    fetch(request),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Network timeout')), timeout)
+    )
+  ]);
+}
+
 // Instalación del Service Worker
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Cache abierto');
-        return cache.addAll(urlsToCache);
+        // Cachear sin esperar a que todas las URLs se resuelvan
+        return cache.addAll(urlsToCache).catch((err) => {
+          console.log('Algunos recursos no se pudieron cachear:', err);
+          // Continuar aunque algunos recursos fallen
+        });
       })
       .catch((err) => {
         console.log('Error al cachear:', err);
@@ -50,13 +67,43 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Estrategia: Cache First para recursos estáticos, Network First para páginas
+// Estrategia mejorada: Cache First para recursos estáticos, Network First con timeout para páginas
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // No cachear requests a la API (siempre usar red)
+  // Para requests a la API o métodos que no sean GET, usar Network First con timeout y fallback
   if (url.pathname.startsWith('/api/') || event.request.method !== 'GET') {
-    return fetch(event.request);
+    event.respondWith(
+      fetchWithTimeout(event.request.clone())
+        .then((response) => {
+          // Si la respuesta es válida, devolverla
+          if (response && response.status < 500) {
+            return response;
+          }
+          // Si hay error del servidor, intentar devolver una respuesta de error apropiada
+          throw new Error('Server error');
+        })
+        .catch((error) => {
+          // Si falla la red o hay timeout, devolver una respuesta de error JSON
+          // para que la app pueda manejar el error gracefully
+          if (url.pathname.startsWith('/api/')) {
+            return new Response(
+              JSON.stringify({ 
+                error: 'Sin conexión a internet. Por favor, verifica tu conexión.',
+                offline: true 
+              }),
+              {
+                status: 503,
+                statusText: 'Service Unavailable',
+                headers: { 'Content-Type': 'application/json' }
+              }
+            );
+          }
+          // Para otros métodos, devolver error genérico
+          return new Response('Sin conexión', { status: 503 });
+        })
+    );
+    return;
   }
 
   // Para recursos estáticos (CSS, JS, imágenes), usar Cache First
@@ -67,45 +114,62 @@ self.addEventListener('fetch', (event) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          return fetch(event.request).then((response) => {
-            if (response && response.status === 200) {
-              const responseToCache = response.clone();
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            }
-            return response;
-          });
+          // Si no está en cache, intentar obtenerlo de la red con timeout
+          return fetchWithTimeout(event.request)
+            .then((response) => {
+              if (response && response.status === 200) {
+                const responseToCache = response.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                  cache.put(event.request, responseToCache);
+                });
+              }
+              return response;
+            })
+            .catch(() => {
+              // Si falla la red, devolver una respuesta vacía o error según el tipo
+              if (url.pathname.match(/\.(css|js)$/)) {
+                return new Response('/* Resource unavailable offline */', {
+                  headers: { 'Content-Type': url.pathname.endsWith('.css') ? 'text/css' : 'application/javascript' }
+                });
+              }
+              return new Response('', { status: 404 });
+            });
         })
     );
     return;
   }
 
-  // Para páginas HTML, usar Network First
+  // Para páginas HTML, usar Network First con timeout
   event.respondWith(
-    fetch(event.request)
+    fetchWithTimeout(event.request.clone())
       .then((response) => {
-        // Si la respuesta es válida, clonarla y guardarla en cache
-        if (response && response.status === 200 && response.type === 'basic') {
+        // Si la respuesta es válida (200-299), clonarla y guardarla en cache
+        if (response && response.status >= 200 && response.status < 300) {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
           });
         }
+        // Incluso si es un error 401/403, devolver la respuesta para que el usuario vea el login
         return response;
       })
-      .catch(() => {
-        // Si falla la red, intentar desde cache
+      .catch((error) => {
+        // Si falla la red o hay timeout, intentar desde cache
         return caches.match(event.request).then((response) => {
           if (response) {
             return response;
           }
-          // Si no hay en cache y es una página, devolver dashboard
+          // Si no hay en cache y es una página, devolver dashboard o index
           if (event.request.destination === 'document') {
             return caches.match('/dashboard').then((dashboardResponse) => {
               return dashboardResponse || caches.match('/');
             });
           }
+          // Si no hay nada en cache, devolver una respuesta básica
+          return new Response('Sin conexión. Por favor, verifica tu conexión a internet.', {
+            status: 503,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' }
+          });
         });
       })
   );
