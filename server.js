@@ -1480,14 +1480,22 @@ app.get('/dashboard', requireAuth, (req, res) => {
     const userId = req.session.userId;
     
     // Get user vehicles
+    console.log('🔍 Dashboard - userId:', userId);
     db.allConverted('SELECT * FROM vehicles WHERE user_id = ?', [userId], (err, vehicles) => {
         if (err) {
+            console.error('❌ Error loading vehicles:', err);
             return res.status(500).send('Error al cargar vehículos');
+        }
+        
+        console.log('🚗 Vehicles found:', vehicles ? vehicles.length : 0);
+        if (vehicles && vehicles.length > 0) {
+            console.log('📋 First vehicle:', JSON.stringify(vehicles[0], null, 2));
         }
         
         // Get statistics
         const vehicleIds = vehicles.map(v => v.id);
         const placeholders = vehicleIds.map(() => '?').join(',');
+        console.log('🔢 Vehicle IDs:', vehicleIds);
         
         if (vehicleIds.length === 0) {
             const alertCounts = {
@@ -1549,25 +1557,33 @@ app.get('/dashboard', requireAuth, (req, res) => {
                 }
                 
                 // Get statistics
-                db.getConverted(`SELECT 
+                const statsQuery = `SELECT 
                     COUNT(*) as totalVehicles,
                     COALESCE(SUM(CASE WHEN estado = 'Activo' THEN 1 ELSE 0 END), 0) as activeVehicles
-                    FROM vehicles WHERE user_id = ?`, [userId], (err, vehicleStats) => {
+                    FROM vehicles WHERE user_id = ?`;
+                console.log('📝 Executing stats query with userId:', userId);
+                console.log('📝 Query:', statsQuery);
+                
+                db.getConverted(statsQuery, [userId], (err, vehicleStats) => {
                     
                     // Handle errors
                     if (err) {
-                        console.error('Error getting vehicle stats:', err);
-                        vehicleStats = { totalVehicles: 0, activeVehicles: 0 };
+                        console.error('❌ Error getting vehicle stats:', err);
+                        console.error('❌ Error details:', JSON.stringify(err, null, 2));
+                        vehicleStats = { totalVehicles: vehicles.length, activeVehicles: vehicles.filter(v => v.estado === 'Activo').length };
                     }
                     
                     // Convert to numbers (PostgreSQL may return strings or BigInt)
                     if (vehicleStats) {
-                        vehicleStats.totalVehicles = parseInt(vehicleStats.totalVehicles) || 0;
-                        vehicleStats.activeVehicles = parseInt(vehicleStats.activeVehicles) || 0;
-                        console.log('📊 Vehicle Stats:', vehicleStats);
+                        const originalTotal = vehicleStats.totalVehicles;
+                        const originalActive = vehicleStats.activeVehicles;
+                        vehicleStats.totalVehicles = parseInt(vehicleStats.totalVehicles) || vehicles.length || 0;
+                        vehicleStats.activeVehicles = parseInt(vehicleStats.activeVehicles) || vehicles.filter(v => v.estado === 'Activo').length || 0;
+                        console.log('📊 Vehicle Stats (raw):', { totalVehicles: originalTotal, activeVehicles: originalActive });
+                        console.log('📊 Vehicle Stats (converted):', vehicleStats);
                     } else {
-                        vehicleStats = { totalVehicles: 0, activeVehicles: 0 };
-                        console.log('⚠️ Vehicle Stats is null, using defaults');
+                        vehicleStats = { totalVehicles: vehicles.length, activeVehicles: vehicles.filter(v => v.estado === 'Activo').length };
+                        console.log('⚠️ Vehicle Stats is null, using vehicles array count:', vehicleStats);
                     }
                     
                     db.getConverted(`SELECT COALESCE(SUM(costo_total), 0) as totalFuelCost 
@@ -1857,16 +1873,40 @@ app.get('/dashboard', requireAuth, (req, res) => {
                                                                             notificationsHistory = [];
                                                                         }
 
+                                                                        // Log final stats before rendering
+                                                                        // Use vehicles array as fallback if stats query failed
+                                                                        const vehiclesCount = vehicles ? vehicles.length : 0;
+                                                                        const activeVehiclesCount = vehicles ? vehicles.filter(v => v.estado === 'Activo').length : 0;
+                                                                        
+                                                                        const finalStats = {
+                                                                            totalVehicles: vehicleStats && vehicleStats.totalVehicles !== undefined 
+                                                                                ? parseInt(vehicleStats.totalVehicles) || vehiclesCount 
+                                                                                : vehiclesCount,
+                                                                            activeVehicles: vehicleStats && vehicleStats.activeVehicles !== undefined 
+                                                                                ? parseInt(vehicleStats.activeVehicles) || activeVehiclesCount 
+                                                                                : activeVehiclesCount,
+                                                                            totalFuelCost: fuelStats && fuelStats.totalFuelCost !== undefined 
+                                                                                ? parseFloat(fuelStats.totalFuelCost) || 0 
+                                                                                : 0,
+                                                                            pendingMaintenance: maintStats && maintStats.pendingMaintenance !== undefined 
+                                                                                ? parseInt(maintStats.pendingMaintenance) || 0 
+                                                                                : 0,
+                                                                            expiringPolicies: policyStats && policyStats.expiringPolicies !== undefined 
+                                                                                ? parseInt(policyStats.expiringPolicies) || 0 
+                                                                                : 0
+                                                                        };
+                                                                        console.log('📊 Final Stats being sent to template:', finalStats);
+                                                                        console.log('📊 Vehicles count from array:', vehiclesCount);
+                                                                        console.log('📊 Active vehicles from array:', activeVehiclesCount);
+                                                                        console.log('📊 Raw vehicleStats:', vehicleStats);
+                                                                        console.log('📊 Raw fuelStats:', fuelStats);
+                                                                        console.log('📊 Raw maintStats:', maintStats);
+                                                                        console.log('📊 Raw policyStats:', policyStats);
+                                                                        
                                                                         res.render('dashboard', {
                                                                             user: req.session,
                                                                             vehicles: vehicles,
-                                                                            stats: {
-                                                                                totalVehicles: vehicleStats?.totalVehicles || 0,
-                                                                                activeVehicles: vehicleStats?.activeVehicles || 0,
-                                                                                totalFuelCost: fuelStats?.totalFuelCost || 0,
-                                                                                pendingMaintenance: maintStats?.pendingMaintenance || 0,
-                                                                                expiringPolicies: policyStats?.expiringPolicies || 0
-                                                                            },
+                                                                            stats: finalStats,
                                                                             recentFuel: recentFuel || [],
                                                                             recentMaintenance: recentMaintenance || [],
                                                                             alerts: alerts || [],
