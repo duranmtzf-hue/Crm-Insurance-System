@@ -1549,17 +1549,28 @@ app.get('/dashboard', requireAuth, (req, res) => {
                 }
                 
                 // Get statistics
-                db.get(`SELECT 
+                db.getConverted(`SELECT 
                     COUNT(*) as totalVehicles,
-                    SUM(CASE WHEN estado = 'Activo' THEN 1 ELSE 0 END) as activeVehicles
+                    COALESCE(SUM(CASE WHEN estado = 'Activo' THEN 1 ELSE 0 END), 0) as activeVehicles
                     FROM vehicles WHERE user_id = ?`, [userId], (err, vehicleStats) => {
                     
                     // Handle errors
                     if (err) {
                         console.error('Error getting vehicle stats:', err);
+                        vehicleStats = { totalVehicles: 0, activeVehicles: 0 };
                     }
                     
-                    db.get(`SELECT SUM(costo_total) as totalFuelCost 
+                    // Convert to numbers (PostgreSQL may return strings or BigInt)
+                    if (vehicleStats) {
+                        vehicleStats.totalVehicles = parseInt(vehicleStats.totalVehicles) || 0;
+                        vehicleStats.activeVehicles = parseInt(vehicleStats.activeVehicles) || 0;
+                        console.log('📊 Vehicle Stats:', vehicleStats);
+                    } else {
+                        vehicleStats = { totalVehicles: 0, activeVehicles: 0 };
+                        console.log('⚠️ Vehicle Stats is null, using defaults');
+                    }
+                    
+                    db.getConverted(`SELECT COALESCE(SUM(costo_total), 0) as totalFuelCost 
                             FROM fuel_records 
                             WHERE vehicle_id IN (${placeholders}) 
                             AND fecha >= date('now', '-30 days')`, 
@@ -1568,9 +1579,17 @@ app.get('/dashboard', requireAuth, (req, res) => {
                         // Handle errors
                         if (err) {
                             console.error('Error getting fuel stats:', err);
+                            fuelStats = { totalFuelCost: 0 };
                         }
                         
-                        db.get(`SELECT COUNT(*) as pendingMaintenance 
+                        // Convert to number
+                        if (fuelStats) {
+                            fuelStats.totalFuelCost = parseFloat(fuelStats.totalFuelCost) || 0;
+                        } else {
+                            fuelStats = { totalFuelCost: 0 };
+                        }
+                        
+                        db.getConverted(`SELECT COUNT(*) as pendingMaintenance 
                                 FROM maintenance_records 
                                 WHERE vehicle_id IN (${placeholders}) 
                                 AND tipo = 'Preventivo' 
@@ -1580,9 +1599,17 @@ app.get('/dashboard', requireAuth, (req, res) => {
                             // Handle errors
                             if (err) {
                                 console.error('Error getting maintenance stats:', err);
+                                maintStats = { pendingMaintenance: 0 };
                             }
                             
-                            db.get(`SELECT COUNT(*) as expiringPolicies 
+                            // Convert to number
+                            if (maintStats) {
+                                maintStats.pendingMaintenance = parseInt(maintStats.pendingMaintenance) || 0;
+                            } else {
+                                maintStats = { pendingMaintenance: 0 };
+                            }
+                            
+                            db.getConverted(`SELECT COUNT(*) as expiringPolicies 
                                     FROM insurance_policies 
                                     WHERE vehicle_id IN (${placeholders}) 
                                     AND fecha_vencimiento BETWEEN date('now') AND date('now', '+30 days') 
@@ -1592,6 +1619,14 @@ app.get('/dashboard', requireAuth, (req, res) => {
                                 // Handle errors
                                 if (err) {
                                     console.error('Error getting policy stats:', err);
+                                    policyStats = { expiringPolicies: 0 };
+                                }
+                                
+                                // Convert to number
+                                if (policyStats) {
+                                    policyStats.expiringPolicies = parseInt(policyStats.expiringPolicies) || 0;
+                                } else {
+                                    policyStats = { expiringPolicies: 0 };
                                 }
                                 
                                 // Get all types of alerts
@@ -2771,13 +2806,16 @@ app.get('/tires', requireAuth, (req, res) => {
     
     db.allConverted(query, params, (err, tires) => {
         if (err) {
+            console.error('Error loading tires:', err);
             return res.status(500).send('Error al cargar llantas');
         }
-        // Get vehicles for dropdown
-        db.all('SELECT id, numero_vehiculo, marca, modelo FROM vehicles WHERE user_id = ? ORDER BY numero_vehiculo', [userId], (err, vehicles) => {
+        // Get vehicles for dropdown - use allConverted for consistency
+        db.allConverted('SELECT id, numero_vehiculo, marca, modelo FROM vehicles WHERE user_id = ? ORDER BY numero_vehiculo', [userId], (err, vehicles) => {
             if (err) {
+                console.error('Error loading vehicles for tires page:', err);
                 return res.status(500).send('Error al cargar vehículos');
             }
+            console.log('Vehicles loaded for tires page:', vehicles ? vehicles.length : 0);
             res.render('tires', { user: req.session, tires: tires || [], vehicles: vehicles || [], selectedVehicle: vehicleId });
         });
     });
