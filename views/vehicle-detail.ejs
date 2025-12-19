@@ -901,12 +901,114 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Kilometraje de Instalación</label>
-                        <input type="number" class="form-control" name="kilometraje_instalacion" placeholder="Ej: 50000" value="<%= vehicle.kilometraje_actual || '' %>">
+                        <input type="number" class="form-control" name="kilometraje_instalacion" id="kilometrajeInstalacion" placeholder="Ej: 50000" value="<%= vehicle.kilometraje_actual || '' %>" oninput="calcularCostoPorKm()">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Costo</label>
-                        <input type="number" step="0.01" class="form-control" name="costo" placeholder="0.00">
+                        <label class="form-label">Costo de Llanta Nueva</label>
+                        <input type="number" step="0.01" class="form-control" name="costo" id="costoLlantaNueva" placeholder="0.00" oninput="calcularCostoPorKm()">
                     </div>
+                    
+                    <!-- Calculadora de Costo por Kilómetro -->
+                    <div class="calculator-section" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid var(--accent);">
+                        <h3 style="color: var(--primary); margin-bottom: 20px; font-size: 1.2rem;">
+                            <i class="fas fa-calculator"></i> Calculadora de Costo por Kilómetro
+                        </h3>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                            <div>
+                                <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1rem;">Información sobre Llantas Nuevas</h4>
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <label class="form-label" style="font-size: 0.9rem;">Valor de la Llanta Nueva</label>
+                                    <div style="position: relative;">
+                                        <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #666;">$</span>
+                                        <input type="number" step="0.01" class="form-control" id="valorLlantaNueva" placeholder="6000" style="padding-left: 25px;" oninput="calcularCostoPorKm()">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" style="font-size: 0.9rem;">Kilómetros de Llanta Nueva</label>
+                                    <input type="number" class="form-control" id="kmLlantaNueva" placeholder="300000" oninput="calcularCostoPorKm()">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1rem;">Información de Reencauche</h4>
+                                <div class="form-group" style="margin-bottom: 10px;">
+                                    <label class="form-label" style="font-size: 0.9rem;">Número de Reencauches</label>
+                                    <select class="form-control" id="numReencauches" onchange="toggleReencauches()" style="font-size: 0.9rem;">
+                                        <option value="0">0</option>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                    </select>
+                                </div>
+                                <div id="reencauche1" style="display: none; margin-bottom: 10px;">
+                                    <div class="form-group" style="margin-bottom: 8px;">
+                                        <label class="form-label" style="font-size: 0.85rem;">Reencauche 1 Valor</label>
+                                        <div style="position: relative;">
+                                            <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #666; font-size: 0.85rem;">$</span>
+                                            <input type="number" step="0.01" class="form-control" id="reencauche1Valor" placeholder="0.00" style="padding-left: 25px; font-size: 0.9rem;" oninput="calcularCostoPorKm()">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size: 0.85rem;">Reencauche 1 KM</label>
+                                        <input type="number" class="form-control" id="reencauche1Km" placeholder="0" style="font-size: 0.9rem;" oninput="calcularCostoPorKm()">
+                                    </div>
+                                </div>
+                                <div id="reencauche2" style="display: none; margin-bottom: 10px;">
+                                    <div class="form-group" style="margin-bottom: 8px;">
+                                        <label class="form-label" style="font-size: 0.85rem;">Reencauche 2 Valor</label>
+                                        <div style="position: relative;">
+                                            <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #666; font-size: 0.85rem;">$</span>
+                                            <input type="number" step="0.01" class="form-control" id="reencauche2Valor" placeholder="0.00" style="padding-left: 25px; font-size: 0.9rem;" oninput="calcularCostoPorKm()">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size: 0.85rem;">Reencauche 2 KM</label>
+                                        <input type="number" class="form-control" id="reencauche2Km" placeholder="0" style="font-size: 0.9rem;" oninput="calcularCostoPorKm()">
+                                    </div>
+                                </div>
+                                <div id="reencauche3" style="display: none;">
+                                    <div class="form-group" style="margin-bottom: 8px;">
+                                        <label class="form-label" style="font-size: 0.85rem;">Reencauche 3 Valor</label>
+                                        <div style="position: relative;">
+                                            <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #666; font-size: 0.85rem;">$</span>
+                                            <input type="number" step="0.01" class="form-control" id="reencauche3Valor" placeholder="0.00" style="padding-left: 25px; font-size: 0.9rem;" oninput="calcularCostoPorKm()">
+                                    </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size: 0.85rem;">Reencauche 3 KM</label>
+                                        <input type="number" class="form-control" id="reencauche3Km" placeholder="0" style="font-size: 0.9rem;" oninput="calcularCostoPorKm()">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Resultados -->
+                        <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+                            <h4 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">Resultados</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <div>
+                                    <label style="font-size: 0.9rem; color: #666; display: block; margin-bottom: 5px;">Total de la Inversión:</label>
+                                    <div style="font-size: 1.3rem; font-weight: 600; color: var(--primary);" id="totalInversion">$0.00</div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.9rem; color: #666; display: block; margin-bottom: 5px;">Total de KM:</label>
+                                    <div style="font-size: 1.3rem; font-weight: 600; color: var(--primary);" id="totalKm">0</div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.9rem; color: #666; display: block; margin-bottom: 5px;">Costo por KM:</label>
+                                    <div style="font-size: 1.3rem; font-weight: 600; color: var(--accent);" id="costoPorKm">$0.0000</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
+                                <label style="font-size: 0.85rem; color: #666; display: block; margin-bottom: 5px;">Fórmula de Costo por KM:</label>
+                                <div style="font-size: 0.85rem; color: #666; font-style: italic;" id="formulaCostoKm">
+                                    (Costo de Llanta Nueva + Reencauches) / (Kilómetros de la Llanta Nueva + Reencauches)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="form-group">
                         <label class="form-label">Estado</label>
                         <select class="form-control" name="estado">
@@ -1151,6 +1253,109 @@
                 alert('Error al conectar con el servidor');
             }
         });
+
+        // Funciones de la calculadora de costo por kilómetro
+        function toggleReencauches() {
+            const numReencauches = parseInt(document.getElementById('numReencauches').value) || 0;
+            document.getElementById('reencauche1').style.display = numReencauches >= 1 ? 'block' : 'none';
+            document.getElementById('reencauche2').style.display = numReencauches >= 2 ? 'block' : 'none';
+            document.getElementById('reencauche3').style.display = numReencauches >= 3 ? 'block' : 'none';
+            calcularCostoPorKm();
+        }
+
+        function calcularCostoPorKm() {
+            // Obtener valores de llanta nueva
+            const valorLlantaNueva = parseFloat(document.getElementById('valorLlantaNueva').value) || 0;
+            const kmLlantaNueva = parseFloat(document.getElementById('kmLlantaNueva').value) || 0;
+            
+            // Sincronizar con el campo de costo del formulario
+            const costoInput = document.getElementById('costoLlantaNueva');
+            if (costoInput && valorLlantaNueva > 0) {
+                costoInput.value = valorLlantaNueva;
+            }
+            
+            // Sincronizar con el campo de kilometraje de instalación
+            const kmInput = document.getElementById('kilometrajeInstalacion');
+            if (kmInput && kmLlantaNueva > 0) {
+                kmInput.value = kmLlantaNueva;
+            }
+            
+            // Obtener valores de reencauches
+            const numReencauches = parseInt(document.getElementById('numReencauches').value) || 0;
+            let totalReencauches = 0;
+            let totalKmReencauches = 0;
+            
+            if (numReencauches >= 1) {
+                const rec1Valor = parseFloat(document.getElementById('reencauche1Valor').value) || 0;
+                const rec1Km = parseFloat(document.getElementById('reencauche1Km').value) || 0;
+                totalReencauches += rec1Valor;
+                totalKmReencauches += rec1Km;
+            }
+            
+            if (numReencauches >= 2) {
+                const rec2Valor = parseFloat(document.getElementById('reencauche2Valor').value) || 0;
+                const rec2Km = parseFloat(document.getElementById('reencauche2Km').value) || 0;
+                totalReencauches += rec2Valor;
+                totalKmReencauches += rec2Km;
+            }
+            
+            if (numReencauches >= 3) {
+                const rec3Valor = parseFloat(document.getElementById('reencauche3Valor').value) || 0;
+                const rec3Km = parseFloat(document.getElementById('reencauche3Km').value) || 0;
+                totalReencauches += rec3Valor;
+                totalKmReencauches += rec3Km;
+            }
+            
+            // Calcular totales
+            const totalInversion = valorLlantaNueva + totalReencauches;
+            const totalKm = kmLlantaNueva + totalKmReencauches;
+            
+            // Calcular costo por kilómetro
+            let costoPorKm = 0;
+            if (totalKm > 0) {
+                costoPorKm = totalInversion / totalKm;
+            }
+            
+            // Actualizar resultados
+            document.getElementById('totalInversion').textContent = '$' + totalInversion.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('totalKm').textContent = totalKm.toLocaleString('es-ES');
+            document.getElementById('costoPorKm').textContent = '$' + costoPorKm.toFixed(4);
+            
+            // Actualizar fórmula
+            let formula = '(Costo de Llanta Nueva (' + valorLlantaNueva.toLocaleString('es-ES') + ')';
+            if (totalReencauches > 0) {
+                formula += ' + Reencauches ((' + totalReencauches.toLocaleString('es-ES') + ') = ' + totalInversion.toLocaleString('es-ES') + ')';
+            } else {
+                formula += ' = ' + totalInversion.toLocaleString('es-ES') + ')';
+            }
+            formula += ' / Kilómetros de la Llanta Nueva (' + kmLlantaNueva.toLocaleString('es-ES') + ')';
+            if (totalKmReencauches > 0) {
+                formula += ' + Reencauches ((' + totalKmReencauches.toLocaleString('es-ES') + ') = ' + totalKm.toLocaleString('es-ES') + ')';
+            }
+            formula += ')';
+            
+            document.getElementById('formulaCostoKm').textContent = formula;
+        }
+
+        // Sincronizar campos cuando se abre el modal de llantas
+        const tireForm = document.getElementById('tireForm');
+        if (tireForm) {
+            tireForm.addEventListener('focusin', function(e) {
+                if (e.target.name === 'costo' || e.target.name === 'kilometraje_instalacion') {
+                    setTimeout(function() {
+                        const costoInput = document.getElementById('costoLlantaNueva');
+                        const kmInput = document.getElementById('kilometrajeInstalacion');
+                        if (costoInput && costoInput.value) {
+                            document.getElementById('valorLlantaNueva').value = costoInput.value;
+                        }
+                        if (kmInput && kmInput.value) {
+                            document.getElementById('kmLlantaNueva').value = kmInput.value;
+                        }
+                        calcularCostoPorKm();
+                    }, 100);
+                }
+            });
+        }
 
     </script>
 </body>
