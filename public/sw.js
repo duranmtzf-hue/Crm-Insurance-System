@@ -1,5 +1,5 @@
 // Service Worker para CRM Insurance System
-const CACHE_NAME = 'crm-insurance-v4';
+const CACHE_NAME = 'crm-insurance-v5';
 const urlsToCache = [
   '/',
   '/dashboard',
@@ -13,6 +13,8 @@ const urlsToCache = [
   '/login',
   '/register',
   '/images/logo.png',
+  '/images/icons/icon-192x192.png',
+  '/images/icons/icon-512x512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
