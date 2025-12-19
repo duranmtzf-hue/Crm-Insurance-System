@@ -1,5 +1,5 @@
 // Service Worker para CRM Insurance System
-const CACHE_NAME = 'crm-insurance-v3';
+const CACHE_NAME = 'crm-insurance-v4';
 const urlsToCache = [
   '/',
   '/dashboard',

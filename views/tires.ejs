@@ -500,14 +500,26 @@
                     <label class="form-label">Filtrar por Vehículo</label>
                     <select class="form-control" name="vehicle_id" onchange="this.form.submit()">
                         <option value="">Todos los vehículos</option>
-                        <% vehicles.forEach(function(vehicle) { %>
-                        <option value="<%= vehicle.id %>" <%= selectedVehicle == vehicle.id ? 'selected' : '' %>>
-                            #<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %>
-                        </option>
-                        <% }); %>
+                        <% if (vehicles && vehicles.length > 0) { %>
+                            <% vehicles.forEach(function(vehicle) { %>
+                            <option value="<%= vehicle.id %>" <%= String(selectedVehicle) === String(vehicle.id) ? 'selected' : '' %>>
+                                #<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %>
+                            </option>
+                            <% }); %>
+                        <% } else { %>
+                            <option value="" disabled>No hay vehículos registrados</option>
+                        <% } %>
                     </select>
                 </div>
             </form>
+            <% if (!vehicles || vehicles.length === 0) { %>
+            <div style="margin-top: 15px; padding: 15px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                <strong>⚠️ No hay vehículos registrados</strong>
+                <p style="margin: 8px 0 0 0; font-size: 0.9rem; color: #856404;">
+                    Para agregar llantas, primero necesitas registrar vehículos en el módulo de <a href="/vehicles" style="color: var(--primary); font-weight: 600;">Vehículos</a>.
+                </p>
+            </div>
+            <% } %>
         </div>
 
         <!-- Semáforo de Llantas -->

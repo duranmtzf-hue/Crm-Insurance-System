@@ -8,9 +8,23 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CRM Insurance">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="CRM Insurance">
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" sizes="32x32" href="/images/logo.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/logo.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/images/logo.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/images/logo.png">
+    <link rel="shortcut icon" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/images/logo.png">
+    <link rel="apple-touch-icon" sizes="57x57" href="/images/logo.png">
     <link rel="apple-touch-icon" href="/images/logo.png">
     <title>Rastreo GPS | CRM Insurance System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -350,6 +364,7 @@
         let trackingInterval = null;
         let currentVehicleId = null;
         let watchId = null;
+        let locationErrorShown = false; // Flag para mostrar error solo una vez
 
         // Inicializar mapa
         function initMap() {
@@ -397,6 +412,7 @@
             try {
                 const location = await getCurrentLocation();
                 const deviceInfo = navigator.userAgent;
+                locationErrorShown = false; // Resetear flag si se obtiene ubicación exitosamente
 
                 const response = await fetch('/api/location', {
                     method: 'POST',
@@ -424,7 +440,12 @@
                 }
             } catch (error) {
                 console.error('Error obteniendo ubicación:', error);
-                alert('Error al obtener ubicación. Asegúrate de permitir el acceso a la ubicación.');
+                // Solo mostrar alert una vez, no constantemente
+                if (!locationErrorShown) {
+                    locationErrorShown = true;
+                    // Usar console.warn en lugar de alert para no ser intrusivo
+                    console.warn('Error al obtener ubicación. Asegúrate de permitir el acceso a la ubicación.');
+                }
             }
         }
 
@@ -581,7 +602,11 @@
                         }
                     },
                     (error) => {
-                        console.error('Error en watchPosition:', error);
+                        // Silenciar errores de watchPosition para no ser intrusivo
+                        // Solo loguear si es un error crítico (no timeout)
+                        if (error.code !== error.TIMEOUT) {
+                            console.warn('Error en watchPosition:', error.message);
+                        }
                     },
                     {
                         enableHighAccuracy: true,
