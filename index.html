@@ -2259,12 +2259,10 @@
             return false;
         }
 
-        // Si no está instalada, mostrar el botón
+        // Si no está instalada, mostrar el botón siempre (móvil y escritorio)
         if (!checkIfInstalled()) {
-            // En móviles, siempre mostrar el botón si no está instalada
-            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                installPWA.style.display = 'inline-flex';
-            }
+            // Mostrar el botón siempre, tanto en móvil como en escritorio
+            installPWA.style.display = 'inline-flex';
         }
 
         // Registrar Service Worker
@@ -2301,14 +2299,25 @@
                 // Mostrar instrucciones según el dispositivo
                 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
                 const isAndroid = /Android/.test(navigator.userAgent);
+                const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+                const isEdge = /Edg/.test(navigator.userAgent);
+                const isFirefox = /Firefox/.test(navigator.userAgent);
+                
+                let message = '';
                 
                 if (isIOS) {
-                    alert('Para instalar la app en iOS:\n1. Toca el botón de compartir (cuadrado con flecha)\n2. Selecciona "Añadir a pantalla de inicio"\n3. Toca "Añadir"');
+                    message = 'Para instalar la app en iOS:\n\n1. Toca el botón de compartir (cuadrado con flecha arriba) en la barra inferior\n2. Desplázate y selecciona "Añadir a pantalla de inicio"\n3. Toca "Añadir" en la esquina superior derecha';
                 } else if (isAndroid) {
-                    alert('Para instalar la app en Android:\n1. Toca el menú (3 puntos) en la esquina superior derecha\n2. Selecciona "Instalar aplicación" o "Añadir a pantalla de inicio"\n3. Confirma la instalación');
+                    message = 'Para instalar la app en Android:\n\n1. Toca el menú (3 puntos ⋮) en la esquina superior derecha\n2. Selecciona "Instalar aplicación" o "Añadir a pantalla de inicio"\n3. Confirma la instalación';
+                } else if (isChrome || isEdge) {
+                    message = 'Para instalar la app en Chrome/Edge:\n\n1. Busca el ícono de instalación (➕) en la barra de direcciones (extremo derecho)\n2. Haz clic en el ícono y selecciona "Instalar"\n\nSi no ves el ícono, espera unos segundos o recarga la página.';
+                } else if (isFirefox) {
+                    message = 'Para instalar la app en Firefox:\n\n1. Haz clic en el menú (☰) en la esquina superior derecha\n2. Selecciona "Instalar sitio como aplicación"\n3. Confirma la instalación';
                 } else {
-                    alert('Para instalar la app:\n1. Busca el ícono de instalación en la barra de direcciones\n2. O usa el menú del navegador para "Instalar aplicación"');
+                    message = 'Para instalar la app:\n\n1. Busca el ícono de instalación (➕) en la barra de direcciones\n2. O usa el menú del navegador para "Instalar aplicación"\n\nNota: Algunos navegadores pueden requerir que visites la página varias veces antes de mostrar la opción de instalación.';
                 }
+                
+                alert(message);
             }
         });
 
