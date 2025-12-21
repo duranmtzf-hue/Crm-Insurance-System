@@ -6,6 +6,7 @@ const urlsToCache = [
   '/vehicles',
   '/policies',
   '/tires',
+  '/fines',
   '/claims',
   '/billing',
   '/reports',

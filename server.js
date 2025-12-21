@@ -332,6 +332,23 @@ function initializeDatabase() {
         FOREIGN KEY (policy_id) REFERENCES insurance_policies(id)
     )`);
 
+    // Fines table (Multas)
+    db.runConverted(`CREATE TABLE IF NOT EXISTS fines (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_id INTEGER NOT NULL,
+        fecha DATE NOT NULL,
+        tipo TEXT,
+        motivo TEXT NOT NULL,
+        monto REAL NOT NULL,
+        estado TEXT DEFAULT 'Pendiente',
+        lugar TEXT,
+        numero_boleta TEXT,
+        fecha_vencimiento DATE,
+        observaciones TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+    )`);
+
     // --- Facturación: órdenes de servicio y facturas ---
 
     // Service orders (ligadas a vehículos, mantenimientos, siniestros, etc.)
@@ -2980,6 +2997,179 @@ app.post('/api/tires/:tire_id/reviews', requireAuth, (req, res) => {
                 
                 res.json({ success: true, id: reviewId });
             });
+    });
+});
+
+// Fines routes (Multas)
+app.get('/fines', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const vehicleId = req.query.vehicle_id;
+    const estado = req.query.estado;
+    
+    let query = `SELECT f.*, v.numero_vehiculo, v.marca, v.modelo
+                 FROM fines f
+                 JOIN vehicles v ON f.vehicle_id = v.id
+                 WHERE v.user_id = ?`;
+    let params = [userId];
+    
+    if (vehicleId) {
+        query += ' AND f.vehicle_id = ?';
+        params.push(vehicleId);
+    }
+    
+    if (estado) {
+        query += ' AND f.estado = ?';
+        params.push(estado);
+    }
+    
+    query += ' ORDER BY f.fecha DESC';
+    
+    db.allConverted(query, params, (err, fines) => {
+        if (err) {
+            console.error('Error loading fines:', err);
+            return res.status(500).send('Error al cargar multas');
+        }
+        // Get vehicles for dropdown
+        db.allConverted('SELECT id, numero_vehiculo, marca, modelo FROM vehicles WHERE user_id = ? ORDER BY numero_vehiculo', [userId], (err, vehicles) => {
+            if (err) {
+                console.error('Error loading vehicles for fines page:', err);
+                return res.status(500).send('Error al cargar vehículos');
+            }
+            res.render('fines', { 
+                user: req.session, 
+                fines: fines || [], 
+                vehicles: vehicles || [], 
+                selectedVehicle: vehicleId,
+                selectedEstado: estado 
+            });
+        });
+    });
+});
+
+app.get('/api/fines', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const vehicleId = req.query.vehicle_id;
+    const estado = req.query.estado;
+    
+    let query = `SELECT f.*, v.numero_vehiculo, v.marca, v.modelo
+                 FROM fines f
+                 JOIN vehicles v ON f.vehicle_id = v.id
+                 WHERE v.user_id = ?`;
+    let params = [userId];
+    
+    if (vehicleId) {
+        query += ' AND f.vehicle_id = ?';
+        params.push(vehicleId);
+    }
+    
+    if (estado) {
+        query += ' AND f.estado = ?';
+        params.push(estado);
+    }
+    
+    query += ' ORDER BY f.fecha DESC';
+    
+    db.allConverted(query, params, (err, fines) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al cargar multas' });
+        }
+        res.json(fines || []);
+    });
+});
+
+app.post('/api/fines', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const { vehicle_id, fecha, tipo, motivo, monto, estado, lugar, numero_boleta, fecha_vencimiento, observaciones } = req.body;
+    
+    if (!vehicle_id || !fecha || !motivo || !monto) {
+        return res.status(400).json({ error: 'Vehículo, fecha, motivo y monto son requeridos' });
+    }
+    
+    // Verify vehicle belongs to user
+    db.getConverted('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicle_id, userId], (err, vehicle) => {
+        if (err || !vehicle) {
+            return res.status(403).json({ error: 'Vehículo no encontrado' });
+        }
+        
+        db.runConverted(`INSERT INTO fines (vehicle_id, fecha, tipo, motivo, monto, estado, lugar, numero_boleta, fecha_vencimiento, observaciones)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [vehicle_id, fecha, tipo || null, motivo, monto, estado || 'Pendiente', lugar || null, numero_boleta || null, fecha_vencimiento || null, observaciones || null],
+            (err, result) => {
+                if (err) {
+                    console.error('Error creating fine:', err);
+                    return res.status(500).json({ error: 'Error al crear registro de multa' });
+                }
+                
+                const fineId = result?.lastID;
+                if (!fineId) {
+                    return res.status(500).json({ error: 'Error: No se pudo obtener el ID de la multa creada' });
+                }
+                
+                // Registrar actividad
+                logActivity(userId, 'fine', fineId, 'created', 
+                    `Multa agregada: ${motivo} - $${monto}`, null, { motivo: motivo, monto: monto, estado: estado || 'Pendiente' });
+                
+                res.json({ success: true, id: fineId });
+            });
+    });
+});
+
+app.put('/api/fines/:id', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const fineId = req.params.id;
+    const { fecha, tipo, motivo, monto, estado, lugar, numero_boleta, fecha_vencimiento, observaciones } = req.body;
+    
+    // Verify fine belongs to user
+    db.getConverted(`SELECT f.id FROM fines f
+            JOIN vehicles v ON f.vehicle_id = v.id
+            WHERE f.id = ? AND v.user_id = ?`, [fineId, userId], (err, fine) => {
+        if (err || !fine) {
+            return res.status(403).json({ error: 'Multa no encontrada' });
+        }
+        
+        db.runConverted(`UPDATE fines 
+                SET fecha = ?, tipo = ?, motivo = ?, monto = ?, estado = ?, lugar = ?, numero_boleta = ?, fecha_vencimiento = ?, observaciones = ?
+                WHERE id = ?`,
+            [fecha, tipo || null, motivo, monto, estado, lugar || null, numero_boleta || null, fecha_vencimiento || null, observaciones || null, fineId],
+            (err) => {
+                if (err) {
+                    console.error('Error updating fine:', err);
+                    return res.status(500).json({ error: 'Error al actualizar multa' });
+                }
+                
+                // Registrar actividad
+                logActivity(userId, 'fine', fineId, 'updated', 
+                    `Multa actualizada: ${motivo} - $${monto}`, null, { motivo: motivo, monto: monto, estado: estado });
+                
+                res.json({ success: true });
+            });
+    });
+});
+
+app.delete('/api/fines/:id', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const fineId = req.params.id;
+    
+    // Verify fine belongs to user
+    db.getConverted(`SELECT f.id FROM fines f
+            JOIN vehicles v ON f.vehicle_id = v.id
+            WHERE f.id = ? AND v.user_id = ?`, [fineId, userId], (err, fine) => {
+        if (err || !fine) {
+            return res.status(403).json({ error: 'Multa no encontrada' });
+        }
+        
+        db.runConverted('DELETE FROM fines WHERE id = ?', [fineId], (err) => {
+            if (err) {
+                console.error('Error deleting fine:', err);
+                return res.status(500).json({ error: 'Error al eliminar multa' });
+            }
+            
+            // Registrar actividad
+            logActivity(userId, 'fine', fineId, 'deleted', 
+                'Multa eliminada', null, null);
+            
+            res.json({ success: true });
+        });
     });
 });
 
