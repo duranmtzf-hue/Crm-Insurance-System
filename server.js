@@ -176,8 +176,14 @@ function initializeDatabase() {
         password TEXT NOT NULL,
         nombre TEXT,
         empresa TEXT,
+        role TEXT DEFAULT 'admin', -- 'admin' or 'operador'
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+    
+    // Add role column if it doesn't exist (for existing databases)
+    db.run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'admin'`, (err) => {
+        // Ignore error if column already exists
+    });
 
     // Vehicles table
     db.runConverted(`CREATE TABLE IF NOT EXISTS vehicles (
@@ -393,6 +399,49 @@ function initializeDatabase() {
         updated_at DATETIME,
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (service_order_id) REFERENCES service_orders(id)
+    )`);
+
+    // Carta Porte (documento de transporte)
+    db.run(`CREATE TABLE IF NOT EXISTS carta_porte (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        vehicle_id INTEGER,
+        folio TEXT,
+        fecha DATE NOT NULL,
+        origen TEXT,
+        destino TEXT,
+        mercancia TEXT,
+        peso REAL,
+        valor_declarado REAL,
+        remitente TEXT,
+        destinatario TEXT,
+        estado TEXT DEFAULT 'Borrador', -- Borrador, Emitida, Cancelada
+        observaciones TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+    )`);
+
+    // Route tracking (seguimiento de rutas para operadores)
+    db.run(`CREATE TABLE IF NOT EXISTS routes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        vehicle_id INTEGER,
+        fecha_inicio DATE NOT NULL,
+        hora_inicio TIME NOT NULL,
+        fecha_fin DATE,
+        hora_fin TIME,
+        origen TEXT,
+        destino TEXT,
+        kilometraje_inicio INTEGER,
+        kilometraje_fin INTEGER,
+        estado TEXT DEFAULT 'En Curso', -- 'En Curso', 'Finalizada', 'Cancelada'
+        observaciones TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
     )`);
 
     // --- Notificaciones automáticas (cola simple en BD) ---
@@ -749,6 +798,7 @@ app.post('/login', (req, res) => {
             req.session.userId = user.id;
             req.session.username = user.username;
             req.session.nombre = user.nombre;
+            req.session.role = user.role || 'admin';
             
             // Guardar la sesión explícitamente antes de redirigir
             req.session.save((err) => {
@@ -756,7 +806,12 @@ app.post('/login', (req, res) => {
                     console.error('Error guardando sesión:', err);
                     return res.render('login', { error: 'Error al iniciar sesión. Intenta de nuevo.' });
                 }
-                res.redirect('/dashboard');
+                // Redirigir operadores a su interfaz especial
+                if (user.role === 'operador') {
+                    res.redirect('/operador/rutas');
+                } else {
+                    res.redirect('/dashboard');
+                }
             });
         } else {
             return res.render('login', { error: 'Usuario o contraseña incorrectos' });
@@ -808,6 +863,24 @@ function requireAuth(req, res, next) {
     }
 }
 
+// Middleware to check if user is admin
+function requireAdmin(req, res, next) {
+    if (req.session.userId && req.session.role === 'admin') {
+        next();
+    } else {
+        res.status(403).send('Acceso denegado. Se requieren permisos de administrador.');
+    }
+}
+
+// Middleware to check if user is operator
+function requireOperator(req, res, next) {
+    if (req.session.userId && req.session.role === 'operador') {
+        next();
+    } else {
+        res.status(403).send('Acceso denegado. Se requieren permisos de operador.');
+    }
+}
+
 // --- Facturación: vistas y APIs básicas ---
 
 // Vista principal de órdenes de servicio y facturas
@@ -853,12 +926,30 @@ app.get('/billing', requireAuth, (req, res) => {
                                 vehicles = [];
                             }
 
-                            res.render('billing', {
-                                user: req.session,
-                                orders: orders || [],
-                                invoices: invoices || [],
-                                vehicles: vehicles || []
-                            });
+                            // Obtener cartas porte
+                            db.all(
+                                `SELECT cp.*, v.numero_vehiculo, v.marca, v.modelo
+                                 FROM carta_porte cp
+                                 LEFT JOIN vehicles v ON cp.vehicle_id = v.id
+                                 WHERE cp.user_id = ?
+                                 ORDER BY cp.fecha DESC, cp.id DESC
+                                 LIMIT 50`,
+                                [userId],
+                                (err4, cartasPorte) => {
+                                    if (err4) {
+                                        console.error('Error loading cartas porte:', err4);
+                                        cartasPorte = [];
+                                    }
+
+                                    res.render('billing', {
+                                        user: req.session,
+                                        orders: orders || [],
+                                        invoices: invoices || [],
+                                        vehicles: vehicles || [],
+                                        cartasPorte: cartasPorte || []
+                                    });
+                                }
+                            );
                         }
                     );
                 }
@@ -1257,6 +1348,185 @@ app.delete('/api/invoices/:id', requireAuth, (req, res) => {
             res.json({ success: true });
         });
     });
+});
+
+// API: Carta Porte
+app.post('/api/carta-porte', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const {
+        vehicle_id, folio, fecha, origen, destino, mercancia,
+        peso, valor_declarado, remitente, destinatario, estado, observaciones
+    } = req.body;
+
+    if (!fecha || !origen || !destino) {
+        return res.status(400).json({ error: 'Fecha, origen y destino son requeridos' });
+    }
+
+    db.run(
+        `INSERT INTO carta_porte (user_id, vehicle_id, folio, fecha, origen, destino, mercancia, 
+         peso, valor_declarado, remitente, destinatario, estado, observaciones)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [userId, vehicle_id || null, folio || null, fecha, origen, destino, mercancia || null,
+         peso || null, valor_declarado || null, remitente || null, destinatario || null,
+         estado || 'Borrador', observaciones || null],
+        function(err) {
+            if (err) {
+                console.error('Error creating carta porte:', err);
+                return res.status(500).json({ error: 'Error al crear la carta porte' });
+            }
+            res.json({ success: true, id: this.lastID });
+        }
+    );
+});
+
+app.delete('/api/carta-porte/:id', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const cartaPorteId = req.params.id;
+
+    db.run('DELETE FROM carta_porte WHERE id = ? AND user_id = ?', [cartaPorteId, userId], function(err) {
+        if (err) {
+            console.error('Error deleting carta porte:', err);
+            return res.status(500).json({ error: 'Error al eliminar la carta porte' });
+        }
+        res.json({ success: true });
+    });
+});
+
+// --- Rutas para Operadores ---
+app.get('/operador/rutas', requireOperator, (req, res) => {
+    const userId = req.session.userId;
+    
+    // Obtener vehículos asignados al operador
+    db.all(
+        'SELECT id, numero_vehiculo, marca, modelo FROM vehicles WHERE operador_id = ? OR user_id = ? ORDER BY numero_vehiculo',
+        [userId, userId],
+        (err, vehicles) => {
+            if (err) {
+                console.error('Error loading vehicles for operator:', err);
+                vehicles = [];
+            }
+            res.render('operator-routes', {
+                user: req.session,
+                vehicles: vehicles || []
+            });
+        }
+    );
+});
+
+// API: Iniciar ruta
+app.post('/api/routes/start', requireOperator, (req, res) => {
+    const userId = req.session.userId;
+    const { vehicle_id, fecha_inicio, hora_inicio, origen, destino, kilometraje_inicio, observaciones } = req.body;
+
+    if (!vehicle_id || !fecha_inicio || !hora_inicio) {
+        return res.status(400).json({ error: 'Vehículo, fecha y hora de inicio son requeridos' });
+    }
+
+    // Verificar si ya hay una ruta activa
+    db.get(
+        'SELECT * FROM routes WHERE user_id = ? AND estado = ?',
+        [userId, 'En Curso'],
+        (err, activeRoute) => {
+            if (err) {
+                console.error('Error checking active route:', err);
+                return res.status(500).json({ error: 'Error al verificar rutas activas' });
+            }
+            if (activeRoute) {
+                return res.status(400).json({ error: 'Ya tienes una ruta en curso. Finalízala antes de iniciar una nueva.' });
+            }
+
+            db.run(
+                `INSERT INTO routes (user_id, vehicle_id, fecha_inicio, hora_inicio, origen, destino, 
+                 kilometraje_inicio, observaciones, estado)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [userId, vehicle_id, fecha_inicio, hora_inicio, origen || null, destino || null,
+                 kilometraje_inicio || null, observaciones || null, 'En Curso'],
+                function(err) {
+                    if (err) {
+                        console.error('Error starting route:', err);
+                        return res.status(500).json({ error: 'Error al iniciar la ruta' });
+                    }
+                    res.json({ success: true, id: this.lastID });
+                }
+            );
+        }
+    );
+});
+
+// API: Finalizar ruta
+app.post('/api/routes/:id/end', requireOperator, (req, res) => {
+    const userId = req.session.userId;
+    const routeId = req.params.id;
+    const { kilometraje_fin, observaciones } = req.body;
+
+    if (!kilometraje_fin) {
+        return res.status(400).json({ error: 'Kilometraje final es requerido' });
+    }
+
+    const now = new Date();
+    const fechaFin = now.toISOString().split('T')[0];
+    const horaFin = now.toTimeString().split(' ')[0].substring(0, 5);
+
+    db.run(
+        `UPDATE routes SET fecha_fin = ?, hora_fin = ?, kilometraje_fin = ?, 
+         observaciones = COALESCE(?, observaciones), estado = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND user_id = ? AND estado = ?`,
+        [fechaFin, horaFin, kilometraje_fin, observaciones || null, 'Finalizada', routeId, userId, 'En Curso'],
+        function(err) {
+            if (err) {
+                console.error('Error ending route:', err);
+                return res.status(500).json({ error: 'Error al finalizar la ruta' });
+            }
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Ruta no encontrada o ya finalizada' });
+            }
+            res.json({ success: true });
+        }
+    );
+});
+
+// API: Obtener ruta activa
+app.get('/api/routes/active', requireOperator, (req, res) => {
+    const userId = req.session.userId;
+    
+    db.get(
+        `SELECT r.*, v.numero_vehiculo, v.marca, v.modelo
+         FROM routes r
+         LEFT JOIN vehicles v ON r.vehicle_id = v.id
+         WHERE r.user_id = ? AND r.estado = ?
+         ORDER BY r.created_at DESC
+         LIMIT 1`,
+        [userId, 'En Curso'],
+        (err, route) => {
+            if (err) {
+                console.error('Error loading active route:', err);
+                return res.status(500).json({ error: 'Error al cargar la ruta activa' });
+            }
+            res.json({ success: true, route: route || null });
+        }
+    );
+});
+
+// API: Obtener historial de rutas
+app.get('/api/routes', requireOperator, (req, res) => {
+    const userId = req.session.userId;
+    
+    db.all(
+        `SELECT r.*, v.numero_vehiculo, v.marca, v.modelo
+         FROM routes r
+         LEFT JOIN vehicles v ON r.vehicle_id = v.id
+         WHERE r.user_id = ?
+         ORDER BY r.fecha_inicio DESC, r.hora_inicio DESC
+         LIMIT 50`,
+        [userId],
+        (err, routes) => {
+            if (err) {
+                console.error('Error loading routes:', err);
+                return res.status(500).json({ error: 'Error al cargar las rutas' });
+            }
+            res.json({ success: true, routes: routes || [] });
+        }
+    );
 });
 
 // --- Funciones helper para historial ---

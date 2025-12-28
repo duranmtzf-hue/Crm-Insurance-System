@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Rutas | Operador</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #001f3f;
+            --secondary: #87ceeb;
+            --accent: #4da6ff;
+            --light: #f5f7fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border: #dee2e6;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            --success: #28a745;
+            --danger: #dc3545;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        header {
+            background-color: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0;
+            margin-bottom: 0;
+        }
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo img {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+        }
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        .logo-text span {
+            color: var(--accent);
+        }
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .page-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .route-control-card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            border: 1px solid var(--border);
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+        }
+        .route-control-card h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            color: var(--primary);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: 'Open Sans', sans-serif;
+            transition: border-color 0.2s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 31, 63, 0.1);
+        }
+        .btn {
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .active-route {
+            background: #d4edda;
+            border: 2px solid var(--success);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .active-route h3 {
+            color: var(--success);
+            margin-bottom: 15px;
+        }
+        .routes-history {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+        .routes-history h2 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background-color: #f8f9fa;
+        }
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray);
+        }
+        .empty-state i {
+            font-size: 3.5rem;
+            color: #dee2e6;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px 10px;
+            }
+            .route-control-card {
+                padding: 20px;
+            }
+            .page-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <img src="/images/logo.png" alt="Logo">
+                <div class="logo-text">CRM <span>Insurance</span> System</div>
+            </div>
+            <div class="user-menu">
+                <span><%= user.nombre || user.username %></span>
+                <a href="/logout" class="btn btn-secondary">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1 class="page-title">
+            <i class="fas fa-route"></i>
+            Control de Rutas
+        </h1>
+
+        <!-- Ruta Activa -->
+        <div id="activeRouteSection" style="display: none;">
+            <div class="active-route">
+                <h3><i class="fas fa-map-marked-alt"></i> Ruta en Curso</h3>
+                <div id="activeRouteInfo"></div>
+                <button class="btn btn-danger" onclick="endRoute()">
+                    <i class="fas fa-stop-circle"></i> Finalizar Ruta
+                </button>
+            </div>
+        </div>
+
+        <!-- Iniciar Nueva Ruta -->
+        <div class="route-control-card">
+            <h2><i class="fas fa-play-circle"></i> Iniciar Nueva Ruta</h2>
+            <form id="startRouteForm">
+                <div class="form-group">
+                    <label class="form-label">Vehículo *</label>
+                    <select class="form-control" name="vehicle_id" id="vehicleSelect" required>
+                        <option value="">Seleccionar vehículo</option>
+                        <% vehicles.forEach(function(vehicle) { %>
+                        <option value="<%= vehicle.id %>">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></option>
+                        <% }); %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Origen</label>
+                    <input type="text" class="form-control" name="origen" placeholder="Lugar de origen">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Destino</label>
+                    <input type="text" class="form-control" name="destino" placeholder="Lugar de destino">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Kilometraje Inicial</label>
+                    <input type="number" class="form-control" name="kilometraje_inicio" placeholder="Kilometraje actual del vehículo">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Observaciones</label>
+                    <textarea class="form-control" name="observaciones" rows="3" placeholder="Observaciones adicionales"></textarea>
+                </div>
+                <button type="submit" class="btn btn-success" id="startRouteBtn">
+                    <i class="fas fa-play"></i> Iniciar Ruta
+                </button>
+            </form>
+        </div>
+
+        <!-- Historial de Rutas -->
+        <div class="routes-history">
+            <h2><i class="fas fa-history"></i> Historial de Rutas</h2>
+            <div id="routesTableContainer">
+                <div class="empty-state">
+                    <i class="fas fa-route"></i>
+                    <p>Cargando historial de rutas...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentRoute = null;
+
+        // Cargar ruta activa al iniciar
+        async function loadActiveRoute() {
+            try {
+                const response = await fetch('/api/routes/active');
+                const data = await response.json();
+                if (data.success && data.route) {
+                    currentRoute = data.route;
+                    displayActiveRoute(data.route);
+                } else {
+                    document.getElementById('activeRouteSection').style.display = 'none';
+                    document.getElementById('startRouteForm').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading active route:', error);
+            }
+        }
+
+        function displayActiveRoute(route) {
+            document.getElementById('activeRouteSection').style.display = 'block';
+            const info = document.getElementById('activeRouteInfo');
+            const fechaInicio = new Date(route.fecha_inicio + 'T' + route.hora_inicio).toLocaleString('es-ES');
+            info.innerHTML = `
+                <p><strong>Vehículo:</strong> ${route.numero_vehiculo || 'N/A'} - ${route.marca || ''} ${route.modelo || ''}</p>
+                <p><strong>Inicio:</strong> ${fechaInicio}</p>
+                <p><strong>Origen:</strong> ${route.origen || 'No especificado'}</p>
+                <p><strong>Destino:</strong> ${route.destino || 'No especificado'}</p>
+                <p><strong>Kilometraje Inicial:</strong> ${route.kilometraje_inicio ? route.kilometraje_inicio.toLocaleString() + ' km' : 'No registrado'}</p>
+            `;
+            document.getElementById('startRouteForm').style.display = 'none';
+        }
+
+        async function endRoute() {
+            if (!currentRoute) return;
+            
+            const kilometrajeFin = prompt('Ingrese el kilometraje final:');
+            if (!kilometrajeFin) return;
+
+            const observaciones = prompt('Observaciones (opcional):') || '';
+
+            try {
+                const response = await fetch(`/api/routes/${currentRoute.id}/end`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        kilometraje_fin: parseInt(kilometrajeFin),
+                        observaciones: observaciones
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Ruta finalizada correctamente');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo finalizar la ruta'));
+                }
+            } catch (error) {
+                alert('Error de conexión: ' + error.message);
+            }
+        }
+
+        document.getElementById('startRouteForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            if (data.vehicle_id) data.vehicle_id = parseInt(data.vehicle_id);
+            if (data.kilometraje_inicio) data.kilometraje_inicio = parseInt(data.kilometraje_inicio);
+
+            // Agregar fecha y hora actual
+            const now = new Date();
+            data.fecha_inicio = now.toISOString().split('T')[0];
+            data.hora_inicio = now.toTimeString().split(' ')[0].substring(0, 5);
+
+            try {
+                const response = await fetch('/api/routes/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Ruta iniciada correctamente');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'No se pudo iniciar la ruta'));
+                }
+            } catch (error) {
+                alert('Error de conexión: ' + error.message);
+            }
+        });
+
+        async function loadRoutesHistory() {
+            try {
+                const response = await fetch('/api/routes');
+                const data = await response.json();
+                if (data.success && data.routes.length > 0) {
+                    const container = document.getElementById('routesTableContainer');
+                    container.innerHTML = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Fecha Inicio</th>
+                                    <th>Hora Inicio</th>
+                                    <th>Fecha Fin</th>
+                                    <th>Hora Fin</th>
+                                    <th>Vehículo</th>
+                                    <th>Origen</th>
+                                    <th>Destino</th>
+                                    <th>Kilometraje</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.routes.map(route => {
+                                    const kmRecorridos = route.kilometraje_fin && route.kilometraje_inicio 
+                                        ? route.kilometraje_fin - route.kilometraje_inicio 
+                                        : null;
+                                    const estadoClass = route.estado === 'Finalizada' ? 'badge-success' : 
+                                                       route.estado === 'En Curso' ? 'badge-warning' : 'badge-danger';
+                                    return `
+                                        <tr>
+                                            <td>${new Date(route.fecha_inicio).toLocaleDateString('es-ES')}</td>
+                                            <td>${route.hora_inicio || '-'}</td>
+                                            <td>${route.fecha_fin ? new Date(route.fecha_fin).toLocaleDateString('es-ES') : '-'}</td>
+                                            <td>${route.hora_fin || '-'}</td>
+                                            <td>${route.numero_vehiculo || 'N/A'}</td>
+                                            <td>${route.origen || '-'}</td>
+                                            <td>${route.destino || '-'}</td>
+                                            <td>${kmRecorridos ? kmRecorridos.toLocaleString() + ' km' : '-'}</td>
+                                            <td><span class="badge ${estadoClass}">${route.estado}</span></td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    document.getElementById('routesTableContainer').innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-route"></i>
+                            <p>No hay rutas registradas</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading routes:', error);
+            }
+        }
+
+        // Cargar datos al iniciar
+        loadActiveRoute();
+        loadRoutesHistory();
+    </script>
+</body>
+</html>
+

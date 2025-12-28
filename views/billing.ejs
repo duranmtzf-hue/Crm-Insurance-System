@@ -555,6 +555,9 @@
                 <button class="btn btn-success" id="btnNewInvoice">
                     <i class="fas fa-file-invoice"></i> Nueva Factura
                 </button>
+                <button class="btn" id="btnNewCartaPorte" style="background-color: #17a2b8;">
+                    <i class="fas fa-truck"></i> Nueva Carta Porte
+                </button>
             </div>
         </div>
 
@@ -734,6 +737,81 @@
                 </div>
                 <% } %>
             </div>
+
+            <!-- Carta Porte -->
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-truck"></i>
+                        Cartas Porte Recientes
+                    </h2>
+                </div>
+                <% if (!cartasPorte || cartasPorte.length === 0) { %>
+                <div class="empty-state">
+                    <i class="fas fa-truck"></i>
+                    <p>No hay cartas porte registradas.</p>
+                </div>
+                <% } else { %>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Folio</th>
+                                <th>Vehículo</th>
+                                <th>Origen</th>
+                                <th>Destino</th>
+                                <th>Mercancía</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% cartasPorte.forEach(function(cp) { %>
+                            <tr>
+                                <td data-label="Fecha"><%= new Date(cp.fecha).toLocaleDateString('es-ES') %></td>
+                                <td data-label="Folio"><strong><%= cp.folio || 'N/A' %></strong></td>
+                                <td data-label="Vehículo">
+                                    <% if (cp.vehicle_id) { %>
+                                        <strong>#<%= cp.numero_vehiculo %></strong>
+                                        <div class="text-muted"><%= cp.marca %> <%= cp.modelo %></div>
+                                    <% } else { %>
+                                        <span class="text-muted">Sin vehículo</span>
+                                    <% } %>
+                                </td>
+                                <td data-label="Origen"><%= cp.origen || '-' %></td>
+                                <td data-label="Destino"><%= cp.destino || '-' %></td>
+                                <td data-label="Mercancía"><%= cp.mercancia || '-' %></td>
+                                <td data-label="Estado">
+                                    <% 
+                                    const cpEstado = cp.estado || 'Borrador';
+                                    let cpCls = 'badge-info';
+                                    if (cpEstado === 'Borrador') cpCls = 'badge-warning';
+                                    if (cpEstado === 'Emitida') cpCls = 'badge-success';
+                                    if (cpEstado === 'Cancelada') cpCls = 'badge-danger';
+                                    %>
+                                    <span class="badge <%= cpCls %>"><%= cpEstado %></span>
+                                </td>
+                                <td data-label="Acciones">
+                                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                        <button class="btn btn-attachments" style="padding: 4px 10px; font-size: 0.8rem; background-color: var(--accent);" data-entity-id="<%= cp.id %>" data-entity-type="carta_porte" data-entity-name="Carta Porte <%= cp.folio || cp.id %>">
+                                            <i class="fas fa-paperclip"></i>
+                                        </button>
+                                        <button class="btn btn-history" style="padding: 4px 10px; font-size: 0.8rem; background-color: #6c757d;" data-entity-id="<%= cp.id %>" data-entity-type="carta_porte" data-entity-name="Carta Porte <%= cp.folio || cp.id %>">
+                                            <i class="fas fa-history"></i>
+                                        </button>
+                                        <button class="btn btn-danger btn-delete-carta-porte" style="padding: 4px 10px; font-size: 0.8rem;" data-carta-porte-id="<%= cp.id %>">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+                <% } %>
+            </div>
         </div>
     </div>
 
@@ -895,6 +973,87 @@
         </div>
     </div>
 
+    <!-- Modal Carta Porte -->
+    <div id="cartaPorteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nueva Carta Porte</h2>
+                <button class="modal-close" onclick="window.closeCartaPorteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="cartaPorteForm">
+                    <div class="form-group">
+                        <label class="form-label">Vehículo *</label>
+                        <select name="vehicle_id" class="form-control" required>
+                            <option value="">Seleccionar vehículo</option>
+                            <% vehicles.forEach(function(vehicle) { %>
+                            <option value="<%= vehicle.id %>">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Folio</label>
+                            <input type="text" name="folio" class="form-control" placeholder="Folio de la carta porte">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Fecha *</label>
+                            <input type="date" name="fecha" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Origen *</label>
+                        <input type="text" name="origen" class="form-control" placeholder="Ciudad y estado de origen" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Destino *</label>
+                        <input type="text" name="destino" class="form-control" placeholder="Ciudad y estado de destino" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Mercancía</label>
+                        <input type="text" name="mercancia" class="form-control" placeholder="Tipo de mercancía transportada">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Peso (kg)</label>
+                            <input type="number" name="peso" class="form-control" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Valor Declarado</label>
+                            <input type="number" name="valor_declarado" class="form-control" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Remitente</label>
+                        <input type="text" name="remitente" class="form-control" placeholder="Nombre del remitente">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Destinatario</label>
+                        <input type="text" name="destinatario" class="form-control" placeholder="Nombre del destinatario">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estado</label>
+                        <select name="estado" class="form-control">
+                            <option value="Borrador">Borrador</option>
+                            <option value="Emitida">Emitida</option>
+                            <option value="Cancelada">Cancelada</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Observaciones</label>
+                        <textarea name="observaciones" rows="3" class="form-control" placeholder="Observaciones adicionales"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="window.closeCartaPorteModal()">Cancelar</button>
+                        <button type="submit" class="btn" style="background-color: #17a2b8;">
+                            <i class="fas fa-save"></i> Guardar Carta Porte
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Modales Órdenes - Funciones globales
         window.openOrderModal = function() {
@@ -934,6 +1093,30 @@
             }
         };
 
+        // Modales Carta Porte - Funciones globales
+        window.openCartaPorteModal = function() {
+            var modal = document.getElementById('cartaPorteModal');
+            if (modal) {
+                modal.style.display = 'block';
+                // Set today's date as default
+                const fechaInput = modal.querySelector('input[name="fecha"]');
+                if (fechaInput && !fechaInput.value) {
+                    fechaInput.value = new Date().toISOString().split('T')[0];
+                }
+            }
+        };
+        
+        window.closeCartaPorteModal = function() {
+            var modal = document.getElementById('cartaPorteModal');
+            var form = document.getElementById('cartaPorteForm');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            if (form) {
+                form.reset();
+            }
+        };
+
         // Event listeners para botones de crear
         document.addEventListener('DOMContentLoaded', function() {
             var btnNewOrder = document.getElementById('btnNewOrder');
@@ -949,16 +1132,27 @@
                     window.openInvoiceModal();
                 });
             }
+
+            var btnNewCartaPorte = document.getElementById('btnNewCartaPorte');
+            if (btnNewCartaPorte) {
+                btnNewCartaPorte.addEventListener('click', function() {
+                    window.openCartaPorteModal();
+                });
+            }
         });
 
         window.addEventListener('click', function (event) {
             const orderModal = document.getElementById('orderModal');
             const invoiceModal = document.getElementById('invoiceModal');
+            const cartaPorteModal = document.getElementById('cartaPorteModal');
             if (event.target === orderModal) {
                 window.closeOrderModal();
             }
             if (event.target === invoiceModal) {
                 window.closeInvoiceModal();
+            }
+            if (event.target === cartaPorteModal) {
+                window.closeCartaPorteModal();
             }
         });
 
@@ -1010,6 +1204,33 @@
                     window.location.reload();
                 } else {
                     alert('Error: ' + (result.error || 'No se pudo crear la factura'));
+                }
+            } catch (err) {
+                alert('Error de conexión: ' + err.message);
+            }
+        });
+
+        document.getElementById('cartaPorteForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+
+            if (data.vehicle_id) data.vehicle_id = parseInt(data.vehicle_id);
+            if (data.peso) data.peso = parseFloat(data.peso);
+            if (data.valor_declarado) data.valor_declarado = parseFloat(data.valor_declarado);
+
+            try {
+                const res = await fetch('/api/carta-porte', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Carta Porte creada correctamente');
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'No se pudo crear la carta porte'));
                 }
             } catch (err) {
                 alert('Error de conexión: ' + err.message);
@@ -1172,6 +1393,26 @@
                 btn.addEventListener('click', function() {
                     const invoiceId = parseInt(this.getAttribute('data-invoice-id'));
                     deleteInvoice(invoiceId);
+                });
+            });
+
+            // Botones de eliminar carta porte
+            document.querySelectorAll('.btn-delete-carta-porte').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const cartaPorteId = parseInt(this.getAttribute('data-carta-porte-id'));
+                    if (confirm('¿Estás seguro de eliminar esta carta porte?')) {
+                        fetch('/api/carta-porte/' + cartaPorteId, { method: 'DELETE' })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    alert('Carta Porte eliminada');
+                                    window.location.reload();
+                                } else {
+                                    alert('Error: ' + (data.error || 'No se pudo eliminar'));
+                                }
+                            })
+                            .catch(err => alert('Error: ' + err.message));
+                    }
                 });
             });
         });
