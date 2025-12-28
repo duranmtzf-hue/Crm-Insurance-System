@@ -401,20 +401,64 @@ function initializeDatabase() {
         FOREIGN KEY (service_order_id) REFERENCES service_orders(id)
     )`);
 
-    // Carta Porte (documento de transporte)
+    // Carta Porte (documento de transporte) - Campos completos según SAT
     db.run(`CREATE TABLE IF NOT EXISTS carta_porte (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         vehicle_id INTEGER,
         folio TEXT,
         fecha DATE NOT NULL,
+        hora_salida TIME,
+        fecha_llegada DATE,
+        hora_llegada TIME,
         origen TEXT,
+        origen_cp TEXT,
+        origen_estado TEXT,
+        origen_municipio TEXT,
         destino TEXT,
+        destino_cp TEXT,
+        destino_estado TEXT,
+        destino_municipio TEXT,
+        distancia_km REAL,
+        tipo_transporte TEXT DEFAULT 'Terrestre', -- Terrestre, Aéreo, Marítimo, Fluvial
+        tipo_servicio TEXT, -- Transporte de carga, Pasajeros, etc.
+        numero_guia TEXT,
         mercancia TEXT,
+        cantidad REAL,
+        unidad_medida TEXT DEFAULT 'kg',
         peso REAL,
+        peso_bruto REAL,
+        volumen REAL,
         valor_declarado REAL,
-        remitente TEXT,
-        destinatario TEXT,
+        moneda TEXT DEFAULT 'MXN',
+        -- Datos del Transportista
+        transportista_nombre TEXT,
+        transportista_rfc TEXT,
+        transportista_regimen TEXT,
+        -- Datos del Remitente
+        remitente_nombre TEXT,
+        remitente_rfc TEXT,
+        remitente_domicilio TEXT,
+        remitente_cp TEXT,
+        remitente_estado TEXT,
+        remitente_municipio TEXT,
+        -- Datos del Destinatario
+        destinatario_nombre TEXT,
+        destinatario_rfc TEXT,
+        destinatario_domicilio TEXT,
+        destinatario_cp TEXT,
+        destinatario_estado TEXT,
+        destinatario_municipio TEXT,
+        -- Datos del Operador
+        operador_nombre TEXT,
+        operador_licencia TEXT,
+        operador_rfc TEXT,
+        -- Datos del Vehículo
+        placas TEXT,
+        numero_economico TEXT,
+        seguro_poliza TEXT,
+        seguro_aseguradora TEXT,
+        -- Estado y observaciones
         estado TEXT DEFAULT 'Borrador', -- Borrador, Emitida, Cancelada
         observaciones TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -422,6 +466,32 @@ function initializeDatabase() {
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
     )`);
+    
+    // Agregar nuevas columnas si no existen (para bases de datos existentes)
+    const cartaPorteNewColumns = [
+        'hora_salida', 'fecha_llegada', 'hora_llegada',
+        'origen_cp', 'origen_estado', 'origen_municipio',
+        'destino_cp', 'destino_estado', 'destino_municipio',
+        'distancia_km', 'tipo_transporte', 'tipo_servicio', 'numero_guia',
+        'cantidad', 'unidad_medida', 'peso_bruto', 'volumen', 'moneda',
+        'transportista_nombre', 'transportista_rfc', 'transportista_regimen',
+        'remitente_nombre', 'remitente_rfc', 'remitente_domicilio', 'remitente_cp', 'remitente_estado', 'remitente_municipio',
+        'destinatario_nombre', 'destinatario_rfc', 'destinatario_domicilio', 'destinatario_cp', 'destinatario_estado', 'destinatario_municipio',
+        'operador_nombre', 'operador_licencia', 'operador_rfc',
+        'placas', 'numero_economico', 'seguro_poliza', 'seguro_aseguradora'
+    ];
+    
+    cartaPorteNewColumns.forEach(column => {
+        db.run(`ALTER TABLE carta_porte ADD COLUMN ${column} TEXT`, (err) => {
+            // Ignore error if column already exists
+        });
+        // Para columnas numéricas
+        if (['distancia_km', 'cantidad', 'peso_bruto', 'volumen'].includes(column)) {
+            db.run(`ALTER TABLE carta_porte ADD COLUMN ${column} REAL`, (err) => {
+                // Ignore error if column already exists
+            });
+        }
+    });
 
     // Route tracking (seguimiento de rutas para operadores)
     db.run(`CREATE TABLE IF NOT EXISTS routes (
@@ -928,7 +998,7 @@ app.get('/billing', requireAuth, (req, res) => {
 
                             // Obtener cartas porte
                             db.all(
-                                `SELECT cp.*, v.numero_vehiculo, v.marca, v.modelo
+                                `SELECT cp.*, v.numero_vehiculo, v.marca, v.modelo, v.placas as vehiculo_placas
                                  FROM carta_porte cp
                                  LEFT JOIN vehicles v ON cp.vehicle_id = v.id
                                  WHERE cp.user_id = ?
@@ -936,6 +1006,14 @@ app.get('/billing', requireAuth, (req, res) => {
                                  LIMIT 50`,
                                 [userId],
                                 (err4, cartasPorte) => {
+                                    // Si no hay placas en carta_porte, usar las del vehículo
+                                    if (cartasPorte) {
+                                        cartasPorte.forEach(cp => {
+                                            if (!cp.placas && cp.vehiculo_placas) {
+                                                cp.placas = cp.vehiculo_placas;
+                                            }
+                                        });
+                                    }
                                     if (err4) {
                                         console.error('Error loading cartas porte:', err4);
                                         cartasPorte = [];
@@ -1354,25 +1432,54 @@ app.delete('/api/invoices/:id', requireAuth, (req, res) => {
 app.post('/api/carta-porte', requireAuth, (req, res) => {
     const userId = req.session.userId;
     const {
-        vehicle_id, folio, fecha, origen, destino, mercancia,
-        peso, valor_declarado, remitente, destinatario, estado, observaciones
+        vehicle_id, numero_guia, fecha, hora_salida, fecha_llegada, hora_llegada,
+        origen, origen_cp, origen_estado, origen_municipio,
+        destino, destino_cp, destino_estado, destino_municipio,
+        distancia_km, tipo_transporte, tipo_servicio,
+        transportista_nombre, transportista_rfc, transportista_regimen,
+        remitente_nombre, remitente_rfc, remitente_domicilio, remitente_cp, remitente_estado, remitente_municipio,
+        destinatario_nombre, destinatario_rfc, destinatario_domicilio, destinatario_cp, destinatario_estado, destinatario_municipio,
+        operador_nombre, operador_licencia, operador_rfc,
+        placas, numero_economico, seguro_poliza, seguro_aseguradora,
+        mercancia, cantidad, unidad_medida, peso, peso_bruto, volumen, valor_declarado, moneda,
+        estado, observaciones
     } = req.body;
 
-    if (!fecha || !origen || !destino) {
-        return res.status(400).json({ error: 'Fecha, origen y destino son requeridos' });
+    if (!fecha || !origen || !destino || !origen_estado || !destino_estado) {
+        return res.status(400).json({ error: 'Fecha, origen, destino y estados son requeridos' });
     }
 
     db.run(
-        `INSERT INTO carta_porte (user_id, vehicle_id, folio, fecha, origen, destino, mercancia, 
-         peso, valor_declarado, remitente, destinatario, estado, observaciones)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [userId, vehicle_id || null, folio || null, fecha, origen, destino, mercancia || null,
-         peso || null, valor_declarado || null, remitente || null, destinatario || null,
-         estado || 'Borrador', observaciones || null],
+        `INSERT INTO carta_porte (
+            user_id, vehicle_id, numero_guia, fecha, hora_salida, fecha_llegada, hora_llegada,
+            origen, origen_cp, origen_estado, origen_municipio,
+            destino, destino_cp, destino_estado, destino_municipio,
+            distancia_km, tipo_transporte, tipo_servicio,
+            transportista_nombre, transportista_rfc, transportista_regimen,
+            remitente_nombre, remitente_rfc, remitente_domicilio, remitente_cp, remitente_estado, remitente_municipio,
+            destinatario_nombre, destinatario_rfc, destinatario_domicilio, destinatario_cp, destinatario_estado, destinatario_municipio,
+            operador_nombre, operador_licencia, operador_rfc,
+            placas, numero_economico, seguro_poliza, seguro_aseguradora,
+            mercancia, cantidad, unidad_medida, peso, peso_bruto, volumen, valor_declarado, moneda,
+            estado, observaciones
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            userId, vehicle_id || null, numero_guia || null, fecha, hora_salida || null, fecha_llegada || null, hora_llegada || null,
+            origen, origen_cp || null, origen_estado, origen_municipio || null,
+            destino, destino_cp || null, destino_estado, destino_municipio || null,
+            distancia_km || null, tipo_transporte || 'Terrestre', tipo_servicio || null,
+            transportista_nombre || null, transportista_rfc || null, transportista_regimen || null,
+            remitente_nombre || null, remitente_rfc || null, remitente_domicilio || null, remitente_cp || null, remitente_estado || null, remitente_municipio || null,
+            destinatario_nombre || null, destinatario_rfc || null, destinatario_domicilio || null, destinatario_cp || null, destinatario_estado || null, destinatario_municipio || null,
+            operador_nombre || null, operador_licencia || null, operador_rfc || null,
+            placas || null, numero_economico || null, seguro_poliza || null, seguro_aseguradora || null,
+            mercancia || null, cantidad || null, unidad_medida || 'kg', peso || null, peso_bruto || null, volumen || null, valor_declarado || null, moneda || 'MXN',
+            estado || 'Borrador', observaciones || null
+        ],
         function(err) {
             if (err) {
                 console.error('Error creating carta porte:', err);
-                return res.status(500).json({ error: 'Error al crear la carta porte' });
+                return res.status(500).json({ error: 'Error al crear la carta porte: ' + err.message });
             }
             res.json({ success: true, id: this.lastID });
         }

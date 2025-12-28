@@ -757,11 +757,12 @@
                         <thead>
                             <tr>
                                 <th>Fecha</th>
-                                <th>Folio</th>
-                                <th>Vehículo</th>
+                                <th>Número de Guía</th>
+                                <th>Vehículo/Placas</th>
                                 <th>Origen</th>
                                 <th>Destino</th>
                                 <th>Mercancía</th>
+                                <th>Transportista</th>
                                 <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
@@ -769,19 +770,50 @@
                         <tbody>
                             <% cartasPorte.forEach(function(cp) { %>
                             <tr>
-                                <td data-label="Fecha"><%= new Date(cp.fecha).toLocaleDateString('es-ES') %></td>
-                                <td data-label="Folio"><strong><%= cp.folio || 'N/A' %></strong></td>
-                                <td data-label="Vehículo">
+                                <td data-label="Fecha">
+                                    <%= new Date(cp.fecha).toLocaleDateString('es-ES') %>
+                                    <% if (cp.hora_salida) { %>
+                                        <div class="text-muted" style="font-size: 0.85rem;"><%= cp.hora_salida %></div>
+                                    <% } %>
+                                </td>
+                                <td data-label="Número de Guía"><strong><%= cp.numero_guia || cp.folio || 'N/A' %></strong></td>
+                                <td data-label="Vehículo/Placas">
                                     <% if (cp.vehicle_id) { %>
                                         <strong>#<%= cp.numero_vehiculo %></strong>
-                                        <div class="text-muted"><%= cp.marca %> <%= cp.modelo %></div>
+                                        <div class="text-muted" style="font-size: 0.85rem;"><%= cp.marca %> <%= cp.modelo %></div>
+                                        <% if (cp.placas) { %>
+                                            <div class="text-muted" style="font-size: 0.8rem;">Placas: <%= cp.placas %></div>
+                                        <% } %>
+                                    <% } else if (cp.placas) { %>
+                                        <strong>Placas: <%= cp.placas %></strong>
                                     <% } else { %>
                                         <span class="text-muted">Sin vehículo</span>
                                     <% } %>
                                 </td>
-                                <td data-label="Origen"><%= cp.origen || '-' %></td>
-                                <td data-label="Destino"><%= cp.destino || '-' %></td>
-                                <td data-label="Mercancía"><%= cp.mercancia || '-' %></td>
+                                <td data-label="Origen">
+                                    <%= cp.origen || '-' %>
+                                    <% if (cp.origen_estado) { %>
+                                        <div class="text-muted" style="font-size: 0.85rem;"><%= cp.origen_estado %></div>
+                                    <% } %>
+                                </td>
+                                <td data-label="Destino">
+                                    <%= cp.destino || '-' %>
+                                    <% if (cp.destino_estado) { %>
+                                        <div class="text-muted" style="font-size: 0.85rem;"><%= cp.destino_estado %></div>
+                                    <% } %>
+                                </td>
+                                <td data-label="Mercancía">
+                                    <%= cp.mercancia || '-' %>
+                                    <% if (cp.peso) { %>
+                                        <div class="text-muted" style="font-size: 0.85rem;"><%= cp.peso %> kg</div>
+                                    <% } %>
+                                </td>
+                                <td data-label="Transportista">
+                                    <%= cp.transportista_nombre || '-' %>
+                                    <% if (cp.transportista_rfc) { %>
+                                        <div class="text-muted" style="font-size: 0.85rem;">RFC: <%= cp.transportista_rfc %></div>
+                                    <% } %>
+                                </td>
                                 <td data-label="Estado">
                                     <% 
                                     const cpEstado = cp.estado || 'Borrador';
@@ -980,57 +1012,319 @@
                 <h2>Nueva Carta Porte</h2>
                 <button class="modal-close" onclick="window.closeCartaPorteModal()">&times;</button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="max-height: 85vh; overflow-y: auto;">
                 <form id="cartaPorteForm">
-                    <div class="form-group">
-                        <label class="form-label">Vehículo *</label>
-                        <select name="vehicle_id" class="form-control" required>
-                            <option value="">Seleccionar vehículo</option>
-                            <% vehicles.forEach(function(vehicle) { %>
-                            <option value="<%= vehicle.id %>">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></option>
-                            <% }); %>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Folio</label>
-                            <input type="text" name="folio" class="form-control" placeholder="Folio de la carta porte">
+                    <!-- Información General -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--accent);">
+                        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-info-circle"></i> Información General
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Vehículo *</label>
+                                <select name="vehicle_id" id="vehicleSelect" class="form-control" required onchange="loadVehicleData()">
+                                    <option value="">Seleccionar vehículo</option>
+                                    <% vehicles.forEach(function(vehicle) { %>
+                                    <option value="<%= vehicle.id %>" data-placas="<%= vehicle.placas || '' %>">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></option>
+                                    <% }); %>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Folio/Número de Guía</label>
+                                <input type="text" name="numero_guia" class="form-control" placeholder="Número de guía de transporte">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Fecha de Salida *</label>
+                                <input type="date" name="fecha" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Hora de Salida</label>
+                                <input type="time" name="hora_salida" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Fecha de Llegada</label>
+                                <input type="date" name="fecha_llegada" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Hora de Llegada</label>
+                                <input type="time" name="hora_llegada" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Tipo de Transporte *</label>
+                                <select name="tipo_transporte" class="form-control" required>
+                                    <option value="Terrestre" selected>Terrestre</option>
+                                    <option value="Aéreo">Aéreo</option>
+                                    <option value="Marítimo">Marítimo</option>
+                                    <option value="Fluvial">Fluvial</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Tipo de Servicio</label>
+                                <select name="tipo_servicio" class="form-control">
+                                    <option value="">Seleccionar</option>
+                                    <option value="Transporte de Carga">Transporte de Carga</option>
+                                    <option value="Transporte de Pasajeros">Transporte de Pasajeros</option>
+                                    <option value="Transporte Mixto">Transporte Mixto</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Fecha *</label>
-                            <input type="date" name="fecha" class="form-control" required>
+                            <label class="form-label">Distancia Recorrida (km)</label>
+                            <input type="number" name="distancia_km" class="form-control" step="0.01" min="0" placeholder="0.00">
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Origen *</label>
-                        <input type="text" name="origen" class="form-control" placeholder="Ciudad y estado de origen" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Destino *</label>
-                        <input type="text" name="destino" class="form-control" placeholder="Ciudad y estado de destino" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Mercancía</label>
-                        <input type="text" name="mercancia" class="form-control" placeholder="Tipo de mercancía transportada">
-                    </div>
-                    <div class="form-row">
+
+                    <!-- Ubicación de Origen -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #28a745;">
+                        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-map-marker-alt"></i> Ubicación de Origen *
+                        </h3>
                         <div class="form-group">
-                            <label class="form-label">Peso (kg)</label>
-                            <input type="number" name="peso" class="form-control" step="0.01" min="0" placeholder="0.00">
+                            <label class="form-label">Dirección Completa *</label>
+                            <input type="text" name="origen" class="form-control" placeholder="Calle, número, colonia" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Código Postal</label>
+                                <input type="text" name="origen_cp" class="form-control" placeholder="00000" maxlength="5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Estado *</label>
+                                <input type="text" name="origen_estado" class="form-control" placeholder="Estado" required>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Valor Declarado</label>
-                            <input type="number" name="valor_declarado" class="form-control" step="0.01" min="0" placeholder="0.00">
+                            <label class="form-label">Municipio</label>
+                            <input type="text" name="origen_municipio" class="form-control" placeholder="Municipio">
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Remitente</label>
-                        <input type="text" name="remitente" class="form-control" placeholder="Nombre del remitente">
+
+                    <!-- Ubicación de Destino -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #dc3545;">
+                        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-map-marker-alt"></i> Ubicación de Destino *
+                        </h3>
+                        <div class="form-group">
+                            <label class="form-label">Dirección Completa *</label>
+                            <input type="text" name="destino" class="form-control" placeholder="Calle, número, colonia" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Código Postal</label>
+                                <input type="text" name="destino_cp" class="form-control" placeholder="00000" maxlength="5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Estado *</label>
+                                <input type="text" name="destino_estado" class="form-control" placeholder="Estado" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Municipio</label>
+                            <input type="text" name="destino_municipio" class="form-control" placeholder="Municipio">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Destinatario</label>
-                        <input type="text" name="destinatario" class="form-control" placeholder="Nombre del destinatario">
+
+                    <!-- Datos del Transportista -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+                        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-truck"></i> Datos del Transportista
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Nombre o Razón Social</label>
+                                <input type="text" name="transportista_nombre" class="form-control" placeholder="Nombre del transportista">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">RFC</label>
+                                <input type="text" name="transportista_rfc" class="form-control" placeholder="RFC del transportista" maxlength="13">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Régimen Fiscal</label>
+                            <input type="text" name="transportista_regimen" class="form-control" placeholder="Régimen fiscal">
+                        </div>
                     </div>
+
+                    <!-- Datos del Remitente -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #17a2b8;">
+                        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-user"></i> Datos del Remitente
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Nombre o Razón Social</label>
+                                <input type="text" name="remitente_nombre" class="form-control" placeholder="Nombre del remitente">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">RFC</label>
+                                <input type="text" name="remitente_rfc" class="form-control" placeholder="RFC del remitente" maxlength="13">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Domicilio</label>
+                            <input type="text" name="remitente_domicilio" class="form-control" placeholder="Domicilio completo">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Código Postal</label>
+                                <input type="text" name="remitente_cp" class="form-control" placeholder="00000" maxlength="5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Estado</label>
+                                <input type="text" name="remitente_estado" class="form-control" placeholder="Estado">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Municipio</label>
+                                <input type="text" name="remitente_municipio" class="form-control" placeholder="Municipio">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos del Destinatario -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #6f42c1;">
+                        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-user-check"></i> Datos del Destinatario
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Nombre o Razón Social</label>
+                                <input type="text" name="destinatario_nombre" class="form-control" placeholder="Nombre del destinatario">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">RFC</label>
+                                <input type="text" name="destinatario_rfc" class="form-control" placeholder="RFC del destinatario" maxlength="13">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Domicilio</label>
+                            <input type="text" name="destinatario_domicilio" class="form-control" placeholder="Domicilio completo">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Código Postal</label>
+                                <input type="text" name="destinatario_cp" class="form-control" placeholder="00000" maxlength="5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Estado</label>
+                                <input type="text" name="destinatario_estado" class="form-control" placeholder="Estado">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Municipio</label>
+                                <input type="text" name="destinatario_municipio" class="form-control" placeholder="Municipio">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos del Operador -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #fd7e14;">
+                        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-id-card"></i> Datos del Operador (Conductor)
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Nombre Completo</label>
+                                <input type="text" name="operador_nombre" class="form-control" placeholder="Nombre del operador">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Número de Licencia</label>
+                                <input type="text" name="operador_licencia" class="form-control" placeholder="Número de licencia">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">RFC del Operador</label>
+                            <input type="text" name="operador_rfc" class="form-control" placeholder="RFC (si aplica)" maxlength="13">
+                        </div>
+                    </div>
+
+                    <!-- Datos del Vehículo -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #20c997;">
+                        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-car"></i> Datos del Vehículo
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Placas *</label>
+                                <input type="text" name="placas" id="placasInput" class="form-control" placeholder="ABC-123" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Número Económico</label>
+                                <input type="text" name="numero_economico" class="form-control" placeholder="Número económico">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Póliza de Seguro</label>
+                                <input type="text" name="seguro_poliza" class="form-control" placeholder="Número de póliza">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Aseguradora</label>
+                                <input type="text" name="seguro_aseguradora" class="form-control" placeholder="Nombre de la aseguradora">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos de la Mercancía -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #e83e8c;">
+                        <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-box"></i> Datos de la Mercancía
+                        </h3>
+                        <div class="form-group">
+                            <label class="form-label">Descripción de la Mercancía *</label>
+                            <input type="text" name="mercancia" class="form-control" placeholder="Tipo de mercancía transportada" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Cantidad</label>
+                                <input type="number" name="cantidad" class="form-control" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Unidad de Medida</label>
+                                <select name="unidad_medida" class="form-control">
+                                    <option value="kg" selected>Kilogramos (kg)</option>
+                                    <option value="ton">Toneladas (ton)</option>
+                                    <option value="m3">Metros cúbicos (m³)</option>
+                                    <option value="pieza">Piezas</option>
+                                    <option value="caja">Cajas</option>
+                                    <option value="pallet">Pallets</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Peso (kg)</label>
+                                <input type="number" name="peso" class="form-control" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Peso Bruto Total (kg)</label>
+                                <input type="number" name="peso_bruto" class="form-control" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Volumen (m³)</label>
+                                <input type="number" name="volumen" class="form-control" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Valor Declarado</label>
+                                <input type="number" name="valor_declarado" class="form-control" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Moneda</label>
+                                <select name="moneda" class="form-control">
+                                    <option value="MXN" selected>MXN - Peso Mexicano</option>
+                                    <option value="USD">USD - Dólar Americano</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estado y Observaciones -->
                     <div class="form-group">
                         <label class="form-label">Estado</label>
                         <select name="estado" class="form-control">
@@ -1098,13 +1392,33 @@
             var modal = document.getElementById('cartaPorteModal');
             if (modal) {
                 modal.style.display = 'block';
-                // Set today's date as default
+                // Set today's date and time as default
+                const today = new Date();
                 const fechaInput = modal.querySelector('input[name="fecha"]');
+                const horaInput = modal.querySelector('input[name="hora_salida"]');
                 if (fechaInput && !fechaInput.value) {
-                    fechaInput.value = new Date().toISOString().split('T')[0];
+                    fechaInput.value = today.toISOString().split('T')[0];
+                }
+                if (horaInput && !horaInput.value) {
+                    const hours = String(today.getHours()).padStart(2, '0');
+                    const minutes = String(today.getMinutes()).padStart(2, '0');
+                    horaInput.value = hours + ':' + minutes;
                 }
             }
         };
+
+        // Auto-llenar placas cuando se selecciona un vehículo
+        function loadVehicleData() {
+            const vehicleSelect = document.getElementById('vehicleSelect');
+            if (!vehicleSelect) return;
+            const selectedOption = vehicleSelect.options[vehicleSelect.selectedIndex];
+            if (selectedOption && selectedOption.dataset.placas) {
+                const placasInput = document.getElementById('placasInput');
+                if (placasInput) {
+                    placasInput.value = selectedOption.dataset.placas;
+                }
+            }
+        }
         
         window.closeCartaPorteModal = function() {
             var modal = document.getElementById('cartaPorteModal');
@@ -1215,9 +1529,26 @@
             const formData = new FormData(this);
             const data = Object.fromEntries(formData);
 
+            // Validación básica
+            if (!data.fecha || !data.origen || !data.destino || !data.origen_estado || !data.destino_estado) {
+                alert('⚠️ Por favor completa los campos obligatorios: Fecha, Origen, Destino y Estados');
+                return;
+            }
+
+            // Convertir números
             if (data.vehicle_id) data.vehicle_id = parseInt(data.vehicle_id);
+            if (data.distancia_km) data.distancia_km = parseFloat(data.distancia_km);
+            if (data.cantidad) data.cantidad = parseFloat(data.cantidad);
             if (data.peso) data.peso = parseFloat(data.peso);
+            if (data.peso_bruto) data.peso_bruto = parseFloat(data.peso_bruto);
+            if (data.volumen) data.volumen = parseFloat(data.volumen);
             if (data.valor_declarado) data.valor_declarado = parseFloat(data.valor_declarado);
+
+            // Mostrar indicador de carga
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
 
             try {
                 const res = await fetch('/api/carta-porte', {
@@ -1227,13 +1558,17 @@
                 });
                 const result = await res.json();
                 if (result.success) {
-                    alert('Carta Porte creada correctamente');
+                    alert('✅ Carta Porte creada correctamente');
                     window.location.reload();
                 } else {
-                    alert('Error: ' + (result.error || 'No se pudo crear la carta porte'));
+                    alert('❌ Error: ' + (result.error || 'No se pudo crear la carta porte'));
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
                 }
             } catch (err) {
-                alert('Error de conexión: ' + err.message);
+                alert('❌ Error de conexión: ' + err.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         });
 
