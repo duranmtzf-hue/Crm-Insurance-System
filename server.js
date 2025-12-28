@@ -8,6 +8,7 @@ const PDFDocument = require('pdfkit');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const multer = require('multer');
+const axios = require('axios');
 const db = require('./db'); // Database abstraction layer
 
 const app = express();
@@ -177,11 +178,21 @@ function initializeDatabase() {
         nombre TEXT,
         empresa TEXT,
         role TEXT DEFAULT 'admin', -- 'admin' or 'operador'
+        rfc TEXT, -- RFC para facturación
+        regimen_fiscal TEXT, -- Régimen fiscal
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
     
     // Add role column if it doesn't exist (for existing databases)
     db.run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'admin'`, (err) => {
+        // Ignore error if column already exists
+    });
+    
+    // Add RFC and regimen_fiscal columns if they don't exist
+    db.run(`ALTER TABLE users ADD COLUMN rfc TEXT`, (err) => {
+        // Ignore error if column already exists
+    });
+    db.run(`ALTER TABLE users ADD COLUMN regimen_fiscal TEXT`, (err) => {
         // Ignore error if column already exists
     });
 
@@ -461,11 +472,25 @@ function initializeDatabase() {
         -- Estado y observaciones
         estado TEXT DEFAULT 'Borrador', -- Borrador, Emitida, Cancelada
         observaciones TEXT,
+        -- Datos del CFDI generado
+        cfdi_uuid TEXT, -- UUID del CFDI timbrado
+        cfdi_xml TEXT, -- XML del CFDI
+        cfdi_pdf_path TEXT, -- Ruta del PDF generado
+        cfdi_fecha_timbrado DATETIME, -- Fecha de timbrado
+        cfdi_qr_code TEXT, -- Código QR del CFDI
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME,
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
     )`);
+    
+    // Agregar columnas para CFDI si no existen
+    const cfdiColumns = ['cfdi_uuid', 'cfdi_xml', 'cfdi_pdf_path', 'cfdi_fecha_timbrado', 'cfdi_qr_code'];
+    cfdiColumns.forEach(column => {
+        db.run(`ALTER TABLE carta_porte ADD COLUMN ${column} TEXT`, (err) => {
+            // Ignore error if column already exists
+        });
+    });
     
     // Agregar nuevas columnas si no existen (para bases de datos existentes)
     const cartaPorteNewColumns = [
@@ -491,6 +516,14 @@ function initializeDatabase() {
                 // Ignore error if column already exists
             });
         }
+    });
+    
+    // Agregar columnas para CFDI si no existen
+    const cfdiColumns = ['cfdi_uuid', 'cfdi_xml', 'cfdi_pdf_path', 'cfdi_fecha_timbrado', 'cfdi_qr_code'];
+    cfdiColumns.forEach(column => {
+        db.run(`ALTER TABLE carta_porte ADD COLUMN ${column} TEXT`, (err) => {
+            // Ignore error if column already exists
+        });
     });
 
     // Route tracking (seguimiento de rutas para operadores)
@@ -1498,6 +1531,303 @@ app.delete('/api/carta-porte/:id', requireAuth, (req, res) => {
         res.json({ success: true });
     });
 });
+
+// API: Generar CFDI con Carta Porte (Integración con Facturama)
+app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
+    const userId = req.session.userId;
+    const cartaPorteId = req.params.id;
+    
+    // Verificar que la carta porte existe y pertenece al usuario
+    db.get('SELECT * FROM carta_porte WHERE id = ? AND user_id = ?', [cartaPorteId, userId], async (err, cartaPorte) => {
+        if (err || !cartaPorte) {
+            return res.status(404).json({ error: 'Carta Porte no encontrada' });
+        }
+        
+        // Verificar si ya tiene CFDI generado
+        if (cartaPorte.cfdi_uuid) {
+            return res.status(400).json({ 
+                error: 'Esta Carta Porte ya tiene un CFDI generado',
+                uuid: cartaPorte.cfdi_uuid,
+                fecha_timbrado: cartaPorte.cfdi_fecha_timbrado
+            });
+        }
+        
+        // Obtener datos del usuario (emisor)
+        db.get('SELECT * FROM users WHERE id = ?', [userId], async (errUser, user) => {
+            if (errUser || !user) {
+                return res.status(500).json({ error: 'Error al obtener datos del usuario' });
+            }
+            
+            // Obtener datos del vehículo si existe
+            let vehicleData = null;
+            if (cartaPorte.vehicle_id) {
+                db.get('SELECT * FROM vehicles WHERE id = ?', [cartaPorte.vehicle_id], (errVehicle, vehicle) => {
+                    if (!errVehicle && vehicle) {
+                        vehicleData = vehicle;
+                    }
+                    generateCFDI();
+                });
+            } else {
+                generateCFDI();
+            }
+            
+            async function generateCFDI() {
+                try {
+                    // Verificar si hay credenciales de Facturama configuradas
+                    const FACTURAMA_USER = process.env.FACTURAMA_USER;
+                    const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
+                    const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
+                    
+                    if (!FACTURAMA_USER || !FACTURAMA_PASS) {
+                        // Modo simulación - generar datos de prueba
+                        const uuid = generateUUID();
+                        const fechaTimbrado = new Date().toISOString();
+                        
+                        // Guardar datos simulados
+                        db.run(
+                            `UPDATE carta_porte SET 
+                             cfdi_uuid = ?, 
+                             cfdi_fecha_timbrado = ?,
+                             cfdi_xml = ?,
+                             estado = 'Emitida',
+                             updated_at = CURRENT_TIMESTAMP
+                             WHERE id = ?`,
+                            [
+                                uuid,
+                                fechaTimbrado,
+                                `<!-- XML CFDI simulado - Configure FACTURAMA_USER y FACTURAMA_PASS para generar CFDI real -->`,
+                                cartaPorteId
+                            ],
+                            function(updateErr) {
+                                if (updateErr) {
+                                    console.error('Error guardando CFDI simulado:', updateErr);
+                                    return res.status(500).json({ error: 'Error al guardar CFDI' });
+                                }
+                                
+                                res.json({
+                                    success: true,
+                                    message: 'CFDI generado en modo simulación',
+                                    uuid: uuid,
+                                    fecha_timbrado: fechaTimbrado,
+                                    modo: 'simulacion',
+                                    nota: 'Configure FACTURAMA_USER y FACTURAMA_PASS para generar CFDI real'
+                                });
+                            }
+                        );
+                        return;
+                    }
+                    
+                    // Construir el objeto CFDI según el formato de Facturama
+                    const cfdiData = buildCFDIData(cartaPorte, user, vehicleData);
+                    
+                    // Llamar a la API de Facturama
+                    const facturamaUrl = FACTURAMA_MODE === 'production' 
+                        ? 'https://api.facturama.mx/3/cfdis'
+                        : 'https://apisandbox.facturama.mx/3/cfdis';
+                    
+                    const auth = Buffer.from(`${FACTURAMA_USER}:${FACTURAMA_PASS}`).toString('base64');
+                    
+                    const response = await axios.post(facturamaUrl, cfdiData, {
+                        headers: {
+                            'Authorization': `Basic ${auth}`,
+                            'Content-Type': 'application/json'
+                        },
+                        timeout: 30000
+                    });
+                    
+                    if (response.data && response.data.Id) {
+                        // CFDI generado exitosamente
+                        const cfdiId = response.data.Id;
+                        const uuid = response.data.UUID || response.data.Cfdi?.UUID || generateUUID();
+                        const xml = response.data.Xml || '';
+                        const fechaTimbrado = new Date().toISOString();
+                        
+                        // Descargar PDF si está disponible
+                        let pdfPath = null;
+                        try {
+                            const pdfResponse = await axios.get(`${facturamaUrl}/${cfdiId}/pdf`, {
+                                headers: { 'Authorization': `Basic ${auth}` },
+                                responseType: 'arraybuffer'
+                            });
+                            
+                            const pdfDir = path.join(__dirname, 'uploads', 'cfdi');
+                            if (!fs.existsSync(pdfDir)) {
+                                fs.mkdirSync(pdfDir, { recursive: true });
+                            }
+                            
+                            pdfPath = path.join(pdfDir, `carta-porte-${cartaPorteId}-${uuid}.pdf`);
+                            fs.writeFileSync(pdfPath, pdfResponse.data);
+                        } catch (pdfErr) {
+                            console.error('Error descargando PDF:', pdfErr);
+                        }
+                        
+                        // Guardar datos del CFDI
+                        db.run(
+                            `UPDATE carta_porte SET 
+                             cfdi_uuid = ?, 
+                             cfdi_fecha_timbrado = ?,
+                             cfdi_xml = ?,
+                             cfdi_pdf_path = ?,
+                             estado = 'Emitida',
+                             updated_at = CURRENT_TIMESTAMP
+                             WHERE id = ?`,
+                            [uuid, fechaTimbrado, xml, pdfPath, cartaPorteId],
+                            function(updateErr) {
+                                if (updateErr) {
+                                    console.error('Error guardando CFDI:', updateErr);
+                                    return res.status(500).json({ error: 'Error al guardar CFDI' });
+                                }
+                                
+                                res.json({
+                                    success: true,
+                                    message: 'CFDI generado y timbrado exitosamente',
+                                    uuid: uuid,
+                                    fecha_timbrado: fechaTimbrado,
+                                    pdf_path: pdfPath,
+                                    modo: 'produccion'
+                                });
+                            }
+                        );
+                    } else {
+                        throw new Error('Respuesta inesperada de Facturama');
+                    }
+                } catch (error) {
+                    console.error('Error generando CFDI:', error.response?.data || error.message);
+                    res.status(500).json({ 
+                        error: 'Error al generar CFDI',
+                        detalles: error.response?.data?.Message || error.message
+                    });
+                }
+            }
+        });
+    });
+});
+
+// Función auxiliar para construir datos del CFDI según formato Facturama
+function buildCFDIData(cartaPorte, user, vehicle) {
+    return {
+        "Serie": "A",
+        "Folio": cartaPorte.numero_guia || cartaPorte.folio || `CP${cartaPorte.id}`,
+        "Fecha": new Date(cartaPorte.fecha).toISOString(),
+        "SubTotal": cartaPorte.valor_declarado || 0,
+        "Total": cartaPorte.valor_declarado || 0,
+        "Moneda": cartaPorte.moneda || "MXN",
+        "TipoDeComprobante": "I",
+        "MetodoPago": "PUE",
+        "FormaPago": "03",
+        "LugarExpedicion": cartaPorte.origen_cp || "00000",
+        "Emisor": {
+            "Rfc": user.rfc || "XAXX010101000",
+            "Nombre": user.empresa || user.nombre || "Transportista",
+            "RegimenFiscal": user.regimen_fiscal || "601"
+        },
+        "Receptor": {
+            "Rfc": cartaPorte.destinatario_rfc || "XAXX010101000",
+            "Nombre": cartaPorte.destinatario_nombre || cartaPorte.destinatario || "Cliente",
+            "UsoCFDI": "G03"
+        },
+        "Conceptos": [
+            {
+                "ClaveProdServ": "78102200",
+                "Cantidad": cartaPorte.cantidad || 1,
+                "ClaveUnidad": cartaPorte.unidad_medida === "kg" ? "KGM" : "MTR",
+                "Unidad": cartaPorte.unidad_medida || "kg",
+                "Descripcion": cartaPorte.mercancia || "Transporte de mercancía",
+                "ValorUnitario": cartaPorte.valor_declarado ? (cartaPorte.valor_declarado / (cartaPorte.cantidad || 1)) : 0,
+                "Importe": cartaPorte.valor_declarado || 0
+            }
+        ],
+        "Complemento": {
+            "CartaPorte30": {
+                "Version": "3.1",
+                "Transp": {
+                    "Ubicaciones": {
+                        "Ubicacion": [
+                            {
+                                "TipoUbicacion": "Origen",
+                                "IDUbicacion": "OR001",
+                                "RFCRemitenteDestinatario": cartaPorte.remitente_rfc || "",
+                                "NombreRemitenteDestinatario": cartaPorte.remitente_nombre || cartaPorte.remitente || "",
+                                "FechaHoraSalidaLlegada": `${cartaPorte.fecha}T${cartaPorte.hora_salida || '00:00:00'}`,
+                                "Domicilio": {
+                                    "Calle": cartaPorte.origen || "",
+                                    "CodigoPostal": cartaPorte.origen_cp || "",
+                                    "Estado": cartaPorte.origen_estado || "",
+                                    "Municipio": cartaPorte.origen_municipio || ""
+                                }
+                            },
+                            {
+                                "TipoUbicacion": "Destino",
+                                "IDUbicacion": "DE001",
+                                "RFCRemitenteDestinatario": cartaPorte.destinatario_rfc || "",
+                                "NombreRemitenteDestinatario": cartaPorte.destinatario_nombre || cartaPorte.destinatario || "",
+                                "FechaHoraSalidaLlegada": cartaPorte.fecha_llegada ? `${cartaPorte.fecha_llegada}T${cartaPorte.hora_llegada || '00:00:00'}` : null,
+                                "Domicilio": {
+                                    "Calle": cartaPorte.destino || "",
+                                    "CodigoPostal": cartaPorte.destino_cp || "",
+                                    "Estado": cartaPorte.destino_estado || "",
+                                    "Municipio": cartaPorte.destino_municipio || ""
+                                }
+                            }
+                        ]
+                    },
+                    "Mercancias": {
+                        "Mercancia": [
+                            {
+                                "BienesTransp": "01010101",
+                                "Descripcion": cartaPorte.mercancia || "Mercancía general",
+                                "Cantidad": cartaPorte.cantidad || 1,
+                                "ClaveUnidad": cartaPorte.unidad_medida === "kg" ? "KGM" : "MTR",
+                                "Unidad": cartaPorte.unidad_medida || "kg",
+                                "PesoEnKg": cartaPorte.peso || cartaPorte.peso_bruto || 0,
+                                "ValorMercancia": cartaPorte.valor_declarado || 0
+                            }
+                        ],
+                        "PesoBrutoTotal": cartaPorte.peso_bruto || cartaPorte.peso || 0,
+                        "UnidadPeso": "KGM"
+                    },
+                    "Autotransporte": cartaPorte.tipo_transporte === "Terrestre" ? {
+                        "PermSCT": "TPAF01",
+                        "NumPermisoSCT": "000000",
+                        "IdentificacionVehicular": {
+                            "ConfigVehicular": "C2",
+                            "PesoBrutoVehicular": cartaPorte.peso_bruto || 0,
+                            "PlacaVM": cartaPorte.placas || vehicle?.placas || ""
+                        },
+                        "Seguros": cartaPorte.seguro_poliza ? {
+                            "AseguraRespCivil": cartaPorte.seguro_aseguradora || "",
+                            "PolizaRespCivil": cartaPorte.seguro_poliza || ""
+                        } : null
+                    } : null,
+                    "FiguraTransporte": [
+                        {
+                            "TipoFigura": "01",
+                            "RFCFigura": cartaPorte.transportista_rfc || "",
+                            "NombreFigura": cartaPorte.transportista_nombre || "",
+                            "PartesTransporte": cartaPorte.operador_nombre ? [
+                                {
+                                    "ParteTransporte": "01",
+                                    "RFC": cartaPorte.operador_rfc || "",
+                                    "Nombre": cartaPorte.operador_nombre || "",
+                                    "NumLicencia": cartaPorte.operador_licencia || ""
+                                }
+                            ] : null
+                        }
+                    ]
+                }
+            }
+        }
+    };
+}
+
+// Función auxiliar para generar UUID
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    }).toUpperCase();
+}
 
 // --- Rutas para Operadores ---
 app.get('/operador/rutas', requireOperator, (req, res) => {

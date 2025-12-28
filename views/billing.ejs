@@ -763,6 +763,7 @@
                                 <th>Destino</th>
                                 <th>Mercancía</th>
                                 <th>Transportista</th>
+                                <th>CFDI</th>
                                 <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
@@ -814,6 +815,20 @@
                                         <div class="text-muted" style="font-size: 0.85rem;">RFC: <%= cp.transportista_rfc %></div>
                                     <% } %>
                                 </td>
+                                <td data-label="CFDI">
+                                    <% if (cp.cfdi_uuid) { %>
+                                        <span class="badge badge-success" style="font-size: 0.75rem;">
+                                            <i class="fas fa-check-circle"></i> Generado
+                                        </span>
+                                        <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">
+                                            <%= cp.cfdi_uuid.substring(0, 8) %>...
+                                        </div>
+                                    <% } else { %>
+                                        <span class="badge badge-warning" style="font-size: 0.75rem;">
+                                            <i class="fas fa-clock"></i> Pendiente
+                                        </span>
+                                    <% } %>
+                                </td>
                                 <td data-label="Estado">
                                     <% 
                                     const cpEstado = cp.estado || 'Borrador';
@@ -826,10 +841,19 @@
                                 </td>
                                 <td data-label="Acciones">
                                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                        <button class="btn btn-attachments" style="padding: 4px 10px; font-size: 0.8rem; background-color: var(--accent);" data-entity-id="<%= cp.id %>" data-entity-type="carta_porte" data-entity-name="Carta Porte <%= cp.folio || cp.id %>">
+                                        <% if (cp.cfdi_uuid) { %>
+                                        <button class="btn btn-success btn-view-cfdi" style="padding: 4px 10px; font-size: 0.8rem;" data-carta-porte-id="<%= cp.id %>" data-uuid="<%= cp.cfdi_uuid %>" title="CFDI Generado: <%= cp.cfdi_uuid %>">
+                                            <i class="fas fa-file-invoice"></i> CFDI
+                                        </button>
+                                        <% } else { %>
+                                        <button class="btn btn-success btn-generar-cfdi" style="padding: 4px 10px; font-size: 0.8rem;" data-carta-porte-id="<%= cp.id %>" title="Generar CFDI">
+                                            <i class="fas fa-file-invoice-dollar"></i> CFDI
+                                        </button>
+                                        <% } %>
+                                        <button class="btn btn-attachments" style="padding: 4px 10px; font-size: 0.8rem; background-color: var(--accent);" data-entity-id="<%= cp.id %>" data-entity-type="carta_porte" data-entity-name="Carta Porte <%= cp.numero_guia || cp.folio || cp.id %>">
                                             <i class="fas fa-paperclip"></i>
                                         </button>
-                                        <button class="btn btn-history" style="padding: 4px 10px; font-size: 0.8rem; background-color: #6c757d;" data-entity-id="<%= cp.id %>" data-entity-type="carta_porte" data-entity-name="Carta Porte <%= cp.folio || cp.id %>">
+                                        <button class="btn btn-history" style="padding: 4px 10px; font-size: 0.8rem; background-color: #6c757d;" data-entity-id="<%= cp.id %>" data-entity-type="carta_porte" data-entity-name="Carta Porte <%= cp.numero_guia || cp.folio || cp.id %>">
                                             <i class="fas fa-history"></i>
                                         </button>
                                         <button class="btn btn-danger btn-delete-carta-porte" style="padding: 4px 10px; font-size: 0.8rem;" data-carta-porte-id="<%= cp.id %>">
@@ -1748,6 +1772,49 @@
                             })
                             .catch(err => alert('Error: ' + err.message));
                     }
+                });
+            });
+
+            // Botones de generar CFDI
+            document.querySelectorAll('.btn-generar-cfdi').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const cartaPorteId = parseInt(this.getAttribute('data-carta-porte-id'));
+                    if (confirm('¿Deseas generar el CFDI con Carta Porte para este documento?\n\nNota: Asegúrate de tener configuradas las credenciales de Facturama.')) {
+                        const btnOriginal = this.innerHTML;
+                        this.disabled = true;
+                        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+                        
+                        fetch('/api/carta-porte/' + cartaPorteId + '/generar-cfdi', { 
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    alert('✅ ' + data.message + '\n\nUUID: ' + data.uuid + '\n\n' + (data.nota || ''));
+                                    window.location.reload();
+                                } else {
+                                    alert('❌ Error: ' + (data.error || 'No se pudo generar el CFDI') + '\n\n' + (data.detalles || ''));
+                                    this.disabled = false;
+                                    this.innerHTML = btnOriginal;
+                                }
+                            })
+                            .catch(err => {
+                                alert('❌ Error de conexión: ' + err.message);
+                                this.disabled = false;
+                                this.innerHTML = btnOriginal;
+                            });
+                    }
+                });
+            });
+
+            // Botones de ver CFDI
+            document.querySelectorAll('.btn-view-cfdi').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const uuid = this.getAttribute('data-uuid');
+                    const cartaPorteId = this.getAttribute('data-carta-porte-id');
+                    alert('CFDI Generado\n\nUUID: ' + uuid + '\n\nPuedes descargar el XML y PDF desde el sistema.');
+                    // Aquí podrías abrir un modal con más detalles o descargar el PDF
                 });
             });
         });
