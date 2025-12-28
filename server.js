@@ -517,14 +517,6 @@ function initializeDatabase() {
             });
         }
     });
-    
-    // Agregar columnas para CFDI si no existen
-    const cfdiColumns = ['cfdi_uuid', 'cfdi_xml', 'cfdi_pdf_path', 'cfdi_fecha_timbrado', 'cfdi_qr_code'];
-    cfdiColumns.forEach(column => {
-        db.run(`ALTER TABLE carta_porte ADD COLUMN ${column} TEXT`, (err) => {
-            // Ignore error if column already exists
-        });
-    });
 
     // Route tracking (seguimiento de rutas para operadores)
     db.run(`CREATE TABLE IF NOT EXISTS routes (
@@ -1553,23 +1545,27 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
         }
         
         // Obtener datos del usuario (emisor)
-        db.get('SELECT * FROM users WHERE id = ?', [userId], async (errUser, user) => {
+        db.get('SELECT * FROM users WHERE id = ?', [userId], (errUser, user) => {
             if (errUser || !user) {
                 return res.status(500).json({ error: 'Error al obtener datos del usuario' });
             }
             
             // Obtener datos del vehículo si existe
             let vehicleData = null;
-            if (cartaPorte.vehicle_id) {
-                db.get('SELECT * FROM vehicles WHERE id = ?', [cartaPorte.vehicle_id], (errVehicle, vehicle) => {
-                    if (!errVehicle && vehicle) {
-                        vehicleData = vehicle;
-                    }
+            const getVehicleAndGenerate = () => {
+                if (cartaPorte.vehicle_id) {
+                    db.get('SELECT * FROM vehicles WHERE id = ?', [cartaPorte.vehicle_id], (errVehicle, vehicle) => {
+                        if (!errVehicle && vehicle) {
+                            vehicleData = vehicle;
+                        }
+                        generateCFDI();
+                    });
+                } else {
                     generateCFDI();
-                });
-            } else {
-                generateCFDI();
-            }
+                }
+            };
+            
+            getVehicleAndGenerate();
             
             async function generateCFDI() {
                 try {
@@ -1700,6 +1696,57 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                 }
             }
         });
+    });
+});
+
+// API: Descargar PDF del CFDI
+app.get('/api/carta-porte/:id/download-pdf', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const cartaPorteId = req.params.id;
+    
+    db.get('SELECT * FROM carta_porte WHERE id = ? AND user_id = ?', [cartaPorteId, userId], (err, cartaPorte) => {
+        if (err || !cartaPorte) {
+            return res.status(404).json({ error: 'Carta Porte no encontrada' });
+        }
+        
+        if (!cartaPorte.cfdi_pdf_path) {
+            return res.status(404).json({ error: 'PDF no disponible para esta Carta Porte' });
+        }
+        
+        if (!fs.existsSync(cartaPorte.cfdi_pdf_path)) {
+            return res.status(404).json({ error: 'Archivo PDF no encontrado en el servidor' });
+        }
+        
+        const fileName = `CFDI-${cartaPorte.cfdi_uuid || cartaPorteId}.pdf`;
+        res.download(cartaPorte.cfdi_pdf_path, fileName, (err) => {
+            if (err) {
+                console.error('Error descargando PDF:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({ error: 'Error al descargar el PDF' });
+                }
+            }
+        });
+    });
+});
+
+// API: Descargar XML del CFDI
+app.get('/api/carta-porte/:id/download-xml', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const cartaPorteId = req.params.id;
+    
+    db.get('SELECT * FROM carta_porte WHERE id = ? AND user_id = ?', [cartaPorteId, userId], (err, cartaPorte) => {
+        if (err || !cartaPorte) {
+            return res.status(404).json({ error: 'Carta Porte no encontrada' });
+        }
+        
+        if (!cartaPorte.cfdi_xml) {
+            return res.status(404).json({ error: 'XML no disponible para esta Carta Porte' });
+        }
+        
+        const fileName = `CFDI-${cartaPorte.cfdi_uuid || cartaPorteId}.xml`;
+        res.setHeader('Content-Type', 'application/xml');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.send(cartaPorte.cfdi_xml);
     });
 });
 
