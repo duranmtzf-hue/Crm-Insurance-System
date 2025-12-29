@@ -1579,37 +1579,88 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                         const uuid = generateUUID();
                         const fechaTimbrado = new Date().toISOString();
                         
-                        // Guardar datos simulados
-                        db.run(
-                            `UPDATE carta_porte SET 
-                             cfdi_uuid = ?, 
-                             cfdi_fecha_timbrado = ?,
-                             cfdi_xml = ?,
-                             estado = 'Emitida',
-                             updated_at = CURRENT_TIMESTAMP
-                             WHERE id = ?`,
-                            [
-                                uuid,
-                                fechaTimbrado,
-                                `<!-- XML CFDI simulado - Configure FACTURAMA_USER y FACTURAMA_PASS para generar CFDI real -->`,
-                                cartaPorteId
-                            ],
-                            function(updateErr) {
-                                if (updateErr) {
-                                    console.error('Error guardando CFDI simulado:', updateErr);
-                                    return res.status(500).json({ error: 'Error al guardar CFDI' });
-                                }
-                                
-                                res.json({
-                                    success: true,
-                                    message: 'CFDI generado en modo simulación',
-                                    uuid: uuid,
-                                    fecha_timbrado: fechaTimbrado,
-                                    modo: 'simulacion',
-                                    nota: 'Configure FACTURAMA_USER y FACTURAMA_PASS para generar CFDI real'
-                                });
-                            }
-                        );
+                        // Generar XML válido simulado
+                        const xmlSimulado = generateSimulatedXML(cartaPorte, uuid, fechaTimbrado, user);
+                        
+                        // Generar PDF simulado
+                        const pdfDir = path.join(__dirname, 'uploads', 'cfdi');
+                        if (!fs.existsSync(pdfDir)) {
+                            fs.mkdirSync(pdfDir, { recursive: true });
+                        }
+                        const pdfPath = path.join(pdfDir, `carta-porte-${cartaPorteId}-${uuid}.pdf`);
+                        
+                        // Generar PDF de forma asíncrona
+                        generateSimulatedPDF(cartaPorte, uuid, fechaTimbrado, user, pdfPath)
+                            .then(() => {
+                                // Guardar datos simulados con PDF
+                                db.run(
+                                    `UPDATE carta_porte SET 
+                                     cfdi_uuid = ?, 
+                                     cfdi_fecha_timbrado = ?,
+                                     cfdi_xml = ?,
+                                     cfdi_pdf_path = ?,
+                                     estado = 'Emitida',
+                                     updated_at = CURRENT_TIMESTAMP
+                                     WHERE id = ?`,
+                                    [
+                                        uuid,
+                                        fechaTimbrado,
+                                        xmlSimulado,
+                                        pdfPath,
+                                        cartaPorteId
+                                    ],
+                                    function(updateErr) {
+                                        if (updateErr) {
+                                            console.error('Error guardando CFDI simulado:', updateErr);
+                                            return res.status(500).json({ error: 'Error al guardar CFDI' });
+                                        }
+                                        
+                                        res.json({
+                                            success: true,
+                                            message: 'CFDI generado en modo simulación',
+                                            uuid: uuid,
+                                            fecha_timbrado: fechaTimbrado,
+                                            pdf_path: pdfPath,
+                                            modo: 'simulacion',
+                                            nota: 'Configure FACTURAMA_USER y FACTURAMA_PASS para generar CFDI real'
+                                        });
+                                    }
+                                );
+                            })
+                            .catch((pdfErr) => {
+                                console.error('Error generando PDF simulado:', pdfErr);
+                                // Guardar sin PDF si falla
+                                db.run(
+                                    `UPDATE carta_porte SET 
+                                     cfdi_uuid = ?, 
+                                     cfdi_fecha_timbrado = ?,
+                                     cfdi_xml = ?,
+                                     estado = 'Emitida',
+                                     updated_at = CURRENT_TIMESTAMP
+                                     WHERE id = ?`,
+                                    [
+                                        uuid,
+                                        fechaTimbrado,
+                                        xmlSimulado,
+                                        cartaPorteId
+                                    ],
+                                    function(updateErr) {
+                                        if (updateErr) {
+                                            console.error('Error guardando CFDI simulado:', updateErr);
+                                            return res.status(500).json({ error: 'Error al guardar CFDI' });
+                                        }
+                                        
+                                        res.json({
+                                            success: true,
+                                            message: 'CFDI generado en modo simulación (sin PDF)',
+                                            uuid: uuid,
+                                            fecha_timbrado: fechaTimbrado,
+                                            modo: 'simulacion',
+                                            nota: 'Configure FACTURAMA_USER y FACTURAMA_PASS para generar CFDI real'
+                                        });
+                                    }
+                                );
+                            });
                         return;
                     }
                     
@@ -1743,10 +1794,26 @@ app.get('/api/carta-porte/:id/download-xml', requireAuth, (req, res) => {
             return res.status(404).json({ error: 'XML no disponible para esta Carta Porte' });
         }
         
+        // Limpiar el XML de caracteres extra y asegurar que comience correctamente
+        let xmlContent = cartaPorte.cfdi_xml.toString().trim();
+        
+        // Si el XML no comienza con <?xml, buscar el inicio real
+        if (!xmlContent.startsWith('<?xml')) {
+            const xmlStart = xmlContent.indexOf('<?xml');
+            if (xmlStart > 0) {
+                xmlContent = xmlContent.substring(xmlStart);
+            }
+        }
+        
+        // Asegurar que el XML esté bien formado
+        if (!xmlContent.startsWith('<?xml')) {
+            return res.status(500).json({ error: 'XML mal formado' });
+        }
+        
         const fileName = `CFDI-${cartaPorte.cfdi_uuid || cartaPorteId}.xml`;
-        res.setHeader('Content-Type', 'application/xml');
-        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-        res.send(cartaPorte.cfdi_xml);
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+        res.send(xmlContent);
     });
 });
 
@@ -1874,6 +1941,100 @@ function generateUUID() {
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     }).toUpperCase();
+}
+
+// Función para generar XML CFDI simulado válido
+function generateSimulatedXML(cartaPorte, uuid, fechaTimbrado, user) {
+    const fecha = new Date(cartaPorte.fecha || new Date()).toISOString().replace(/\.\d{3}Z$/, '');
+    const rfcEmisor = user.rfc || 'XAXX010101000';
+    const nombreEmisor = user.empresa || user.nombre || 'Transportista';
+    
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd" Version="4.0" Serie="A" Folio="${cartaPorte.numero_guia || cartaPorte.folio || `CP${cartaPorte.id}`}" Fecha="${fecha}" Sello="SIMULADO" FormaPago="03" NoCertificado="00001000000000000000" Certificado="SIMULADO" SubTotal="${cartaPorte.valor_declarado || 0}" Moneda="MXN" Total="${cartaPorte.valor_declarado || 0}" TipoDeComprobante="I" MetodoPago="PUE" LugarExpedicion="${cartaPorte.origen_cp || '00000'}">
+    <cfdi:Emisor Rfc="${rfcEmisor}" Nombre="${nombreEmisor}" RegimenFiscal="601"/>
+    <cfdi:Receptor Rfc="${cartaPorte.destinatario_rfc || 'XAXX010101000'}" Nombre="${cartaPorte.destinatario_nombre || cartaPorte.destinatario || 'Cliente'}" UsoCFDI="G03"/>
+    <cfdi:Conceptos>
+        <cfdi:Concepto ClaveProdServ="78102200" Cantidad="${cartaPorte.cantidad || 1}" ClaveUnidad="${cartaPorte.unidad_medida === 'kg' ? 'KGM' : 'MTR'}" Unidad="${cartaPorte.unidad_medida || 'kg'}" Descripcion="${cartaPorte.mercancia || 'Transporte de mercancía'}" ValorUnitario="${cartaPorte.valor_declarado ? (cartaPorte.valor_declarado / (cartaPorte.cantidad || 1)) : 0}" Importe="${cartaPorte.valor_declarado || 0}"/>
+    </cfdi:Conceptos>
+    <cfdi:Complemento>
+        <cartaporte20:CartaPorte xmlns:cartaporte20="http://www.sat.gob.mx/CartaPorte20" Version="2.0" TranspInternac="No" TotalDistRec="${cartaPorte.distancia_km || 0}">
+            <cartaporte20:Ubicaciones>
+                <cartaporte20:Ubicacion TipoUbicacion="Origen" IDUbicacion="ORIGEN" RFCRemitenteDestinatario="${rfcEmisor}" FechaHoraSalidaLlegada="${fecha}">
+                    <cartaporte20:Domicilio CodigoPostal="${cartaPorte.origen_cp || '00000'}" Estado="${cartaPorte.origen_estado || 'Estado'}" Municipio="${cartaPorte.origen_municipio || 'Municipio'}" Localidad="${cartaPorte.origen_localidad || 'Localidad'}" Calle="${cartaPorte.origen_calle || 'Calle'}" NumeroExterior="${cartaPorte.origen_numero || 'S/N'}"/>
+                </cartaporte20:Ubicacion>
+                <cartaporte20:Ubicacion TipoUbicacion="Destino" IDUbicacion="DESTINO" RFCRemitenteDestinatario="${cartaPorte.destinatario_rfc || 'XAXX010101000'}" FechaHoraSalidaLlegada="${fecha}">
+                    <cartaporte20:Domicilio CodigoPostal="${cartaPorte.destino_cp || '00000'}" Estado="${cartaPorte.destino_estado || 'Estado'}" Municipio="${cartaPorte.destino_municipio || 'Municipio'}" Localidad="${cartaPorte.destino_localidad || 'Localidad'}" Calle="${cartaPorte.destino_calle || 'Calle'}" NumeroExterior="${cartaPorte.destino_numero || 'S/N'}"/>
+                </cartaporte20:Ubicacion>
+            </cartaporte20:Ubicaciones>
+            <cartaporte20:Mercancias PesoBrutoTotal="${cartaPorte.peso_bruto || 0}" UnidadPeso="KGM" NumTotalMercancias="1">
+                <cartaporte20:Mercancia BienesTransp="${cartaPorte.mercancia || 'Mercancía'}" Cantidad="${cartaPorte.cantidad || 1}" ClaveUnidad="${cartaPorte.unidad_medida === 'kg' ? 'KGM' : 'MTR'}" Unidad="${cartaPorte.unidad_medida || 'kg'}" PesoEnKg="${cartaPorte.peso_bruto || 0}"/>
+            </cartaporte20:Mercancias>
+            <cartaporte20:FiguraTransporte TipoFigura="01">
+                <cartaporte20:PartesTransporte ParteTransporte="TP-01">
+                    <cartaporte20:Domicilio CodigoPostal="${cartaPorte.origen_cp || '00000'}" Estado="${cartaPorte.origen_estado || 'Estado'}" Municipio="${cartaPorte.origen_municipio || 'Municipio'}"/>
+                </cartaporte20:PartesTransporte>
+            </cartaporte20:FiguraTransporte>
+        </cartaporte20:CartaPorte>
+    </cfdi:Complemento>
+    <cfdi:Complemento>
+        <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" Version="1.1" UUID="${uuid}" FechaTimbrado="${fechaTimbrado}" RfcProvCertif="SIMULADO" SelloCFD="SIMULADO" NoCertificadoSAT="00001000000000000000" SelloSAT="SIMULADO"/>
+    </cfdi:Complemento>
+</cfdi:Comprobante>`;
+}
+
+// Función para generar PDF CFDI simulado
+function generateSimulatedPDF(cartaPorte, uuid, fechaTimbrado, user, outputPath) {
+    return new Promise((resolve, reject) => {
+        try {
+            const doc = new PDFDocument({ margin: 50 });
+            const stream = fs.createWriteStream(outputPath);
+            doc.pipe(stream);
+            
+            // Encabezado
+            doc.fontSize(18).font('Helvetica-Bold').text('CFDI - Carta Porte', { align: 'center' });
+            doc.moveDown();
+            doc.fontSize(10).font('Helvetica').text(`UUID: ${uuid}`, { align: 'center' });
+            doc.text(`Fecha de Timbrado: ${new Date(fechaTimbrado).toLocaleString('es-MX')}`, { align: 'center' });
+            doc.moveDown();
+            
+            // Información del Emisor
+            doc.fontSize(12).font('Helvetica-Bold').text('EMISOR', { underline: true });
+            doc.fontSize(10).font('Helvetica');
+            doc.text(`RFC: ${user.rfc || 'XAXX010101000'}`);
+            doc.text(`Nombre: ${user.empresa || user.nombre || 'Transportista'}`);
+            doc.moveDown();
+            
+            // Información del Receptor
+            doc.fontSize(12).font('Helvetica-Bold').text('RECEPTOR', { underline: true });
+            doc.fontSize(10).font('Helvetica');
+            doc.text(`RFC: ${cartaPorte.destinatario_rfc || 'XAXX010101000'}`);
+            doc.text(`Nombre: ${cartaPorte.destinatario_nombre || cartaPorte.destinatario || 'Cliente'}`);
+            doc.moveDown();
+            
+            // Información de la Carta Porte
+            doc.fontSize(12).font('Helvetica-Bold').text('INFORMACIÓN DE CARTA PORTE', { underline: true });
+            doc.fontSize(10).font('Helvetica');
+            doc.text(`Número de Guía: ${cartaPorte.numero_guia || cartaPorte.folio || `CP${cartaPorte.id}`}`);
+            doc.text(`Fecha: ${new Date(cartaPorte.fecha || new Date()).toLocaleDateString('es-MX')}`);
+            doc.text(`Origen: ${cartaPorte.origen_calle || ''} ${cartaPorte.origen_numero || ''}, ${cartaPorte.origen_localidad || ''}, ${cartaPorte.origen_municipio || ''}, ${cartaPorte.origen_estado || ''} CP: ${cartaPorte.origen_cp || ''}`);
+            doc.text(`Destino: ${cartaPorte.destino_calle || ''} ${cartaPorte.destino_numero || ''}, ${cartaPorte.destino_localidad || ''}, ${cartaPorte.destino_municipio || ''}, ${cartaPorte.destino_estado || ''} CP: ${cartaPorte.destino_cp || ''}`);
+            doc.text(`Mercancía: ${cartaPorte.mercancia || 'N/A'}`);
+            doc.text(`Cantidad: ${cartaPorte.cantidad || 0} ${cartaPorte.unidad_medida || 'kg'}`);
+            doc.text(`Peso Bruto: ${cartaPorte.peso_bruto || 0} kg`);
+            doc.text(`Valor Declarado: $${(cartaPorte.valor_declarado || 0).toFixed(2)}`);
+            doc.moveDown();
+            
+            // Nota de simulación
+            doc.fontSize(8).font('Helvetica-Oblique').fillColor('red');
+            doc.text('NOTA: Este es un CFDI generado en modo simulación. Configure FACTURAMA_USER y FACTURAMA_PASS para generar CFDI real timbrado por el SAT.', { align: 'center' });
+            
+            doc.end();
+            stream.on('finish', () => resolve(outputPath));
+            stream.on('error', reject);
+        } catch (error) {
+            reject(error);
+        }
+    });
 }
 
 // --- Rutas para Operadores ---
