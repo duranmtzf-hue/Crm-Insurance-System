@@ -1685,9 +1685,82 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                     if (response.data && response.data.Id) {
                         // CFDI generado exitosamente
                         const cfdiId = response.data.Id;
-                        const uuid = response.data.UUID || response.data.Cfdi?.UUID || generateUUID();
-                        const xml = response.data.Xml || '';
-                        const fechaTimbrado = new Date().toISOString();
+                        
+                        // Extraer UUID de diferentes ubicaciones posibles en la respuesta
+                        const uuid = response.data.UUID 
+                            || response.data.Cfdi?.UUID 
+                            || response.data.CfdiId?.UUID
+                            || (response.data.Cfdi && typeof response.data.Cfdi === 'string' ? null : response.data.Cfdi?.UUID)
+                            || generateUUID();
+                        
+                        // Extraer XML de diferentes ubicaciones posibles
+                        let xml = response.data.Xml 
+                            || response.data.Cfdi?.Xml 
+                            || response.data.CfdiId?.Xml
+                            || '';
+                        
+                        // Si el XML viene codificado en base64, decodificarlo
+                        if (xml && !xml.trim().startsWith('<?xml')) {
+                            try {
+                                // Intentar decodificar si parece base64
+                                const decoded = Buffer.from(xml, 'base64').toString('utf-8');
+                                if (decoded.trim().startsWith('<?xml')) {
+                                    xml = decoded;
+                                }
+                            } catch (e) {
+                                // Si no es base64, usar el XML tal cual
+                                console.log('XML no está en base64, usando directamente');
+                            }
+                        }
+                        
+                        // Si aún no tenemos XML, intentar obtenerlo directamente del CFDI
+                        if (!xml || xml.trim() === '') {
+                            try {
+                                const cfdiResponse = await axios.get(`${facturamaUrl}/${cfdiId}`, {
+                                    headers: { 'Authorization': `Basic ${auth}` }
+                                });
+                                xml = cfdiResponse.data?.Xml 
+                                    || cfdiResponse.data?.Cfdi?.Xml 
+                                    || '';
+                                
+                                // Decodificar si viene en base64
+                                if (xml && !xml.trim().startsWith('<?xml')) {
+                                    try {
+                                        const decoded = Buffer.from(xml, 'base64').toString('utf-8');
+                                        if (decoded.trim().startsWith('<?xml')) {
+                                            xml = decoded;
+                                        }
+                                    } catch (e) {
+                                        // Continuar con el XML tal cual
+                                    }
+                                }
+                            } catch (cfdiErr) {
+                                console.error('Error obteniendo XML del CFDI:', cfdiErr);
+                            }
+                        }
+                        
+                        // Extraer fecha de timbrado
+                        let fechaTimbrado = response.data.Date 
+                            || response.data.Cfdi?.Date 
+                            || response.data.FechaTimbrado
+                            || new Date().toISOString();
+                        
+                        // Asegurar que la fecha esté en formato ISO
+                        if (fechaTimbrado && !fechaTimbrado.includes('T')) {
+                            fechaTimbrado = new Date(fechaTimbrado).toISOString();
+                        }
+                        
+                        // Limpiar y validar el XML
+                        if (xml) {
+                            xml = xml.toString().trim();
+                            // Asegurar que comience con <?xml
+                            if (!xml.startsWith('<?xml')) {
+                                const xmlStart = xml.indexOf('<?xml');
+                                if (xmlStart > 0) {
+                                    xml = xml.substring(xmlStart);
+                                }
+                            }
+                        }
                         
                         // Descargar PDF si está disponible
                         let pdfPath = null;
@@ -1731,7 +1804,8 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                                     uuid: uuid,
                                     fecha_timbrado: fechaTimbrado,
                                     pdf_path: pdfPath,
-                                    modo: 'produccion'
+                                    modo: 'produccion',
+                                    xml_length: xml ? xml.length : 0
                                 });
                             }
                         );
