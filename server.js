@@ -485,7 +485,7 @@ function initializeDatabase() {
     )`);
     
     // Agregar columnas para CFDI si no existen
-    const cfdiColumns = ['cfdi_uuid', 'cfdi_xml', 'cfdi_pdf_path', 'cfdi_fecha_timbrado', 'cfdi_qr_code'];
+    const cfdiColumns = ['cfdi_uuid', 'cfdi_xml', 'cfdi_pdf_path', 'cfdi_fecha_timbrado', 'cfdi_qr_code', 'cfdi_id'];
     cfdiColumns.forEach(column => {
         db.run(`ALTER TABLE carta_porte ADD COLUMN ${column} TEXT`, (err) => {
             // Ignore error if column already exists
@@ -1785,13 +1785,14 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                         db.run(
                             `UPDATE carta_porte SET 
                              cfdi_uuid = ?, 
+                             cfdi_id = ?,
                              cfdi_fecha_timbrado = ?,
                              cfdi_xml = ?,
                              cfdi_pdf_path = ?,
                              estado = 'Emitida',
                              updated_at = CURRENT_TIMESTAMP
                              WHERE id = ?`,
-                            [uuid, fechaTimbrado, xml, pdfPath, cartaPorteId],
+                            [uuid, cfdiId.toString(), fechaTimbrado, xml, pdfPath, cartaPorteId],
                             function(updateErr) {
                                 if (updateErr) {
                                     console.error('Error guardando CFDI:', updateErr);
@@ -1825,51 +1826,163 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
 });
 
 // API: Descargar PDF del CFDI
-app.get('/api/carta-porte/:id/download-pdf', requireAuth, (req, res) => {
+app.get('/api/carta-porte/:id/download-pdf', requireAuth, async (req, res) => {
     const userId = req.session.userId;
     const cartaPorteId = req.params.id;
     
-    db.get('SELECT * FROM carta_porte WHERE id = ? AND user_id = ?', [cartaPorteId, userId], (err, cartaPorte) => {
+    db.get('SELECT * FROM carta_porte WHERE id = ? AND user_id = ?', [cartaPorteId, userId], async (err, cartaPorte) => {
         if (err || !cartaPorte) {
             return res.status(404).json({ error: 'Carta Porte no encontrada' });
         }
         
-        if (!cartaPorte.cfdi_pdf_path) {
-            return res.status(404).json({ error: 'PDF no disponible para esta Carta Porte' });
+        // Si no tiene CFDI generado
+        if (!cartaPorte.cfdi_uuid && !cartaPorte.cfdi_id) {
+            return res.status(404).json({ error: 'CFDI no generado para esta Carta Porte' });
         }
         
-        if (!fs.existsSync(cartaPorte.cfdi_pdf_path)) {
-            return res.status(404).json({ error: 'Archivo PDF no encontrado en el servidor' });
-        }
-        
-        const fileName = `CFDI-${cartaPorte.cfdi_uuid || cartaPorteId}.pdf`;
-        res.download(cartaPorte.cfdi_pdf_path, fileName, (err) => {
-            if (err) {
-                console.error('Error descargando PDF:', err);
-                if (!res.headersSent) {
-                    res.status(500).json({ error: 'Error al descargar el PDF' });
+        // Intentar servir PDF local si existe
+        if (cartaPorte.cfdi_pdf_path && fs.existsSync(cartaPorte.cfdi_pdf_path)) {
+            const fileName = `CFDI-${cartaPorte.cfdi_uuid || cartaPorteId}.pdf`;
+            return res.download(cartaPorte.cfdi_pdf_path, fileName, (err) => {
+                if (err) {
+                    console.error('Error descargando PDF local:', err);
+                    if (!res.headersSent) {
+                        res.status(500).json({ error: 'Error al descargar el PDF' });
+                    }
                 }
+            });
+        }
+        
+        // Si no existe localmente, intentar descargarlo de Facturama
+        const FACTURAMA_USER = process.env.FACTURAMA_USER;
+        const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
+        const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
+        
+        if (!FACTURAMA_USER || !FACTURAMA_PASS || !cartaPorte.cfdi_id) {
+            return res.status(404).json({ error: 'PDF no disponible. El CFDI debe estar generado con Facturama.' });
+        }
+        
+        try {
+            const facturamaUrl = FACTURAMA_MODE === 'production' 
+                ? 'https://api.facturama.mx/3/cfdis'
+                : 'https://apisandbox.facturama.mx/3/cfdis';
+            
+            const auth = Buffer.from(`${FACTURAMA_USER}:${FACTURAMA_PASS}`).toString('base64');
+            
+            // Descargar PDF directamente de Facturama
+            const pdfResponse = await axios.get(`${facturamaUrl}/${cartaPorte.cfdi_id}/pdf`, {
+                headers: { 'Authorization': `Basic ${auth}` },
+                responseType: 'arraybuffer',
+                timeout: 30000
+            });
+            
+            // Guardar el PDF localmente para futuras descargas
+            const pdfDir = path.join(__dirname, 'uploads', 'cfdi');
+            if (!fs.existsSync(pdfDir)) {
+                fs.mkdirSync(pdfDir, { recursive: true });
             }
-        });
+            const pdfPath = path.join(pdfDir, `carta-porte-${cartaPorteId}-${cartaPorte.cfdi_uuid || cartaPorteId}.pdf`);
+            fs.writeFileSync(pdfPath, pdfResponse.data);
+            
+            // Actualizar la ruta en la base de datos
+            db.run('UPDATE carta_porte SET cfdi_pdf_path = ? WHERE id = ?', [pdfPath, cartaPorteId], (updateErr) => {
+                if (updateErr) {
+                    console.error('Error actualizando ruta del PDF:', updateErr);
+                }
+            });
+            
+            // Enviar el PDF al cliente
+            const fileName = `CFDI-${cartaPorte.cfdi_uuid || cartaPorteId}.pdf`;
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+            res.send(pdfResponse.data);
+        } catch (error) {
+            console.error('Error descargando PDF de Facturama:', error.response?.data || error.message);
+            res.status(500).json({ 
+                error: 'Error al descargar el PDF de Facturama',
+                detalles: error.response?.data?.Message || error.message
+            });
+        }
     });
 });
 
 // API: Descargar XML del CFDI
-app.get('/api/carta-porte/:id/download-xml', requireAuth, (req, res) => {
+app.get('/api/carta-porte/:id/download-xml', requireAuth, async (req, res) => {
     const userId = req.session.userId;
     const cartaPorteId = req.params.id;
     
-    db.get('SELECT * FROM carta_porte WHERE id = ? AND user_id = ?', [cartaPorteId, userId], (err, cartaPorte) => {
+    db.get('SELECT * FROM carta_porte WHERE id = ? AND user_id = ?', [cartaPorteId, userId], async (err, cartaPorte) => {
         if (err || !cartaPorte) {
             return res.status(404).json({ error: 'Carta Porte no encontrada' });
         }
         
-        if (!cartaPorte.cfdi_xml) {
+        // Si no tiene CFDI generado
+        if (!cartaPorte.cfdi_uuid && !cartaPorte.cfdi_id) {
+            return res.status(404).json({ error: 'CFDI no generado para esta Carta Porte' });
+        }
+        
+        let xmlContent = null;
+        
+        // Intentar obtener XML de la base de datos
+        if (cartaPorte.cfdi_xml) {
+            xmlContent = cartaPorte.cfdi_xml.toString().trim();
+        }
+        
+        // Si no hay XML en la BD pero tenemos cfdi_id, intentar obtenerlo de Facturama
+        if ((!xmlContent || xmlContent === '') && cartaPorte.cfdi_id) {
+            const FACTURAMA_USER = process.env.FACTURAMA_USER;
+            const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
+            const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
+            
+            if (FACTURAMA_USER && FACTURAMA_PASS) {
+                try {
+                    const facturamaUrl = FACTURAMA_MODE === 'production' 
+                        ? 'https://api.facturama.mx/3/cfdis'
+                        : 'https://apisandbox.facturama.mx/3/cfdis';
+                    
+                    const auth = Buffer.from(`${FACTURAMA_USER}:${FACTURAMA_PASS}`).toString('base64');
+                    
+                    const cfdiResponse = await axios.get(`${facturamaUrl}/${cartaPorte.cfdi_id}`, {
+                        headers: { 'Authorization': `Basic ${auth}` },
+                        timeout: 30000
+                    });
+                    
+                    xmlContent = cfdiResponse.data?.Xml 
+                        || cfdiResponse.data?.Cfdi?.Xml 
+                        || '';
+                    
+                    // Decodificar si viene en base64
+                    if (xmlContent && !xmlContent.trim().startsWith('<?xml')) {
+                        try {
+                            const decoded = Buffer.from(xmlContent, 'base64').toString('utf-8');
+                            if (decoded.trim().startsWith('<?xml')) {
+                                xmlContent = decoded;
+                            }
+                        } catch (e) {
+                            // Continuar con el XML tal cual
+                        }
+                    }
+                    
+                    // Guardar el XML en la base de datos si se obtuvo exitosamente
+                    if (xmlContent && xmlContent.trim().startsWith('<?xml')) {
+                        db.run('UPDATE carta_porte SET cfdi_xml = ? WHERE id = ?', [xmlContent, cartaPorteId], (updateErr) => {
+                            if (updateErr) {
+                                console.error('Error actualizando XML:', updateErr);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error obteniendo XML de Facturama:', error.response?.data || error.message);
+                }
+            }
+        }
+        
+        if (!xmlContent || xmlContent === '') {
             return res.status(404).json({ error: 'XML no disponible para esta Carta Porte' });
         }
         
         // Limpiar el XML de caracteres extra y asegurar que comience correctamente
-        let xmlContent = cartaPorte.cfdi_xml.toString().trim();
+        xmlContent = xmlContent.toString().trim();
         
         // Si el XML no comienza con <?xml, buscar el inicio real
         if (!xmlContent.startsWith('<?xml')) {
@@ -1882,6 +1995,31 @@ app.get('/api/carta-porte/:id/download-xml', requireAuth, (req, res) => {
         // Asegurar que el XML esté bien formado
         if (!xmlContent.startsWith('<?xml')) {
             return res.status(500).json({ error: 'XML mal formado' });
+        }
+        
+        // Formatear el XML para que se vea bien (pretty print básico)
+        try {
+            // Reemplazar espacios múltiples y saltos de línea inconsistentes
+            xmlContent = xmlContent.replace(/>\s+</g, '>\n<');
+            // Añadir indentación básica
+            const lines = xmlContent.split('\n');
+            let indent = 0;
+            const indentSize = 2;
+            xmlContent = lines.map(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return '';
+                if (trimmed.startsWith('</')) {
+                    indent = Math.max(0, indent - indentSize);
+                }
+                const indented = ' '.repeat(indent) + trimmed;
+                if (trimmed.startsWith('<') && !trimmed.startsWith('</') && !trimmed.endsWith('/>') && !trimmed.startsWith('<?')) {
+                    indent += indentSize;
+                }
+                return indented;
+            }).filter(line => line).join('\n');
+        } catch (formatErr) {
+            // Si falla el formateo, usar el XML tal cual
+            console.warn('Error formateando XML, usando original:', formatErr);
         }
         
         const fileName = `CFDI-${cartaPorte.cfdi_uuid || cartaPorteId}.xml`;
