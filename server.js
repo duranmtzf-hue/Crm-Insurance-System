@@ -1574,13 +1574,97 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                     const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
                     const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
                     
-                    // REQUERIR credenciales de Facturama para generar CFDI real timbrado por el SAT
+                    // Si no hay credenciales, usar modo simulación con advertencia clara
                     if (!FACTURAMA_USER || !FACTURAMA_PASS) {
-                        return res.status(400).json({ 
-                            error: 'Credenciales de Facturama no configuradas',
-                            mensaje: 'Para generar CFDI timbrado por el SAT, debe configurar las variables de entorno FACTURAMA_USER y FACTURAMA_PASS en el servidor.',
-                            instrucciones: 'Contacte al administrador del sistema para configurar las credenciales de Facturama.'
-                        });
+                        // Modo simulación - generar datos de prueba (NO timbrado por SAT)
+                        const uuid = generateUUID();
+                        const fechaTimbrado = new Date().toISOString();
+                        
+                        // Generar XML válido simulado
+                        const xmlSimulado = generateSimulatedXML(cartaPorte, uuid, fechaTimbrado, user);
+                        
+                        // Generar PDF simulado
+                        const pdfDir = path.join(__dirname, 'uploads', 'cfdi');
+                        if (!fs.existsSync(pdfDir)) {
+                            fs.mkdirSync(pdfDir, { recursive: true });
+                        }
+                        const pdfPath = path.join(pdfDir, `carta-porte-${cartaPorteId}-${uuid}.pdf`);
+                        
+                        // Generar PDF de forma asíncrona
+                        generateSimulatedPDF(cartaPorte, uuid, fechaTimbrado, user, pdfPath)
+                            .then(() => {
+                                // Guardar datos simulados con PDF (sin cfdi_id porque no es real)
+                                db.run(
+                                    `UPDATE carta_porte SET 
+                                     cfdi_uuid = ?, 
+                                     cfdi_fecha_timbrado = ?,
+                                     cfdi_xml = ?,
+                                     cfdi_pdf_path = ?,
+                                     estado = 'Emitida',
+                                     updated_at = CURRENT_TIMESTAMP
+                                     WHERE id = ?`,
+                                    [
+                                        uuid,
+                                        fechaTimbrado,
+                                        xmlSimulado,
+                                        pdfPath,
+                                        cartaPorteId
+                                    ],
+                                    function(updateErr) {
+                                        if (updateErr) {
+                                            console.error('Error guardando CFDI simulado:', updateErr);
+                                            return res.status(500).json({ error: 'Error al guardar CFDI' });
+                                        }
+                                        
+                                        res.json({
+                                            success: true,
+                                            message: 'CFDI generado en modo SIMULACIÓN (NO timbrado por SAT)',
+                                            uuid: uuid,
+                                            fecha_timbrado: fechaTimbrado,
+                                            pdf_path: pdfPath,
+                                            modo: 'simulacion',
+                                            advertencia: 'Este CFDI es SIMULADO y NO está timbrado por el SAT. Para generar CFDI real timbrado, configure FACTURAMA_USER y FACTURAMA_PASS.',
+                                            nota: 'Configure FACTURAMA_USER y FACTURAMA_PASS en Render para generar CFDI real timbrado por el SAT'
+                                        });
+                                    }
+                                );
+                            })
+                            .catch((pdfErr) => {
+                                console.error('Error generando PDF simulado:', pdfErr);
+                                // Guardar sin PDF si falla
+                                db.run(
+                                    `UPDATE carta_porte SET 
+                                     cfdi_uuid = ?, 
+                                     cfdi_fecha_timbrado = ?,
+                                     cfdi_xml = ?,
+                                     estado = 'Emitida',
+                                     updated_at = CURRENT_TIMESTAMP
+                                     WHERE id = ?`,
+                                    [
+                                        uuid,
+                                        fechaTimbrado,
+                                        xmlSimulado,
+                                        cartaPorteId
+                                    ],
+                                    function(updateErr) {
+                                        if (updateErr) {
+                                            console.error('Error guardando CFDI simulado:', updateErr);
+                                            return res.status(500).json({ error: 'Error al guardar CFDI' });
+                                        }
+                                        
+                                        res.json({
+                                            success: true,
+                                            message: 'CFDI generado en modo SIMULACIÓN (sin PDF)',
+                                            uuid: uuid,
+                                            fecha_timbrado: fechaTimbrado,
+                                            modo: 'simulacion',
+                                            advertencia: 'Este CFDI es SIMULADO y NO está timbrado por el SAT. Para generar CFDI real timbrado, configure FACTURAMA_USER y FACTURAMA_PASS.',
+                                            nota: 'Configure FACTURAMA_USER y FACTURAMA_PASS en Render para generar CFDI real timbrado por el SAT'
+                                        });
+                                    }
+                                );
+                            });
+                        return;
                     }
                     
                     // Construir el objeto CFDI según el formato de Facturama
