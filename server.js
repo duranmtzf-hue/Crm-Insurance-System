@@ -1899,10 +1899,6 @@ app.get('/api/carta-porte/:id/download-xml', requireAuth, async (req, res) => {
             const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
             const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
             
-            const FACTURAMA_USER = process.env.FACTURAMA_USER;
-            const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
-            const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
-            
             if (FACTURAMA_USER && FACTURAMA_PASS) {
                 try {
                     const facturamaUrl = FACTURAMA_MODE === 'production' 
