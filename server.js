@@ -1574,94 +1574,13 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                     const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
                     const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
                     
+                    // REQUERIR credenciales de Facturama para generar CFDI real timbrado por el SAT
                     if (!FACTURAMA_USER || !FACTURAMA_PASS) {
-                        // Modo simulación - generar datos de prueba
-                        const uuid = generateUUID();
-                        const fechaTimbrado = new Date().toISOString();
-                        
-                        // Generar XML válido simulado
-                        const xmlSimulado = generateSimulatedXML(cartaPorte, uuid, fechaTimbrado, user);
-                        
-                        // Generar PDF simulado
-                        const pdfDir = path.join(__dirname, 'uploads', 'cfdi');
-                        if (!fs.existsSync(pdfDir)) {
-                            fs.mkdirSync(pdfDir, { recursive: true });
-                        }
-                        const pdfPath = path.join(pdfDir, `carta-porte-${cartaPorteId}-${uuid}.pdf`);
-                        
-                        // Generar PDF de forma asíncrona
-                        generateSimulatedPDF(cartaPorte, uuid, fechaTimbrado, user, pdfPath)
-                            .then(() => {
-                                // Guardar datos simulados con PDF
-                                db.run(
-                                    `UPDATE carta_porte SET 
-                                     cfdi_uuid = ?, 
-                                     cfdi_fecha_timbrado = ?,
-                                     cfdi_xml = ?,
-                                     cfdi_pdf_path = ?,
-                                     estado = 'Emitida',
-                                     updated_at = CURRENT_TIMESTAMP
-                                     WHERE id = ?`,
-                                    [
-                                        uuid,
-                                        fechaTimbrado,
-                                        xmlSimulado,
-                                        pdfPath,
-                                        cartaPorteId
-                                    ],
-                                    function(updateErr) {
-                                        if (updateErr) {
-                                            console.error('Error guardando CFDI simulado:', updateErr);
-                                            return res.status(500).json({ error: 'Error al guardar CFDI' });
-                                        }
-                                        
-                                        res.json({
-                                            success: true,
-                                            message: 'CFDI generado en modo simulación',
-                                            uuid: uuid,
-                                            fecha_timbrado: fechaTimbrado,
-                                            pdf_path: pdfPath,
-                                            modo: 'simulacion',
-                                            nota: 'Configure FACTURAMA_USER y FACTURAMA_PASS para generar CFDI real'
-                                        });
-                                    }
-                                );
-                            })
-                            .catch((pdfErr) => {
-                                console.error('Error generando PDF simulado:', pdfErr);
-                                // Guardar sin PDF si falla
-                                db.run(
-                                    `UPDATE carta_porte SET 
-                                     cfdi_uuid = ?, 
-                                     cfdi_fecha_timbrado = ?,
-                                     cfdi_xml = ?,
-                                     estado = 'Emitida',
-                                     updated_at = CURRENT_TIMESTAMP
-                                     WHERE id = ?`,
-                                    [
-                                        uuid,
-                                        fechaTimbrado,
-                                        xmlSimulado,
-                                        cartaPorteId
-                                    ],
-                                    function(updateErr) {
-                                        if (updateErr) {
-                                            console.error('Error guardando CFDI simulado:', updateErr);
-                                            return res.status(500).json({ error: 'Error al guardar CFDI' });
-                                        }
-                                        
-                                        res.json({
-                                            success: true,
-                                            message: 'CFDI generado en modo simulación (sin PDF)',
-                                            uuid: uuid,
-                                            fecha_timbrado: fechaTimbrado,
-                                            modo: 'simulacion',
-                                            nota: 'Configure FACTURAMA_USER y FACTURAMA_PASS para generar CFDI real'
-                                        });
-                                    }
-                                );
-                            });
-                        return;
+                        return res.status(400).json({ 
+                            error: 'Credenciales de Facturama no configuradas',
+                            mensaje: 'Para generar CFDI timbrado por el SAT, debe configurar las variables de entorno FACTURAMA_USER y FACTURAMA_PASS en el servidor.',
+                            instrucciones: 'Contacte al administrador del sistema para configurar las credenciales de Facturama.'
+                        });
                     }
                     
                     // Construir el objeto CFDI según el formato de Facturama
@@ -1717,10 +1636,15 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                         if (!xml || xml.trim() === '') {
                             try {
                                 const cfdiResponse = await axios.get(`${facturamaUrl}/${cfdiId}`, {
-                                    headers: { 'Authorization': `Basic ${auth}` }
+                                    headers: { 'Authorization': `Basic ${auth}` },
+                                    timeout: 30000
                                 });
+                                
+                                // Buscar XML en múltiples ubicaciones posibles
                                 xml = cfdiResponse.data?.Xml 
                                     || cfdiResponse.data?.Cfdi?.Xml 
+                                    || cfdiResponse.data?.CfdiId?.Xml
+                                    || (typeof cfdiResponse.data === 'string' ? cfdiResponse.data : '')
                                     || '';
                                 
                                 // Decodificar si viene en base64
@@ -1731,11 +1655,33 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                                             xml = decoded;
                                         }
                                     } catch (e) {
-                                        // Continuar con el XML tal cual
+                                        // Si no es base64 válido, intentar como string directo
+                                        if (xml.includes('<?xml') || xml.includes('<cfdi:Comprobante')) {
+                                            // El XML puede estar embebido en el string
+                                            const xmlMatch = xml.match(/<\?xml[\s\S]*<\/cfdi:Comprobante>/);
+                                            if (xmlMatch) {
+                                                xml = xmlMatch[0];
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Si aún no tenemos XML, intentar obtenerlo del endpoint específico de XML
+                                if (!xml || xml.trim() === '') {
+                                    try {
+                                        const xmlResponse = await axios.get(`${facturamaUrl}/${cfdiId}/xml`, {
+                                            headers: { 'Authorization': `Basic ${auth}` },
+                                            responseType: 'text',
+                                            timeout: 30000
+                                        });
+                                        xml = xmlResponse.data || '';
+                                    } catch (xmlErr) {
+                                        console.warn('No se pudo obtener XML del endpoint /xml:', xmlErr.message);
                                     }
                                 }
                             } catch (cfdiErr) {
-                                console.error('Error obteniendo XML del CFDI:', cfdiErr);
+                                console.error('Error obteniendo XML del CFDI:', cfdiErr.response?.data || cfdiErr.message);
+                                // Continuar sin XML, se guardará vacío y se podrá obtener después
                             }
                         }
                         
@@ -1858,8 +1804,31 @@ app.get('/api/carta-porte/:id/download-pdf', requireAuth, async (req, res) => {
         const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
         const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
         
-        if (!FACTURAMA_USER || !FACTURAMA_PASS || !cartaPorte.cfdi_id) {
-            return res.status(404).json({ error: 'PDF no disponible. El CFDI debe estar generado con Facturama.' });
+        // Si no tiene cfdi_id, significa que fue generado en modo simulación
+        if (!cartaPorte.cfdi_id) {
+            // Si tiene PDF local (simulado), servirlo
+            if (cartaPorte.cfdi_pdf_path && fs.existsSync(cartaPorte.cfdi_pdf_path)) {
+                const fileName = `CFDI-${cartaPorte.cfdi_uuid || cartaPorteId}.pdf`;
+                return res.download(cartaPorte.cfdi_pdf_path, fileName, (err) => {
+                    if (err) {
+                        console.error('Error descargando PDF simulado:', err);
+                        if (!res.headersSent) {
+                            res.status(500).json({ error: 'Error al descargar el PDF' });
+                        }
+                    }
+                });
+            }
+            return res.status(404).json({ 
+                error: 'PDF no disponible',
+                mensaje: 'Este CFDI fue generado en modo simulación. Para obtener un CFDI timbrado por el SAT, configure las credenciales de Facturama y genere un nuevo CFDI.'
+            });
+        }
+        
+        if (!FACTURAMA_USER || !FACTURAMA_PASS) {
+            return res.status(500).json({ 
+                error: 'Credenciales de Facturama no configuradas',
+                mensaje: 'No se pueden descargar PDFs de Facturama sin credenciales configuradas.'
+            });
         }
         
         try {
@@ -1923,13 +1892,13 @@ app.get('/api/carta-porte/:id/download-xml', requireAuth, async (req, res) => {
         
         let xmlContent = null;
         
-        // Intentar obtener XML de la base de datos
-        if (cartaPorte.cfdi_xml) {
-            xmlContent = cartaPorte.cfdi_xml.toString().trim();
-        }
-        
-        // Si no hay XML en la BD pero tenemos cfdi_id, intentar obtenerlo de Facturama
-        if ((!xmlContent || xmlContent === '') && cartaPorte.cfdi_id) {
+        // PRIORIDAD: Si tenemos cfdi_id, siempre obtener el XML más reciente de Facturama
+        // para asegurar que sea el XML timbrado real
+        if (cartaPorte.cfdi_id) {
+            const FACTURAMA_USER = process.env.FACTURAMA_USER;
+            const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
+            const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
+            
             const FACTURAMA_USER = process.env.FACTURAMA_USER;
             const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
             const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
@@ -1942,14 +1911,31 @@ app.get('/api/carta-porte/:id/download-xml', requireAuth, async (req, res) => {
                     
                     const auth = Buffer.from(`${FACTURAMA_USER}:${FACTURAMA_PASS}`).toString('base64');
                     
+                    // Intentar obtener el CFDI completo
                     const cfdiResponse = await axios.get(`${facturamaUrl}/${cartaPorte.cfdi_id}`, {
                         headers: { 'Authorization': `Basic ${auth}` },
                         timeout: 30000
                     });
                     
+                    // Buscar XML en múltiples ubicaciones
                     xmlContent = cfdiResponse.data?.Xml 
                         || cfdiResponse.data?.Cfdi?.Xml 
+                        || cfdiResponse.data?.CfdiId?.Xml
                         || '';
+                    
+                    // Si no se encontró, intentar endpoint específico de XML
+                    if (!xmlContent || xmlContent.trim() === '') {
+                        try {
+                            const xmlResponse = await axios.get(`${facturamaUrl}/${cartaPorte.cfdi_id}/xml`, {
+                                headers: { 'Authorization': `Basic ${auth}` },
+                                responseType: 'text',
+                                timeout: 30000
+                            });
+                            xmlContent = xmlResponse.data || '';
+                        } catch (xmlErr) {
+                            console.warn('No se pudo obtener XML del endpoint /xml:', xmlErr.message);
+                        }
+                    }
                     
                     // Decodificar si viene en base64
                     if (xmlContent && !xmlContent.trim().startsWith('<?xml')) {
@@ -1959,7 +1945,13 @@ app.get('/api/carta-porte/:id/download-xml', requireAuth, async (req, res) => {
                                 xmlContent = decoded;
                             }
                         } catch (e) {
-                            // Continuar con el XML tal cual
+                            // Si no es base64 válido, buscar XML embebido
+                            if (xmlContent.includes('<?xml') || xmlContent.includes('<cfdi:Comprobante')) {
+                                const xmlMatch = xmlContent.match(/<\?xml[\s\S]*<\/cfdi:Comprobante>/);
+                                if (xmlMatch) {
+                                    xmlContent = xmlMatch[0];
+                                }
+                            }
                         }
                     }
                     
@@ -1973,7 +1965,21 @@ app.get('/api/carta-porte/:id/download-xml', requireAuth, async (req, res) => {
                     }
                 } catch (error) {
                     console.error('Error obteniendo XML de Facturama:', error.response?.data || error.message);
+                    // Si falla, intentar usar XML de la BD si existe
+                    if (cartaPorte.cfdi_xml) {
+                        xmlContent = cartaPorte.cfdi_xml.toString().trim();
+                    }
                 }
+            } else {
+                // Si no hay credenciales pero tenemos XML en BD, usarlo
+                if (cartaPorte.cfdi_xml) {
+                    xmlContent = cartaPorte.cfdi_xml.toString().trim();
+                }
+            }
+        } else {
+            // Si no hay cfdi_id, usar XML de la BD (puede ser simulado)
+            if (cartaPorte.cfdi_xml) {
+                xmlContent = cartaPorte.cfdi_xml.toString().trim();
             }
         }
         
