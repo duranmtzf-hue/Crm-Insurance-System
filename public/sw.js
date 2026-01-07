@@ -1,5 +1,5 @@
 // Service Worker para CRM Insurance System
-const CACHE_NAME = 'crm-insurance-v5';
+const CACHE_NAME = 'crm-insurance-v6';
 const urlsToCache = [
   '/',
   '/dashboard',
@@ -74,10 +74,23 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // Para requests a la API o métodos que no sean GET, usar Network First con timeout y fallback
+  // EXCLUIR rutas críticas de autenticación del service worker
+  // Estas rutas deben ir directamente al servidor sin interceptación
+  const excludedPaths = ['/login', '/register', '/logout', '/api/login', '/api/register'];
+  const isExcluded = excludedPaths.some(path => url.pathname === path || url.pathname.startsWith(path + '/'));
+  
+  if (isExcluded) {
+    // Dejar pasar directamente sin interceptar
+    return;
+  }
+  
+  // Para requests a la API o métodos que no sean GET, usar Network First con timeout más largo
   if (url.pathname.startsWith('/api/') || event.request.method !== 'GET') {
+    // Timeout más largo para peticiones POST/PUT/DELETE (10 segundos)
+    const timeout = event.request.method !== 'GET' ? 10000 : 3000;
+    
     event.respondWith(
-      fetchWithTimeout(event.request.clone())
+      fetchWithTimeout(event.request.clone(), timeout)
         .then((response) => {
           // Si la respuesta es válida, devolverla
           if (response && response.status < 500) {
