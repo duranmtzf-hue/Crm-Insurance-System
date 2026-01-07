@@ -6,6 +6,40 @@ Sin estas credenciales, el sistema funcionará en **modo simulación** y los CFD
 
 ---
 
+## 💰 ¿Cuánto Cuesta Facturama?
+
+**Sí, Facturama es un servicio de pago**, pero tiene planes muy accesibles:
+
+### Planes Disponibles (2024):
+
+- **Plan Básico**: $110 MXN anuales
+  - Incluye 25 facturas al año
+  - Ideal para empezar o uso ocasional
+
+- **Plan Estándar**: $165 MXN anuales
+  - Incluye 40 facturas al año
+  - Buen balance precio/cantidad
+
+- **Plan Ilimitado**: $1,650 MXN anuales
+  - Facturas ilimitadas
+  - Ideal para empresas con alto volumen
+
+### Plan API (Para Integraciones):
+
+- **Plan API**: $1,650 MXN anuales
+  - Incluye 100 folios fiscales
+  - Folios adicionales: desde $0.50 MXN cada uno
+  - Necesario para usar la API (lo que requiere este sistema)
+
+### 💡 Recomendación:
+
+- Si solo necesitas **probar** el sistema: Usa el **modo simulación** (gratis, pero no válido fiscalmente)
+- Si necesitas **CFDI reales timbrados**: Necesitas el **Plan API** de Facturama ($1,650 MXN/año)
+
+**Nota:** Los precios pueden variar. Consulta directamente en https://www.facturama.mx/ para información actualizada.
+
+---
+
 ## 📋 Paso 1: Obtener Cuenta de Facturama
 
 ### 1.1 Crear Cuenta en Facturama
@@ -40,7 +74,8 @@ Facturama te proporcionará:
 **⚠️ IMPORTANTE:**
 - Estas credenciales son **diferentes** a tu usuario y contraseña de inicio de sesión
 - Si no las encuentras, contacta al soporte de Facturama
-- Algunos planes requieren activación específica para API
+- **Necesitas el Plan API** ($1,650 MXN/año) para acceder a las credenciales de API
+- Los planes básicos ($110-$165 MXN/año) NO incluyen acceso a API
 
 ### 2.3 Modo Sandbox vs Producción
 
