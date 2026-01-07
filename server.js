@@ -1902,9 +1902,57 @@ app.get('/api/carta-porte/:id/download-pdf', requireAuth, async (req, res) => {
                     }
                 });
             }
+            
+            // Si no existe el PDF simulado, generarlo ahora
+            if (cartaPorte.cfdi_uuid && cartaPorte.cfdi_fecha_timbrado) {
+                // Obtener datos del usuario para generar el PDF
+                db.get('SELECT * FROM users WHERE id = ?', [userId], async (errUser, user) => {
+                    if (errUser || !user) {
+                        return res.status(500).json({ error: 'Error al obtener datos del usuario' });
+                    }
+                    
+                    try {
+                        const pdfDir = path.join(__dirname, 'uploads', 'cfdi');
+                        if (!fs.existsSync(pdfDir)) {
+                            fs.mkdirSync(pdfDir, { recursive: true });
+                        }
+                        const pdfPath = path.join(pdfDir, `carta-porte-${cartaPorteId}-${cartaPorte.cfdi_uuid}.pdf`);
+                        
+                        // Generar PDF simulado
+                        await generateSimulatedPDF(cartaPorte, cartaPorte.cfdi_uuid, cartaPorte.cfdi_fecha_timbrado, user, pdfPath);
+                        
+                        // Actualizar la ruta en la base de datos
+                        db.run('UPDATE carta_porte SET cfdi_pdf_path = ? WHERE id = ?', [pdfPath, cartaPorteId], (updateErr) => {
+                            if (updateErr) {
+                                console.error('Error actualizando ruta del PDF:', updateErr);
+                            }
+                        });
+                        
+                        // Servir el PDF generado
+                        const fileName = `CFDI-${cartaPorte.cfdi_uuid}.pdf`;
+                        return res.download(pdfPath, fileName, (err) => {
+                            if (err) {
+                                console.error('Error descargando PDF simulado generado:', err);
+                                if (!res.headersSent) {
+                                    res.status(500).json({ error: 'Error al descargar el PDF' });
+                                }
+                            }
+                        });
+                    } catch (pdfErr) {
+                        console.error('Error generando PDF simulado:', pdfErr);
+                        return res.status(500).json({ 
+                            error: 'Error al generar el PDF simulado',
+                            detalles: pdfErr.message
+                        });
+                    }
+                });
+                return;
+            }
+            
+            // Si no tiene UUID ni fecha de timbrado, no se puede generar PDF
             return res.status(404).json({ 
                 error: 'PDF no disponible',
-                mensaje: 'Este CFDI fue generado en modo simulación. Para obtener un CFDI timbrado por el SAT, configure las credenciales de Facturama y genere un nuevo CFDI.'
+                mensaje: 'Este CFDI no tiene información suficiente para generar el PDF. Genere un nuevo CFDI.'
             });
         }
         
