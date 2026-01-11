@@ -74,9 +74,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // EXCLUIR rutas críticas de autenticación del service worker
+  // EXCLUIR rutas críticas de autenticación y operaciones largas del service worker
   // Estas rutas deben ir directamente al servidor sin interceptación
-  const excludedPaths = ['/login', '/register', '/logout', '/api/login', '/api/register'];
+  const excludedPaths = [
+    '/login', 
+    '/register', 
+    '/logout', 
+    '/api/login', 
+    '/api/register',
+    '/api/carta-porte' // Excluir generación de CFDI que puede tardar mucho tiempo
+  ];
   const isExcluded = excludedPaths.some(path => url.pathname === path || url.pathname.startsWith(path + '/'));
   
   if (isExcluded) {
