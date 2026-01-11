@@ -1667,8 +1667,12 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                         return;
                     }
                     
+                    // Obtener datos de TaxEntity desde Facturama para asegurar datos correctos del emisor
+                    const taxEntity = await getTaxEntityFromFacturama();
+                    
                     // Construir el objeto CFDI según el formato de Facturama
-                    const cfdiData = buildCFDIData(cartaPorte, user, vehicleData);
+                    // Usar datos de TaxEntity si están disponibles (más confiables)
+                    const cfdiData = buildCFDIData(cartaPorte, user, vehicleData, taxEntity);
                     
                     // Llamar a la API de Facturama
                     const facturamaUrl = FACTURAMA_MODE === 'production' 
@@ -2164,7 +2168,57 @@ app.get('/api/carta-porte/:id/download-xml', requireAuth, async (req, res) => {
 });
 
 // Función auxiliar para construir datos del CFDI según formato Facturama
-function buildCFDIData(cartaPorte, user, vehicle) {
+// Función para obtener datos de TaxEntity desde Facturama
+async function getTaxEntityFromFacturama() {
+    try {
+        const FACTURAMA_USER = process.env.FACTURAMA_USER;
+        const FACTURAMA_PASS = process.env.FACTURAMA_PASS;
+        const FACTURAMA_MODE = process.env.FACTURAMA_MODE || 'sandbox';
+        
+        if (!FACTURAMA_USER || !FACTURAMA_PASS) {
+            return null;
+        }
+        
+        const facturamaBaseUrl = FACTURAMA_MODE === 'production'
+            ? 'https://api.facturama.mx'
+            : 'https://apisandbox.facturama.mx';
+        
+        const auth = Buffer.from(`${FACTURAMA_USER}:${FACTURAMA_PASS}`).toString('base64');
+        
+        // Usar el endpoint /api/TaxEntity según la documentación de Facturama
+        const response = await axios.get(`${facturamaBaseUrl}/api/TaxEntity`, {
+            headers: {
+                'Authorization': `Basic ${auth}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000
+        });
+        
+        if (response.data) {
+            // Mapear diferentes posibles formatos de respuesta de Facturama
+            return {
+                rfc: response.data.Rfc || response.data.rfc || response.data.RFC,
+                nombre: response.data.Name || response.data.Nombre || response.data.name || response.data.BusinessName || response.data.RazonSocial,
+                regimenFiscal: response.data.FiscalRegime || response.data.RegimenFiscal || response.data.fiscalRegime || response.data.FiscalRegimeId,
+                codigoPostal: response.data.PostalCode || response.data.CodigoPostal || response.data.postalCode || response.data.ZipCode,
+                direccion: response.data.Address || response.data.Direccion || response.data.address || response.data.Street
+            };
+        }
+        
+        return null;
+    } catch (error) {
+        console.warn('No se pudieron obtener datos de TaxEntity de Facturama:', error.message);
+        return null;
+    }
+}
+
+function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
+    // Usar datos de TaxEntity si están disponibles, sino usar datos del usuario
+    const emisorRfc = taxEntity?.rfc || user.rfc || "XAXX010101000";
+    const emisorNombre = taxEntity?.nombre || user.empresa || user.nombre || "Transportista";
+    const emisorRegimen = taxEntity?.regimenFiscal || user.regimen_fiscal || "601";
+    const lugarExpedicion = taxEntity?.codigoPostal || cartaPorte.origen_cp || "00000";
+    
     return {
         "Serie": "A",
         "Folio": cartaPorte.numero_guia || cartaPorte.folio || `CP${cartaPorte.id}`,
@@ -2175,11 +2229,11 @@ function buildCFDIData(cartaPorte, user, vehicle) {
         "TipoDeComprobante": "I",
         "MetodoPago": "PUE",
         "FormaPago": "03",
-        "LugarExpedicion": cartaPorte.origen_cp || "00000",
+        "LugarExpedicion": lugarExpedicion,
         "Emisor": {
-            "Rfc": user.rfc || "XAXX010101000",
-            "Nombre": user.empresa || user.nombre || "Transportista",
-            "RegimenFiscal": user.regimen_fiscal || "601"
+            "Rfc": emisorRfc,
+            "Nombre": emisorNombre,
+            "RegimenFiscal": emisorRegimen
         },
         "Receptor": {
             "Rfc": cartaPorte.destinatario_rfc || "XAXX010101000",
