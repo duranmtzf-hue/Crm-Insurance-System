@@ -2217,20 +2217,17 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
     const emisorRfc = taxEntity?.rfc || user.rfc || "XAXX010101000";
     const emisorNombre = taxEntity?.nombre || user.empresa || user.nombre || "Transportista";
     const emisorRegimen = taxEntity?.regimenFiscal || user.regimen_fiscal || "601";
-    // Asegurar que el lugar de expedición no esté vacío (requerido por Facturama)
-    let lugarExpedicion = taxEntity?.codigoPostal || cartaPorte.origen_cp || user.codigo_postal || "00000";
-    // Si el código postal está vacío o es inválido, usar un valor por defecto válido
-    if (!lugarExpedicion || lugarExpedicion.trim() === "" || lugarExpedicion === "0" || lugarExpedicion === "00000") {
-        lugarExpedicion = "01000"; // Código postal por defecto válido (Ciudad de México)
-    }
-    
     // Validar y limpiar RFC del destinatario
     let destinatarioRfc = (cartaPorte.destinatario_rfc || "").trim().toUpperCase();
     // Validar formato de RFC mexicano: 12-13 caracteres, formato AAAA######AAA o AAA######AAA
     const rfcPattern = /^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$/;
+    let esRfcGenerico = false;
     if (!destinatarioRfc || !rfcPattern.test(destinatarioRfc)) {
         // Usar RFC genérico válido para público en general (formato correcto: 13 caracteres)
         destinatarioRfc = "XAXX010101000";
+        esRfcGenerico = true;
+    } else if (destinatarioRfc === "XAXX010101000" || destinatarioRfc === "XEXX010101000") {
+        esRfcGenerico = true;
     }
     
     // Validar nombre del destinatario (no puede estar vacío)
@@ -2243,6 +2240,21 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
     let destinatarioCp = (cartaPorte.destinatario_cp || cartaPorte.destino_cp || "").trim();
     if (!destinatarioCp || destinatarioCp.length !== 5 || !/^\d{5}$/.test(destinatarioCp)) {
         destinatarioCp = "01000"; // Código postal por defecto válido (Ciudad de México)
+    }
+    
+    // REGLA ESPECIAL DEL SAT: Si el RFC del receptor es genérico (XAXX010101000 o XEXX010101000),
+    // el ExpeditionPlace DEBE ser igual al código postal del receptor (TaxZipCode)
+    let lugarExpedicion;
+    if (esRfcGenerico) {
+        // Cuando el RFC es genérico, el lugar de expedición debe ser igual al código postal del receptor
+        lugarExpedicion = destinatarioCp;
+    } else {
+        // Cuando el RFC es real, usar el código postal del emisor
+        lugarExpedicion = taxEntity?.codigoPostal || cartaPorte.origen_cp || user.codigo_postal || "00000";
+        // Si el código postal está vacío o es inválido, usar un valor por defecto válido
+        if (!lugarExpedicion || lugarExpedicion.trim() === "" || lugarExpedicion === "0" || lugarExpedicion === "00000") {
+            lugarExpedicion = "01000"; // Código postal por defecto válido (Ciudad de México)
+        }
     }
     
     // Facturama API v3 requiere nombres de campos en inglés
@@ -2265,9 +2277,9 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
         "Receiver": {  // Cambiado de Receptor a Receiver (nivel superior en inglés)
             "Rfc": destinatarioRfc,  // RFC validado y limpiado (siempre tiene valor válido)
             "Name": destinatarioNombre,  // Nombre validado (nunca vacío)
-            "FiscalRegime": "616",  // Régimen fiscal genérico para receptor (616 = Régimen Simplificado de Confianza)
+            "FiscalRegime": "601",  // Régimen fiscal genérico compatible con G03 (601 = General de Ley Personas Morales)
             "TaxZipCode": destinatarioCp,  // Código postal del destinatario validado (siempre 5 dígitos)
-            "CfdiUse": "G03"  // Cambiado de UsoCFDI a CfdiUse (G03 = Gastos en general)
+            "CfdiUse": "G03"  // Cambiado de UsoCFDI a CfdiUse (G03 = Gastos en general, compatible con régimen 601)
         },
         "Items": [  // Cambiado de Conceptos a Items (nivel superior en inglés)
             {
