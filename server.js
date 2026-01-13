@@ -1864,6 +1864,21 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                         key.includes('CfdiUse') || key.includes('UsoCFDI')
                     );
                     
+                    // Extraer información del RFC del destinatario desde cartaPorte (disponible en el scope)
+                    const destinatarioRfc = (cartaPorte.destinatario_rfc || "").trim().toUpperCase() || 'No disponible';
+                    
+                    // Intentar obtener información de cfdiData si está disponible (puede no estar definido si el error ocurrió antes)
+                    let regimenIntentado = 'No disponible';
+                    let usoCfdiIntentado = 'No disponible';
+                    try {
+                        if (typeof cfdiData !== 'undefined' && cfdiData) {
+                            regimenIntentado = cfdiData.Receiver?.FiscalRegime || 'No disponible';
+                            usoCfdiIntentado = cfdiData.Receiver?.CfdiUse || 'No disponible';
+                        }
+                    } catch (e) {
+                        // cfdiData no está disponible, usar valores por defecto
+                    }
+                    
                     if (fiscalRegimeError) {
                         // Error específico de régimen fiscal
                         const regimeErrorMsg = Array.isArray(errorDetails[fiscalRegimeError]) 
@@ -1875,8 +1890,8 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                             mensaje: 'El régimen fiscal asignado no coincide con el RFC del destinatario registrado en el SAT.',
                             detalles: regimeErrorMsg,
                             solucion: 'El sistema intentó asignar un régimen fiscal automáticamente, pero no coincide con el registrado en el SAT para este RFC. Verifique el RFC del destinatario o contacte al cliente para obtener su régimen fiscal correcto registrado en el SAT.',
-                            rfc_destinatario: cfdiData?.Receiver?.Rfc || 'No disponible',
-                            regimen_intentado: cfdiData?.Receiver?.FiscalRegime || 'No disponible'
+                            rfc_destinatario: destinatarioRfc,
+                            regimen_intentado: regimenIntentado
                         });
                     }
                     
@@ -1891,9 +1906,9 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                             mensaje: 'El uso de CFDI seleccionado no es compatible con el régimen fiscal del destinatario.',
                             detalles: cfdiUseErrorMsg,
                             solucion: 'El sistema intentó usar "G03 - Gastos en general" con el régimen fiscal detectado, pero esta combinación no es válida según las reglas del SAT. Esto puede ocurrir si el destinatario tiene un régimen fiscal específico (como 605 - Sueldos y Salarios) que requiere un uso de CFDI diferente. Contacte al cliente para obtener su régimen fiscal correcto.',
-                            rfc_destinatario: cfdiData?.Receiver?.Rfc || 'No disponible',
-                            regimen_fiscal: cfdiData?.Receiver?.FiscalRegime || 'No disponible',
-                            uso_cfdi_intentado: cfdiData?.Receiver?.CfdiUse || 'No disponible'
+                            rfc_destinatario: destinatarioRfc,
+                            regimen_fiscal: regimenIntentado,
+                            uso_cfdi_intentado: usoCfdiIntentado
                         });
                     }
                     
