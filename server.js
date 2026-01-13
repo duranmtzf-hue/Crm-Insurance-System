@@ -2242,6 +2242,25 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
         destinatarioCp = "01000"; // Código postal por defecto válido (Ciudad de México)
     }
     
+    // Determinar régimen fiscal del receptor basado en el tipo de RFC
+    // RFC de Persona Física: 13 caracteres (4 letras + 6 dígitos + 3 caracteres)
+    // RFC de Persona Moral: 12 caracteres (3 letras + 6 dígitos + 3 caracteres)
+    let receptorFiscalRegime;
+    let receptorCfdiUse;
+    if (esRfcGenerico) {
+        // Para RFC genérico, usar régimen de persona moral por defecto
+        receptorFiscalRegime = "601"; // General de Ley Personas Morales
+        receptorCfdiUse = "G03"; // Gastos en general
+    } else if (destinatarioRfc.length === 13) {
+        // Persona Física (13 caracteres)
+        receptorFiscalRegime = "603"; // Personas Físicas con Actividades Empresariales y Profesionales
+        receptorCfdiUse = "G03"; // Gastos en general
+    } else {
+        // Persona Moral (12 caracteres)
+        receptorFiscalRegime = "601"; // General de Ley Personas Morales
+        receptorCfdiUse = "G03"; // Gastos en general
+    }
+    
     // REGLA ESPECIAL DEL SAT: Si el RFC del receptor es genérico (XAXX010101000 o XEXX010101000),
     // el ExpeditionPlace DEBE ser igual al código postal del receptor (TaxZipCode)
     let lugarExpedicion;
@@ -2277,9 +2296,9 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
         "Receiver": {  // Cambiado de Receptor a Receiver (nivel superior en inglés)
             "Rfc": destinatarioRfc,  // RFC validado y limpiado (siempre tiene valor válido)
             "Name": destinatarioNombre,  // Nombre validado (nunca vacío)
-            "FiscalRegime": "601",  // Régimen fiscal genérico compatible con G03 (601 = General de Ley Personas Morales)
+            "FiscalRegime": receptorFiscalRegime,  // Régimen fiscal detectado automáticamente (603 para Personas Físicas, 601 para Personas Morales)
             "TaxZipCode": destinatarioCp,  // Código postal del destinatario validado (siempre 5 dígitos)
-            "CfdiUse": "G03"  // Cambiado de UsoCFDI a CfdiUse (G03 = Gastos en general, compatible con régimen 601)
+            "CfdiUse": receptorCfdiUse  // Uso de CFDI apropiado para el tipo de receptor (G03 = Gastos en general)
         },
         "Items": [  // Cambiado de Conceptos a Items (nivel superior en inglés)
             {
