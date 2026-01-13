@@ -1849,9 +1849,43 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                     }
                 } catch (error) {
                     console.error('Error generando CFDI:', error.response?.data || error.message);
+                    
+                    // Extraer detalles del error de validación de Facturama
+                    let errorMessage = error.response?.data?.Message || error.message;
+                    let errorDetails = error.response?.data?.ModelState || {};
+                    
+                    // Detectar si el error es relacionado con el régimen fiscal del receptor
+                    const fiscalRegimeError = Object.keys(errorDetails).find(key => 
+                        key.includes('FiscalRegime') || key.includes('Regimen')
+                    );
+                    
+                    if (fiscalRegimeError) {
+                        // Error específico de régimen fiscal
+                        const regimeErrorMsg = Array.isArray(errorDetails[fiscalRegimeError]) 
+                            ? errorDetails[fiscalRegimeError][0] 
+                            : errorDetails[fiscalRegimeError];
+                        
+                        return res.status(400).json({ 
+                            error: 'Error de validación: Régimen fiscal del destinatario',
+                            mensaje: 'El régimen fiscal asignado no coincide con el RFC del destinatario registrado en el SAT.',
+                            detalles: regimeErrorMsg,
+                            solucion: 'Verifique el RFC del destinatario o contacte al cliente para obtener su régimen fiscal correcto. El RFC debe estar registrado en el SAT con el régimen fiscal correspondiente.',
+                            rfc_destinatario: cfdiData?.Receiver?.Rfc || 'No disponible'
+                        });
+                    }
+                    
+                    // Otros errores de validación
+                    const validationErrors = Object.keys(errorDetails).length > 0 
+                        ? Object.entries(errorDetails).map(([key, value]) => ({
+                            campo: key,
+                            error: Array.isArray(value) ? value[0] : value
+                        }))
+                        : null;
+                    
                     res.status(500).json({ 
                         error: 'Error al generar CFDI',
-                        detalles: error.response?.data?.Message || error.message
+                        mensaje: errorMessage,
+                        detalles: validationErrors || errorDetails
                     });
                 }
             }
@@ -2253,7 +2287,8 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
         receptorCfdiUse = "G03"; // Gastos en general
     } else if (destinatarioRfc.length === 13) {
         // Persona Física (13 caracteres)
-        receptorFiscalRegime = "603"; // Personas Físicas con Actividades Empresariales y Profesionales
+        // Intentar con régimen más común: 605 (Sueldos y Salarios) es más genérico que 603
+        receptorFiscalRegime = "605"; // Sueldos y Salarios e Ingresos Asimilados a Salarios (más común para personas físicas)
         receptorCfdiUse = "G03"; // Gastos en general
     } else {
         // Persona Moral (12 caracteres)
