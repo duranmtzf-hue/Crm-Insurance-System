@@ -1859,6 +1859,11 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                         key.includes('FiscalRegime') || key.includes('Regimen')
                     );
                     
+                    // Detectar si el error es relacionado con el uso de CFDI
+                    const cfdiUseError = Object.keys(errorDetails).find(key => 
+                        key.includes('CfdiUse') || key.includes('UsoCFDI')
+                    );
+                    
                     if (fiscalRegimeError) {
                         // Error específico de régimen fiscal
                         const regimeErrorMsg = Array.isArray(errorDetails[fiscalRegimeError]) 
@@ -1869,8 +1874,26 @@ app.post('/api/carta-porte/:id/generar-cfdi', requireAuth, async (req, res) => {
                             error: 'Error de validación: Régimen fiscal del destinatario',
                             mensaje: 'El régimen fiscal asignado no coincide con el RFC del destinatario registrado en el SAT.',
                             detalles: regimeErrorMsg,
-                            solucion: 'Verifique el RFC del destinatario o contacte al cliente para obtener su régimen fiscal correcto. El RFC debe estar registrado en el SAT con el régimen fiscal correspondiente.',
-                            rfc_destinatario: cfdiData?.Receiver?.Rfc || 'No disponible'
+                            solucion: 'El sistema intentó asignar un régimen fiscal automáticamente, pero no coincide con el registrado en el SAT para este RFC. Verifique el RFC del destinatario o contacte al cliente para obtener su régimen fiscal correcto registrado en el SAT.',
+                            rfc_destinatario: cfdiData?.Receiver?.Rfc || 'No disponible',
+                            regimen_intentado: cfdiData?.Receiver?.FiscalRegime || 'No disponible'
+                        });
+                    }
+                    
+                    if (cfdiUseError) {
+                        // Error específico de uso de CFDI
+                        const cfdiUseErrorMsg = Array.isArray(errorDetails[cfdiUseError]) 
+                            ? errorDetails[cfdiUseError][0] 
+                            : errorDetails[cfdiUseError];
+                        
+                        return res.status(400).json({ 
+                            error: 'Error de validación: Uso de CFDI incompatible',
+                            mensaje: 'El uso de CFDI seleccionado no es compatible con el régimen fiscal del destinatario.',
+                            detalles: cfdiUseErrorMsg,
+                            solucion: 'El sistema intentó usar "G03 - Gastos en general" con el régimen fiscal detectado, pero esta combinación no es válida según las reglas del SAT. Esto puede ocurrir si el destinatario tiene un régimen fiscal específico (como 605 - Sueldos y Salarios) que requiere un uso de CFDI diferente. Contacte al cliente para obtener su régimen fiscal correcto.',
+                            rfc_destinatario: cfdiData?.Receiver?.Rfc || 'No disponible',
+                            regimen_fiscal: cfdiData?.Receiver?.FiscalRegime || 'No disponible',
+                            uso_cfdi_intentado: cfdiData?.Receiver?.CfdiUse || 'No disponible'
                         });
                     }
                     
@@ -2277,23 +2300,29 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
     }
     
     // Determinar régimen fiscal del receptor basado en el tipo de RFC
+    // IMPORTANTE: Las combinaciones de régimen fiscal y uso de CFDI deben ser válidas según el SAT
+    // - Régimen 601 (Personas Morales) + G03 (Gastos en general) = ✅ Válido
+    // - Régimen 603 (Personas Físicas con Actividades Empresariales) + G03 = ✅ Válido
+    // - Régimen 605 (Sueldos y Salarios) + G03 = ❌ NO válido (requiere otro uso de CFDI)
+    // - Régimen 616 (RESICO) + G03 = ✅ Válido (depende del caso)
+    // 
     // RFC de Persona Física: 13 caracteres (4 letras + 6 dígitos + 3 caracteres)
     // RFC de Persona Moral: 12 caracteres (3 letras + 6 dígitos + 3 caracteres)
     let receptorFiscalRegime;
     let receptorCfdiUse;
     if (esRfcGenerico) {
-        // Para RFC genérico, usar régimen de persona moral por defecto
+        // Para RFC genérico (público en general), usar régimen de persona moral
         receptorFiscalRegime = "601"; // General de Ley Personas Morales
-        receptorCfdiUse = "G03"; // Gastos en general
+        receptorCfdiUse = "G03"; // Gastos en general (compatible con 601)
     } else if (destinatarioRfc.length === 13) {
         // Persona Física (13 caracteres)
-        // Intentar con régimen más común: 605 (Sueldos y Salarios) es más genérico que 603
-        receptorFiscalRegime = "605"; // Sueldos y Salarios e Ingresos Asimilados a Salarios (más común para personas físicas)
-        receptorCfdiUse = "G03"; // Gastos en general
+        // Usar régimen 603 que es compatible con G03 para personas físicas con actividades empresariales
+        receptorFiscalRegime = "603"; // Personas Físicas con Actividades Empresariales y Profesionales
+        receptorCfdiUse = "G03"; // Gastos en general (compatible con 603)
     } else {
         // Persona Moral (12 caracteres)
         receptorFiscalRegime = "601"; // General de Ley Personas Morales
-        receptorCfdiUse = "G03"; // Gastos en general
+        receptorCfdiUse = "G03"; // Gastos en general (compatible con 601)
     }
     
     // REGLA ESPECIAL DEL SAT: Si el RFC del receptor es genérico (XAXX010101000 o XEXX010101000),
