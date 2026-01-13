@@ -2224,6 +2224,19 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
         lugarExpedicion = "01000"; // Código postal por defecto válido (Ciudad de México)
     }
     
+    // Validar y limpiar RFC del destinatario
+    let destinatarioRfc = (cartaPorte.destinatario_rfc || "").trim().toUpperCase();
+    // Si el RFC está vacío o no tiene formato válido (debe tener al menos 12 caracteres), usar RFC genérico
+    if (!destinatarioRfc || destinatarioRfc.length < 12 || !/^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$/.test(destinatarioRfc)) {
+        destinatarioRfc = "XAXX010101000"; // RFC genérico para público en general
+    }
+    
+    // Validar código postal del destinatario
+    let destinatarioCp = (cartaPorte.destinatario_cp || cartaPorte.destino_cp || "").trim();
+    if (!destinatarioCp || destinatarioCp.length !== 5 || !/^\d{5}$/.test(destinatarioCp)) {
+        destinatarioCp = "01000"; // Código postal por defecto válido
+    }
+    
     // Facturama API v3 requiere nombres de campos en inglés
     return {
         "Serie": "A",
@@ -2242,9 +2255,11 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
             "RegimenFiscal": emisorRegimen
         },
         "Receiver": {  // Cambiado de Receptor a Receiver (nivel superior en inglés)
-            "Rfc": cartaPorte.destinatario_rfc || "XAXX010101000",
-            "Nombre": cartaPorte.destinatario_nombre || cartaPorte.destinatario || "Cliente",
-            "UsoCFDI": "G03"
+            "Rfc": destinatarioRfc,  // RFC validado y limpiado
+            "Name": cartaPorte.destinatario_nombre || cartaPorte.destinatario || "Cliente",  // Cambiado de Nombre a Name
+            "FiscalRegime": "616",  // Régimen fiscal genérico para receptor (616 = Régimen Simplificado de Confianza)
+            "TaxZipCode": destinatarioCp,  // Código postal del destinatario validado (requerido)
+            "CfdiUse": "G03"  // Cambiado de UsoCFDI a CfdiUse (G03 = Gastos en general)
         },
         "Items": [  // Cambiado de Conceptos a Items (nivel superior en inglés)
             {
