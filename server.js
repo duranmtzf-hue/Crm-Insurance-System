@@ -2226,15 +2226,23 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
     
     // Validar y limpiar RFC del destinatario
     let destinatarioRfc = (cartaPorte.destinatario_rfc || "").trim().toUpperCase();
-    // Si el RFC está vacío o no tiene formato válido (debe tener al menos 12 caracteres), usar RFC genérico
-    if (!destinatarioRfc || destinatarioRfc.length < 12 || !/^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$/.test(destinatarioRfc)) {
-        destinatarioRfc = "XAXX010101000"; // RFC genérico para público en general
+    // Validar formato de RFC mexicano: 12-13 caracteres, formato AAAA######AAA o AAA######AAA
+    const rfcPattern = /^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$/;
+    if (!destinatarioRfc || !rfcPattern.test(destinatarioRfc)) {
+        // Usar RFC genérico válido para público en general (formato correcto: 13 caracteres)
+        destinatarioRfc = "XAXX010101000";
     }
     
-    // Validar código postal del destinatario
+    // Validar nombre del destinatario (no puede estar vacío)
+    let destinatarioNombre = (cartaPorte.destinatario_nombre || cartaPorte.destinatario || "Cliente").trim();
+    if (!destinatarioNombre || destinatarioNombre.length === 0) {
+        destinatarioNombre = "Cliente";
+    }
+    
+    // Validar código postal del destinatario (debe ser exactamente 5 dígitos)
     let destinatarioCp = (cartaPorte.destinatario_cp || cartaPorte.destino_cp || "").trim();
     if (!destinatarioCp || destinatarioCp.length !== 5 || !/^\d{5}$/.test(destinatarioCp)) {
-        destinatarioCp = "01000"; // Código postal por defecto válido
+        destinatarioCp = "01000"; // Código postal por defecto válido (Ciudad de México)
     }
     
     // Facturama API v3 requiere nombres de campos en inglés
@@ -2255,10 +2263,10 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
             "RegimenFiscal": emisorRegimen
         },
         "Receiver": {  // Cambiado de Receptor a Receiver (nivel superior en inglés)
-            "Rfc": destinatarioRfc,  // RFC validado y limpiado
-            "Name": cartaPorte.destinatario_nombre || cartaPorte.destinatario || "Cliente",  // Cambiado de Nombre a Name
+            "Rfc": destinatarioRfc,  // RFC validado y limpiado (siempre tiene valor válido)
+            "Name": destinatarioNombre,  // Nombre validado (nunca vacío)
             "FiscalRegime": "616",  // Régimen fiscal genérico para receptor (616 = Régimen Simplificado de Confianza)
-            "TaxZipCode": destinatarioCp,  // Código postal del destinatario validado (requerido)
+            "TaxZipCode": destinatarioCp,  // Código postal del destinatario validado (siempre 5 dígitos)
             "CfdiUse": "G03"  // Cambiado de UsoCFDI a CfdiUse (G03 = Gastos en general)
         },
         "Items": [  // Cambiado de Conceptos a Items (nivel superior en inglés)
