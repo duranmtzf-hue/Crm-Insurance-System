@@ -2217,8 +2217,14 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
     const emisorRfc = taxEntity?.rfc || user.rfc || "XAXX010101000";
     const emisorNombre = taxEntity?.nombre || user.empresa || user.nombre || "Transportista";
     const emisorRegimen = taxEntity?.regimenFiscal || user.regimen_fiscal || "601";
-    const lugarExpedicion = taxEntity?.codigoPostal || cartaPorte.origen_cp || "00000";
+    // Asegurar que el lugar de expedición no esté vacío (requerido por Facturama)
+    let lugarExpedicion = taxEntity?.codigoPostal || cartaPorte.origen_cp || user.codigo_postal || "00000";
+    // Si el código postal está vacío o es inválido, usar un valor por defecto válido
+    if (!lugarExpedicion || lugarExpedicion.trim() === "" || lugarExpedicion === "0" || lugarExpedicion === "00000") {
+        lugarExpedicion = "01000"; // Código postal por defecto válido (Ciudad de México)
+    }
     
+    // Facturama API v3 requiere nombres de campos en inglés
     return {
         "Serie": "A",
         "Folio": cartaPorte.numero_guia || cartaPorte.folio || `CP${cartaPorte.id}`,
@@ -2226,21 +2232,21 @@ function buildCFDIData(cartaPorte, user, vehicle, taxEntity = null) {
         "SubTotal": cartaPorte.valor_declarado || 0,
         "Total": cartaPorte.valor_declarado || 0,
         "Moneda": cartaPorte.moneda || "MXN",
-        "TipoDeComprobante": "I",
-        "MetodoPago": "PUE",
-        "FormaPago": "03",
-        "LugarExpedicion": lugarExpedicion,
+        "CfdiType": "I",  // Cambiado de TipoDeComprobante a CfdiType (I = Ingreso)
+        "PaymentMethod": "PUE",  // Cambiado de MetodoPago a PaymentMethod (PUE = Pago en una exhibición)
+        "PaymentForm": "03",  // Cambiado de FormaPago a PaymentForm (03 = Transferencia electrónica de fondos)
+        "ExpeditionPlace": lugarExpedicion,  // Cambiado de LugarExpedicion a ExpeditionPlace (código postal)
         "Emisor": {
             "Rfc": emisorRfc,
             "Nombre": emisorNombre,
             "RegimenFiscal": emisorRegimen
         },
-        "Receptor": {
+        "Receiver": {  // Cambiado de Receptor a Receiver (nivel superior en inglés)
             "Rfc": cartaPorte.destinatario_rfc || "XAXX010101000",
             "Nombre": cartaPorte.destinatario_nombre || cartaPorte.destinatario || "Cliente",
             "UsoCFDI": "G03"
         },
-        "Conceptos": [
+        "Items": [  // Cambiado de Conceptos a Items (nivel superior en inglés)
             {
                 "ClaveProdServ": "78102200",
                 "Cantidad": cartaPorte.cantidad || 1,
