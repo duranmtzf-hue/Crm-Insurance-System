@@ -936,8 +936,8 @@
     </div>
 
     <script>
-        // Tab functionality
-        function showTab(tabName, buttonElement) {
+        // Tab functionality - Make it global
+        window.showTab = function(tabName, buttonElement) {
             console.log('showTab called with:', tabName, buttonElement);
             
             // Hide all tab contents
