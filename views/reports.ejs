@@ -990,12 +990,18 @@
         Chart.defaults.color = '#212529';
 
         // Debug: Log available data
+        <% try { %>
         console.log('Cost Breakdown:', <%= JSON.stringify(costBreakdown || []) %>);
         console.log('Monthly Trends:', <%= JSON.stringify(monthlyTrends || []) %>);
         console.log('Fuel Data:', <%= JSON.stringify(fuelData || []) %>);
+        <% } catch(e) { %>
+        console.log('Error logging data:', e);
+        <% } %>
         
         // Cost Breakdown Chart
-        <% if (costBreakdown && costBreakdown.length > 0 && costBreakdown.some(c => c.amount > 0)) { %>
+        <% if (costBreakdown && costBreakdown.length > 0) { %>
+        <% const hasValidCosts = costBreakdown.some(function(c) { return c.amount > 0; }); %>
+        <% if (hasValidCosts) { %>
         const costBreakdownCtx = document.getElementById('costBreakdownChart');
         if (costBreakdownCtx) {
             try {
@@ -1038,6 +1044,7 @@
         } else {
             console.warn('Cost Breakdown Chart canvas not found');
         }
+        <% } %>
         <% } else { %>
         console.log('No cost breakdown data available or all amounts are zero');
         <% } %>
