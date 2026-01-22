@@ -5019,102 +5019,104 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                     }
                                                                                 });
                                                                                 const mergedMonthlyTrends = Array.from(monthlyMap.values()).sort((a, b) => a.month.localeCompare(b.month));
-                                            
-                                            // Get vehicle comparisons with all costs
-                                            db.allConverted(`SELECT 
-                                                v.id,
-                                                v.numero_vehiculo,
-                                                v.marca,
-                                                v.modelo,
-                                                v.estado,
-                                                COALESCE(SUM(fr.costo_total), 0) as total_fuel_cost,
-                                                COALESCE(SUM(mr.costo), 0) as total_maintenance_cost,
-                                                COALESCE(SUM(f.monto), 0) as total_fines_cost,
-                                                COALESCE(SUM(s.costo_reparacion), 0) as total_claims_cost,
-                                                (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0) + COALESCE(SUM(f.monto), 0) + COALESCE(SUM(s.costo_reparacion), 0)) as total_cost,
-                                                COALESCE(COUNT(DISTINCT fr.id), 0) as fuel_records,
-                                                COALESCE(COUNT(DISTINCT mr.id), 0) as maintenance_records,
-                                                COALESCE(COUNT(DISTINCT f.id), 0) as fines_count,
-                                                COALESCE(COUNT(DISTINCT s.id), 0) as claims_count
-                                                FROM vehicles v
-                                                LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id AND fr.fecha >= ${periodDate}
-                                                LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
-                                                LEFT JOIN fines f ON v.id = f.vehicle_id AND f.fecha >= ${periodDate}
-                                                LEFT JOIN siniestros s ON v.id = s.vehicle_id AND s.fecha_siniestro >= ${periodDate}
-                                                WHERE v.id IN (${placeholders})
-                                                GROUP BY v.id
-                                                ORDER BY total_cost DESC`, 
-                                                vehicleIds, (err, vehicleComparisons) => {
-                                                    
-                                                    // Get cost breakdown by category
-                                                    const totalFuel = fuelDataWithConsumption.reduce((sum, v) => sum + (v.total_cost || 0), 0);
-                                                    const totalMaintenance = maintenanceData.reduce((sum, v) => sum + (v.total_cost || 0), 0);
-                                                    const totalFines = (finesData || []).reduce((sum, v) => sum + (v.total_cost || 0), 0);
-                                                    const totalClaims = (claimsData || []).reduce((sum, v) => sum + (v.total_cost || 0), 0);
-                                                    
-                                                    // Get vehicle status breakdown
-                                                    const vehicleStatus = vehicles.reduce((acc, v) => {
-                                                        acc[v.estado] = (acc[v.estado] || 0) + 1;
-                                                        return acc;
-                                                    }, {});
-                                                    
-                                                                    // Calculate comprehensive stats
-                                                                    const stats = {
-                                                                        totalVehicles: vehicles.length,
-                                                                        activeVehicles: vehicles.filter(v => v.estado === 'Activo').length,
-                                                                        totalFuelCost: totalFuel,
-                                                                        totalMaintenanceCost: totalMaintenance,
-                                                                        totalFinesCost: totalFines,
-                                                                        totalClaimsCost: totalClaims,
-                                                                        totalCost: totalFuel + totalMaintenance + totalFines + totalClaims,
-                                                                        totalRecords: fuelDataWithConsumption.reduce((sum, v) => sum + (v.fuel_records_count || 0), 0),
-                                                                        totalMaintenanceRecords: maintenanceData.reduce((sum, v) => sum + (v.maintenance_count || 0), 0),
-                                                                        totalFines: (finesData || []).reduce((sum, v) => sum + (v.fines_count || 0), 0),
-                                                                        totalClaims: (claimsData || []).reduce((sum, v) => sum + (v.claims_count || 0), 0),
-                                                                        cartaPorte: cartaPorteStats && cartaPorteStats[0] ? cartaPorteStats[0] : {},
-                                                                        avgFuelConsumption: fuelDataWithConsumption.length > 0 
-                                                                            ? (fuelDataWithConsumption.reduce((sum, v) => sum + (v.avgConsumption || 0), 0) / fuelDataWithConsumption.filter(v => v.avgConsumption > 0).length).toFixed(2)
-                                                                            : 0,
-                                                                        avgMaintenanceCost: maintenanceData.length > 0
-                                                                            ? (maintenanceData.reduce((sum, v) => sum + (v.total_cost || 0), 0) / maintenanceData.length).toFixed(2)
-                                                                            : 0
-                                                                    };
-                                                                    
-                                                                    res.render('reports', {
-                                                                        user: req.session,
-                                                                        vehicles: vehicles,
-                                                                        period: period,
-                                                                        stats: stats,
-                                                                        fuelData: fuelDataWithConsumption,
-                                                                        maintenanceData: maintenanceData || [],
-                                                                        finesData: finesData || [],
-                                                                        policiesData: policiesData || [],
-                                                                        claimsData: claimsData || [],
-                                                                        tiresData: tiresData || [],
-                                                                        cartaPorteData: cartaPorteStats || [],
-                                                                        monthlyTrends: mergedMonthlyTrends,
-                                                                        weeklyTrends: weeklyTrends || [],
-                                                                        dailyTrends: dailyTrends || [],
-                                                                        vehicleComparisons: vehicleComparisons || [],
-                                                                        fuelEfficiency: fuelEfficiency || [],
-                                                                        maintenanceFrequency: maintenanceFrequency || [],
-                                                                        topCostDrivers: topCostDrivers || [],
-                                                                        cartaPorteMonthly: cartaPorteMonthly || [],
-                                                                        destinationStates: destinationStates || [],
-                                                                        costBreakdown: [
-                                                                            { category: 'Combustible', amount: totalFuel, color: '#4da6ff' },
-                                                                            { category: 'Mantenimiento', amount: totalMaintenance, color: '#28a745' },
-                                                                            { category: 'Multas', amount: totalFines, color: '#ffc107' },
-                                                                            { category: 'Siniestros', amount: totalClaims, color: '#dc3545' }
-                                                                        ],
-                                                                        vehicleStatus: vehicleStatus
+                                                                                
+                                                                                // Get vehicle comparisons with all costs
+                                                                                db.allConverted(`SELECT 
+                                                                                    v.id,
+                                                                                    v.numero_vehiculo,
+                                                                                    v.marca,
+                                                                                    v.modelo,
+                                                                                    v.estado,
+                                                                                    COALESCE(SUM(fr.costo_total), 0) as total_fuel_cost,
+                                                                                    COALESCE(SUM(mr.costo), 0) as total_maintenance_cost,
+                                                                                    COALESCE(SUM(f.monto), 0) as total_fines_cost,
+                                                                                    COALESCE(SUM(s.costo_reparacion), 0) as total_claims_cost,
+                                                                                    (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0) + COALESCE(SUM(f.monto), 0) + COALESCE(SUM(s.costo_reparacion), 0)) as total_cost,
+                                                                                    COALESCE(COUNT(DISTINCT fr.id), 0) as fuel_records,
+                                                                                    COALESCE(COUNT(DISTINCT mr.id), 0) as maintenance_records,
+                                                                                    COALESCE(COUNT(DISTINCT f.id), 0) as fines_count,
+                                                                                    COALESCE(COUNT(DISTINCT s.id), 0) as claims_count
+                                                                                    FROM vehicles v
+                                                                                    LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id AND fr.fecha >= ${periodDate}
+                                                                                    LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
+                                                                                    LEFT JOIN fines f ON v.id = f.vehicle_id AND f.fecha >= ${periodDate}
+                                                                                    LEFT JOIN siniestros s ON v.id = s.vehicle_id AND s.fecha_siniestro >= ${periodDate}
+                                                                                    WHERE v.id IN (${placeholders})
+                                                                                    GROUP BY v.id
+                                                                                    ORDER BY total_cost DESC`, 
+                                                                                    vehicleIds, (err, vehicleComparisons) => {
+                                                                                        
+                                                                                        // Get cost breakdown by category
+                                                                                        const totalFuel = fuelDataWithConsumption.reduce((sum, v) => sum + (v.total_cost || 0), 0);
+                                                                                        const totalMaintenance = maintenanceData.reduce((sum, v) => sum + (v.total_cost || 0), 0);
+                                                                                        const totalFines = (finesData || []).reduce((sum, v) => sum + (v.total_cost || 0), 0);
+                                                                                        const totalClaims = (claimsData || []).reduce((sum, v) => sum + (v.total_cost || 0), 0);
+                                                                                        
+                                                                                        // Get vehicle status breakdown
+                                                                                        const vehicleStatus = vehicles.reduce((acc, v) => {
+                                                                                            acc[v.estado] = (acc[v.estado] || 0) + 1;
+                                                                                            return acc;
+                                                                                        }, {});
+                                                                                        
+                                                                                        // Calculate comprehensive stats
+                                                                                        const stats = {
+                                                                                            totalVehicles: vehicles.length,
+                                                                                            activeVehicles: vehicles.filter(v => v.estado === 'Activo').length,
+                                                                                            totalFuelCost: totalFuel,
+                                                                                            totalMaintenanceCost: totalMaintenance,
+                                                                                            totalFinesCost: totalFines,
+                                                                                            totalClaimsCost: totalClaims,
+                                                                                            totalCost: totalFuel + totalMaintenance + totalFines + totalClaims,
+                                                                                            totalRecords: fuelDataWithConsumption.reduce((sum, v) => sum + (v.fuel_records_count || 0), 0),
+                                                                                            totalMaintenanceRecords: maintenanceData.reduce((sum, v) => sum + (v.maintenance_count || 0), 0),
+                                                                                            totalFines: (finesData || []).reduce((sum, v) => sum + (v.fines_count || 0), 0),
+                                                                                            totalClaims: (claimsData || []).reduce((sum, v) => sum + (v.claims_count || 0), 0),
+                                                                                            cartaPorte: cartaPorteStats && cartaPorteStats[0] ? cartaPorteStats[0] : {},
+                                                                                            avgFuelConsumption: fuelDataWithConsumption.length > 0 
+                                                                                                ? (fuelDataWithConsumption.reduce((sum, v) => sum + (v.avgConsumption || 0), 0) / fuelDataWithConsumption.filter(v => v.avgConsumption > 0).length).toFixed(2)
+                                                                                                : 0,
+                                                                                            avgMaintenanceCost: maintenanceData.length > 0
+                                                                                                ? (maintenanceData.reduce((sum, v) => sum + (v.total_cost || 0), 0) / maintenanceData.length).toFixed(2)
+                                                                                                : 0
+                                                                                        };
+                                                                                        
+                                                                                        res.render('reports', {
+                                                                                            user: req.session,
+                                                                                            vehicles: vehicles,
+                                                                                            period: period,
+                                                                                            stats: stats,
+                                                                                            fuelData: fuelDataWithConsumption,
+                                                                                            maintenanceData: maintenanceData || [],
+                                                                                            finesData: finesData || [],
+                                                                                            policiesData: policiesData || [],
+                                                                                            claimsData: claimsData || [],
+                                                                                            tiresData: tiresData || [],
+                                                                                            cartaPorteData: cartaPorteStats || [],
+                                                                                            monthlyTrends: mergedMonthlyTrends,
+                                                                                            weeklyTrends: weeklyTrends || [],
+                                                                                            dailyTrends: dailyTrends || [],
+                                                                                            vehicleComparisons: vehicleComparisons || [],
+                                                                                            fuelEfficiency: fuelEfficiency || [],
+                                                                                            maintenanceFrequency: maintenanceFrequency || [],
+                                                                                            topCostDrivers: topCostDrivers || [],
+                                                                                            cartaPorteMonthly: cartaPorteMonthly || [],
+                                                                                            destinationStates: destinationStates || [],
+                                                                                            costBreakdown: [
+                                                                                                { category: 'Combustible', amount: totalFuel, color: '#4da6ff' },
+                                                                                                { category: 'Mantenimiento', amount: totalMaintenance, color: '#28a745' },
+                                                                                                { category: 'Multas', amount: totalFines, color: '#ffc107' },
+                                                                                                { category: 'Siniestros', amount: totalClaims, color: '#dc3545' }
+                                                                                            ],
+                                                                                            vehicleStatus: vehicleStatus
+                                                                                        });
+                                                                                    });
+                                                                            });
+                                                                        });
                                                                     });
                                                                 });
                                                             });
                                                         });
                                                     });
-                                                });
-                                            });
                                                 });
                                             });
                                         });
