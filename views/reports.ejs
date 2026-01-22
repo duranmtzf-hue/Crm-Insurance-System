@@ -518,7 +518,7 @@
         <!-- Tab: Resumen General -->
         <div id="overview" class="tab-content active">
             <!-- Distribución de Costos -->
-            <% if (costBreakdown && costBreakdown.length > 0) { %>
+            <% if (costBreakdown && costBreakdown.length > 0 && costBreakdown.some(c => c.amount > 0)) { %>
             <div class="section">
                 <div class="section-header">
                     <h2 class="section-title">
@@ -528,6 +528,18 @@
                 </div>
                 <div class="chart-container">
                     <canvas id="costBreakdownChart"></canvas>
+                </div>
+            </div>
+            <% } else { %>
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-chart-pie"></i>
+                        Distribución de Costos por Categoría
+                    </h2>
+                </div>
+                <div class="loading">
+                    <i class="fas fa-info-circle"></i> No hay datos de costos para el período seleccionado
                 </div>
             </div>
             <% } %>
@@ -926,46 +938,78 @@
     <script>
         // Tab functionality
         function showTab(tabName, buttonElement) {
-            // Hide all tabs
+            console.log('showTab called with:', tabName, buttonElement);
+            
+            // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
+            
+            // Remove active class from all tab buttons
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
             
-            // Show selected tab
+            // Show selected tab content
             const tabContent = document.getElementById(tabName);
             if (tabContent) {
                 tabContent.classList.add('active');
+                console.log('Tab content activated:', tabName);
+            } else {
+                console.error('Tab content not found:', tabName);
             }
             
             // Activate the clicked button
             if (buttonElement) {
                 buttonElement.classList.add('active');
+                console.log('Button activated');
+            } else {
+                // Fallback: find button by tab name
+                const buttons = document.querySelectorAll('.tab');
+                buttons.forEach(btn => {
+                    if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(tabName)) {
+                        btn.classList.add('active');
+                    }
+                });
             }
         }
+        
+        // Initialize tabs on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, initializing tabs');
+            // Ensure overview tab is active by default
+            const overviewTab = document.getElementById('overview');
+            if (overviewTab) {
+                overviewTab.classList.add('active');
+            }
+        });
 
         // Chart.js configuration
         Chart.defaults.font.family = "'Open Sans', sans-serif";
         Chart.defaults.font.size = 12;
         Chart.defaults.color = '#212529';
 
+        // Debug: Log available data
+        console.log('Cost Breakdown:', <%= JSON.stringify(costBreakdown || []) %>);
+        console.log('Monthly Trends:', <%= JSON.stringify(monthlyTrends || []) %>);
+        console.log('Fuel Data:', <%= JSON.stringify(fuelData || []) %>);
+        
         // Cost Breakdown Chart
-        <% if (costBreakdown && costBreakdown.length > 0) { %>
+        <% if (costBreakdown && costBreakdown.length > 0 && costBreakdown.some(c => c.amount > 0)) { %>
         const costBreakdownCtx = document.getElementById('costBreakdownChart');
         if (costBreakdownCtx) {
-            new Chart(costBreakdownCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: [<%= costBreakdown.map(c => `'${c.category}'`).join(',') %>],
-                    datasets: [{
-                        data: [<%= costBreakdown.map(c => c.amount).join(',') %>],
-                        backgroundColor: [<%= costBreakdown.map(c => `'${c.color}'`).join(',') %>],
-                        borderWidth: 2,
-                        borderColor: '#fff'
-                    }]
-                },
+            try {
+                new Chart(costBreakdownCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [<%= costBreakdown.filter(c => c.amount > 0).map(c => `'${c.category}'`).join(',') %>],
+                        datasets: [{
+                            data: [<%= costBreakdown.filter(c => c.amount > 0).map(c => c.amount).join(',') %>],
+                            backgroundColor: [<%= costBreakdown.filter(c => c.amount > 0).map(c => `'${c.color}'`).join(',') %>],
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -986,8 +1030,16 @@
                         }
                     }
                 }
-            });
+                });
+                console.log('Cost Breakdown Chart created successfully');
+            } catch (error) {
+                console.error('Error creating Cost Breakdown Chart:', error);
+            }
+        } else {
+            console.warn('Cost Breakdown Chart canvas not found');
         }
+        <% } else { %>
+        console.log('No cost breakdown data available or all amounts are zero');
         <% } %>
 
         // Monthly Trends Chart
