@@ -4627,7 +4627,7 @@ app.delete('/api/fines/:id', requireAuth, (req, res) => {
     });
 });
 
-// Reports route
+// Reports route - Comprehensive reports with all system data
 app.get('/reports', requireAuth, (req, res) => {
     const userId = req.session.userId;
     const period = req.query.period || '6months'; // 1month, 3months, 6months, 12months
@@ -4639,7 +4639,7 @@ app.get('/reports', requireAuth, (req, res) => {
         }
         
         const vehicleIds = vehicles.map(v => v.id);
-        const placeholders = vehicleIds.map(() => '?').join(',');
+        const placeholders = vehicleIds.length > 0 ? vehicleIds.map(() => '?').join(',') : '';
         
         if (vehicleIds.length === 0) {
             return res.render('reports', {
@@ -4649,7 +4649,15 @@ app.get('/reports', requireAuth, (req, res) => {
                 stats: {},
                 fuelData: [],
                 maintenanceData: [],
-                vehicleComparisons: []
+                vehicleComparisons: [],
+                finesData: [],
+                policiesData: [],
+                claimsData: [],
+                tiresData: [],
+                cartaPorteData: [],
+                monthlyTrends: [],
+                costBreakdown: [],
+                vehicleStatus: []
             });
         }
         
@@ -4665,6 +4673,7 @@ app.get('/reports', requireAuth, (req, res) => {
             v.numero_vehiculo,
             v.marca,
             v.modelo,
+            v.estado,
             COUNT(fr.id) as fuel_records_count,
             SUM(fr.litros) as total_litros,
             SUM(fr.costo_total) as total_cost,
@@ -4697,59 +4706,420 @@ app.get('/reports', requireAuth, (req, res) => {
                 COUNT(mr.id) as maintenance_count,
                 SUM(mr.costo) as total_cost,
                 SUM(CASE WHEN mr.tipo = 'Preventivo' THEN 1 ELSE 0 END) as preventive_count,
-                SUM(CASE WHEN mr.tipo = 'Correctivo' THEN 1 ELSE 0 END) as corrective_count
+                SUM(CASE WHEN mr.tipo = 'Correctivo' THEN 1 ELSE 0 END) as corrective_count,
+                AVG(mr.costo) as avg_cost
                 FROM vehicles v
                 LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
                 WHERE v.id IN (${placeholders})
                 GROUP BY v.id`, 
                 vehicleIds, (err, maintenanceData) => {
                 
-                // Get monthly trends
+                // Get fines statistics
                 db.all(`SELECT 
-                    strftime('%Y-%m', fecha) as month,
-                    SUM(costo_total) as fuel_cost,
-                    SUM(litros) as total_litros,
-                    COUNT(DISTINCT vehicle_id) as vehicles_count
-                    FROM fuel_records
-                    WHERE vehicle_id IN (${placeholders})
-                    AND fecha >= ${periodDate}
-                    GROUP BY strftime('%Y-%m', fecha)
-                    ORDER BY month`, 
-                    vehicleIds, (err, monthlyTrends) => {
+                    v.id,
+                    v.numero_vehiculo,
+                    v.marca,
+                    v.modelo,
+                    COUNT(f.id) as fines_count,
+                    SUM(f.monto) as total_cost,
+                    SUM(CASE WHEN f.estado = 'Pagada' THEN f.monto ELSE 0 END) as paid_cost,
+                    SUM(CASE WHEN f.estado = 'Pendiente' THEN f.monto ELSE 0 END) as pending_cost
+                    FROM vehicles v
+                    LEFT JOIN fines f ON v.id = f.vehicle_id AND f.fecha >= ${periodDate}
+                    WHERE v.id IN (${placeholders})
+                    GROUP BY v.id`, 
+                    vehicleIds, (err, finesData) => {
                     
-                    // Get vehicle comparisons
-                    db.allConverted(`SELECT 
+                    // Get insurance policies statistics
+                    db.all(`SELECT 
                         v.id,
                         v.numero_vehiculo,
-                        v.marca,
-                        v.modelo,
-                        COALESCE(SUM(fr.costo_total), 0) as total_fuel_cost,
-                        COALESCE(SUM(mr.costo), 0) as total_maintenance_cost,
-                        (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0)) as total_cost,
-                        COALESCE(COUNT(DISTINCT fr.id), 0) as fuel_records,
-                        COALESCE(COUNT(DISTINCT mr.id), 0) as maintenance_records
+                        COUNT(ip.id) as policies_count,
+                        SUM(ip.prima_anual) as total_prima,
+                        COUNT(CASE WHEN date(ip.fecha_vencimiento) <= date('now', '+30 days') THEN 1 END) as expiring_soon
                         FROM vehicles v
-                        LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id AND fr.fecha >= ${periodDate}
-                        LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
+                        LEFT JOIN insurance_policies ip ON v.id = ip.vehicle_id
                         WHERE v.id IN (${placeholders})
-                        GROUP BY v.id
-                        ORDER BY (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0)) DESC`, 
-                        vehicleIds, (err, vehicleComparisons) => {
+                        GROUP BY v.id`, 
+                        vehicleIds, (err, policiesData) => {
+                        
+                        // Get claims (siniestros) statistics
+                        db.all(`SELECT 
+                            v.id,
+                            v.numero_vehiculo,
+                            COUNT(s.id) as claims_count,
+                            SUM(s.costo_reparacion) as total_cost,
+                            AVG(s.costo_reparacion) as avg_cost
+                            FROM vehicles v
+                            LEFT JOIN siniestros s ON v.id = s.vehicle_id AND s.fecha_siniestro >= ${periodDate}
+                            WHERE v.id IN (${placeholders})
+                            GROUP BY v.id`, 
+                            vehicleIds, (err, claimsData) => {
                             
-                            res.render('reports', {
-                                user: req.session,
-                                vehicles: vehicles,
-                                period: period,
-                                stats: {
-                                    totalVehicles: vehicles.length,
-                                    totalFuelCost: fuelDataWithConsumption.reduce((sum, v) => sum + (v.total_cost || 0), 0),
-                                    totalMaintenanceCost: maintenanceData.reduce((sum, v) => sum + (v.total_cost || 0), 0),
-                                    totalRecords: fuelDataWithConsumption.reduce((sum, v) => sum + (v.fuel_records_count || 0), 0)
-                                },
-                                fuelData: fuelDataWithConsumption,
-                                maintenanceData: maintenanceData || [],
-                                monthlyTrends: monthlyTrends || [],
-                                vehicleComparisons: vehicleComparisons || []
+                            // Get tires statistics
+                            db.all(`SELECT 
+                                v.id,
+                                v.numero_vehiculo,
+                                COUNT(t.id) as tires_count,
+                                SUM(CASE WHEN t.estado = 'Bueno' THEN 1 ELSE 0 END) as good_tires,
+                                SUM(CASE WHEN t.estado = 'Regular' THEN 1 ELSE 0 END) as regular_tires,
+                                SUM(CASE WHEN t.estado = 'Malo' THEN 1 ELSE 0 END) as bad_tires
+                                FROM vehicles v
+                                LEFT JOIN tires t ON v.id = t.vehicle_id
+                                WHERE v.id IN (${placeholders})
+                                GROUP BY v.id`, 
+                                vehicleIds, (err, tiresData) => {
+                                
+                                // Get Carta Porte statistics
+                                db.all(`SELECT 
+                                    COUNT(*) as total_cartas,
+                                    SUM(CASE WHEN estado = 'Emitida' THEN 1 ELSE 0 END) as emitidas,
+                                    SUM(CASE WHEN estado = 'Borrador' THEN 1 ELSE 0 END) as borradores,
+                                    SUM(CASE WHEN cfdi_uuid IS NOT NULL THEN 1 ELSE 0 END) as con_cfdi,
+                                    SUM(valor_declarado) as total_valor,
+                                    COUNT(DISTINCT destino_estado) as estados_destino,
+                                    AVG(distancia_km) as avg_distance
+                                    FROM carta_porte
+                                    WHERE user_id = ? AND fecha >= ${periodDate}`, 
+                                    [userId], (err, cartaPorteStats) => {
+                                    
+                                    // Get monthly trends for all costs
+                                    db.all(`SELECT 
+                                        strftime('%Y-%m', fecha) as month,
+                                        SUM(costo_total) as fuel_cost,
+                                        SUM(litros) as total_litros,
+                                        COUNT(DISTINCT vehicle_id) as vehicles_count
+                                        FROM fuel_records
+                                        WHERE vehicle_id IN (${placeholders})
+                                        AND fecha >= ${periodDate}
+                                        GROUP BY strftime('%Y-%m', fecha)
+                                        ORDER BY month`, 
+                                        vehicleIds, (err, monthlyTrends) => {
+                                        
+                                        // Get monthly maintenance costs
+                                        db.all(`SELECT 
+                                            strftime('%Y-%m', fecha) as month,
+                                            SUM(costo) as maintenance_cost,
+                                            COUNT(*) as maintenance_count
+                                            FROM maintenance_records
+                                            WHERE vehicle_id IN (${placeholders})
+                                            AND fecha >= ${periodDate}
+                                            GROUP BY strftime('%Y-%m', fecha)
+                                            ORDER BY month`, 
+                                            vehicleIds, (err, monthlyMaintenance) => {
+                                            
+                                            // Get monthly fines and claims costs
+                                            db.all(`SELECT 
+                                                strftime('%Y-%m', fecha) as month,
+                                                SUM(monto) as fines_cost,
+                                                COUNT(*) as fines_count
+                                                FROM fines
+                                                WHERE vehicle_id IN (${placeholders})
+                                                AND fecha >= ${periodDate}
+                                                GROUP BY strftime('%Y-%m', fecha)
+                                                ORDER BY month`, 
+                                                vehicleIds, (err, monthlyFines) => {
+                                                
+                                                db.all(`SELECT 
+                                                    strftime('%Y-%m', fecha_siniestro) as month,
+                                                    SUM(costo_reparacion) as claims_cost,
+                                                    COUNT(*) as claims_count
+                                                    FROM siniestros
+                                                    WHERE vehicle_id IN (${placeholders})
+                                                    AND fecha_siniestro >= ${periodDate}
+                                                    GROUP BY strftime('%Y-%m', fecha_siniestro)
+                                                    ORDER BY month`, 
+                                                    vehicleIds, (err, monthlyClaims) => {
+                                                    
+                                                    // Get weekly trends for last 12 weeks
+                                                    db.all(`SELECT 
+                                                        strftime('%Y-W%W', fecha) as week,
+                                                        SUM(costo_total) as fuel_cost,
+                                                        SUM(litros) as total_litros,
+                                                        COUNT(*) as fuel_count
+                                                        FROM fuel_records
+                                                        WHERE vehicle_id IN (${placeholders})
+                                                        AND fecha >= date('now', '-84 days')
+                                                        GROUP BY strftime('%Y-W%W', fecha)
+                                                        ORDER BY week
+                                                        LIMIT 12`, 
+                                                        vehicleIds, (err, weeklyTrends) => {
+                                                        
+                                                        // Get daily fuel consumption for last 30 days
+                                                        db.all(`SELECT 
+                                                            date(fecha) as day,
+                                                            SUM(costo_total) as fuel_cost,
+                                                            SUM(litros) as total_litros,
+                                                            COUNT(*) as fuel_count
+                                                            FROM fuel_records
+                                                            WHERE vehicle_id IN (${placeholders})
+                                                            AND fecha >= date('now', '-30 days')
+                                                            GROUP BY date(fecha)
+                                                            ORDER BY day`, 
+                                                            vehicleIds, (err, dailyTrends) => {
+                                                            
+                                                            // Get fuel efficiency by vehicle (top performers)
+                                                            db.all(`SELECT 
+                                                                v.id,
+                                                                v.numero_vehiculo,
+                                                                v.marca,
+                                                                v.modelo,
+                                                                SUM(fr.litros) as total_litros,
+                                                                MIN(fr.kilometraje) as min_km,
+                                                                MAX(fr.kilometraje) as max_km,
+                                                                CASE 
+                                                                    WHEN SUM(fr.litros) > 0 AND (MAX(fr.kilometraje) - MIN(fr.kilometraje)) > 0 
+                                                                    THEN ROUND((MAX(fr.kilometraje) - MIN(fr.kilometraje)) / SUM(fr.litros), 2)
+                                                                    ELSE 0
+                                                                END as km_per_liter
+                                                                FROM vehicles v
+                                                                LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id AND fr.fecha >= ${periodDate}
+                                                                WHERE v.id IN (${placeholders})
+                                                                GROUP BY v.id
+                                                                HAVING SUM(fr.litros) > 0
+                                                                ORDER BY km_per_liter DESC`, 
+                                                                vehicleIds, (err, fuelEfficiency) => {
+                                                                
+                                                                // Get maintenance frequency analysis
+                                                                db.all(`SELECT 
+                                                                    v.id,
+                                                                    v.numero_vehiculo,
+                                                                    v.marca,
+                                                                    v.modelo,
+                                                                    COUNT(mr.id) as maintenance_count,
+                                                                    MIN(mr.fecha) as first_maintenance,
+                                                                    MAX(mr.fecha) as last_maintenance,
+                                                                    CASE 
+                                                                        WHEN COUNT(mr.id) > 0 AND (julianday(MAX(mr.fecha)) - julianday(MIN(mr.fecha))) > 0
+                                                                        THEN ROUND(COUNT(mr.id) / ((julianday(MAX(mr.fecha)) - julianday(MIN(mr.fecha))) / 30.0), 2)
+                                                                        ELSE 0
+                                                                    END as maintenance_per_month
+                                                                    FROM vehicles v
+                                                                    LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
+                                                                    WHERE v.id IN (${placeholders})
+                                                                    GROUP BY v.id`, 
+                                                                    vehicleIds, (err, maintenanceFrequency) => {
+                                                                    
+                                                                    // Get top cost drivers (vehicles with highest costs)
+                                                                    db.allConverted(`SELECT 
+                                                                        v.id,
+                                                                        v.numero_vehiculo,
+                                                                        v.marca,
+                                                                        v.modelo,
+                                                                        COALESCE(SUM(fr.costo_total), 0) as fuel_cost,
+                                                                        COALESCE(SUM(mr.costo), 0) as maintenance_cost,
+                                                                        COALESCE(SUM(f.monto), 0) as fines_cost,
+                                                                        COALESCE(SUM(s.costo_reparacion), 0) as claims_cost,
+                                                                        (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0) + COALESCE(SUM(f.monto), 0) + COALESCE(SUM(s.costo_reparacion), 0)) as total_cost
+                                                                        FROM vehicles v
+                                                                        LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id AND fr.fecha >= ${periodDate}
+                                                                        LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
+                                                                        LEFT JOIN fines f ON v.id = f.vehicle_id AND f.fecha >= ${periodDate}
+                                                                        LEFT JOIN siniestros s ON v.id = s.vehicle_id AND s.fecha_siniestro >= ${periodDate}
+                                                                        WHERE v.id IN (${placeholders})
+                                                                        GROUP BY v.id
+                                                                        ORDER BY total_cost DESC
+                                                                        LIMIT 10`, 
+                                                                        vehicleIds, (err, topCostDrivers) => {
+                                                                        
+                                                                        // Get carta porte detailed statistics
+                                                                        db.all(`SELECT 
+                                                                            strftime('%Y-%m', fecha) as month,
+                                                                            COUNT(*) as total_cartas,
+                                                                            SUM(CASE WHEN estado = 'Emitida' THEN 1 ELSE 0 END) as emitidas,
+                                                                            SUM(valor_declarado) as total_valor,
+                                                                            AVG(distancia_km) as avg_distance,
+                                                                            SUM(distancia_km) as total_distance
+                                                                            FROM carta_porte
+                                                                            WHERE user_id = ? AND fecha >= ${periodDate}
+                                                                            GROUP BY strftime('%Y-%m', fecha)
+                                                                            ORDER BY month`, 
+                                                                            [userId], (err, cartaPorteMonthly) => {
+                                                                            
+                                                                            // Get destination states distribution
+                                                                            db.all(`SELECT 
+                                                                                destino_estado,
+                                                                                COUNT(*) as count,
+                                                                                SUM(valor_declarado) as total_valor
+                                                                                FROM carta_porte
+                                                                                WHERE user_id = ? AND fecha >= ${periodDate} AND destino_estado IS NOT NULL
+                                                                                GROUP BY destino_estado
+                                                                                ORDER BY count DESC
+                                                                                LIMIT 10`, 
+                                                                                [userId], (err, destinationStates) => {
+                                                                                
+                                                                                // Merge monthly trends
+                                                                                const monthlyMap = new Map();
+                                                                                monthlyTrends.forEach(t => {
+                                                                                    monthlyMap.set(t.month, { 
+                                                                                        ...t, 
+                                                                                        maintenance_cost: 0, 
+                                                                                        maintenance_count: 0,
+                                                                                        fines_cost: 0,
+                                                                                        fines_count: 0,
+                                                                                        claims_cost: 0,
+                                                                                        claims_count: 0
+                                                                                    });
+                                                                                });
+                                                                                monthlyMaintenance.forEach(m => {
+                                                                                    if (monthlyMap.has(m.month)) {
+                                                                                        monthlyMap.get(m.month).maintenance_cost = m.maintenance_cost || 0;
+                                                                                        monthlyMap.get(m.month).maintenance_count = m.maintenance_count || 0;
+                                                                                    } else {
+                                                                                        monthlyMap.set(m.month, { 
+                                                                                            month: m.month, 
+                                                                                            fuel_cost: 0, 
+                                                                                            total_litros: 0, 
+                                                                                            vehicles_count: 0,
+                                                                                            maintenance_cost: m.maintenance_cost || 0,
+                                                                                            maintenance_count: m.maintenance_count || 0,
+                                                                                            fines_cost: 0,
+                                                                                            fines_count: 0,
+                                                                                            claims_cost: 0,
+                                                                                            claims_count: 0
+                                                                                        });
+                                                                                    }
+                                                                                });
+                                                                                (monthlyFines || []).forEach(f => {
+                                                                                    if (monthlyMap.has(f.month)) {
+                                                                                        monthlyMap.get(f.month).fines_cost = f.fines_cost || 0;
+                                                                                        monthlyMap.get(f.month).fines_count = f.fines_count || 0;
+                                                                                    } else {
+                                                                                        monthlyMap.set(f.month, { 
+                                                                                            month: f.month, 
+                                                                                            fuel_cost: 0, 
+                                                                                            total_litros: 0, 
+                                                                                            vehicles_count: 0,
+                                                                                            maintenance_cost: 0,
+                                                                                            maintenance_count: 0,
+                                                                                            fines_cost: f.fines_cost || 0,
+                                                                                            fines_count: f.fines_count || 0,
+                                                                                            claims_cost: 0,
+                                                                                            claims_count: 0
+                                                                                        });
+                                                                                    }
+                                                                                });
+                                                                                (monthlyClaims || []).forEach(c => {
+                                                                                    if (monthlyMap.has(c.month)) {
+                                                                                        monthlyMap.get(c.month).claims_cost = c.claims_cost || 0;
+                                                                                        monthlyMap.get(c.month).claims_count = c.claims_count || 0;
+                                                                                    } else {
+                                                                                        monthlyMap.set(c.month, { 
+                                                                                            month: c.month, 
+                                                                                            fuel_cost: 0, 
+                                                                                            total_litros: 0, 
+                                                                                            vehicles_count: 0,
+                                                                                            maintenance_cost: 0,
+                                                                                            maintenance_count: 0,
+                                                                                            fines_cost: 0,
+                                                                                            fines_count: 0,
+                                                                                            claims_cost: c.claims_cost || 0,
+                                                                                            claims_count: c.claims_count || 0
+                                                                                        });
+                                                                                    }
+                                                                                });
+                                                                                const mergedMonthlyTrends = Array.from(monthlyMap.values()).sort((a, b) => a.month.localeCompare(b.month));
+                                            
+                                            // Get vehicle comparisons with all costs
+                                            db.allConverted(`SELECT 
+                                                v.id,
+                                                v.numero_vehiculo,
+                                                v.marca,
+                                                v.modelo,
+                                                v.estado,
+                                                COALESCE(SUM(fr.costo_total), 0) as total_fuel_cost,
+                                                COALESCE(SUM(mr.costo), 0) as total_maintenance_cost,
+                                                COALESCE(SUM(f.monto), 0) as total_fines_cost,
+                                                COALESCE(SUM(s.costo_reparacion), 0) as total_claims_cost,
+                                                (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0) + COALESCE(SUM(f.monto), 0) + COALESCE(SUM(s.costo_reparacion), 0)) as total_cost,
+                                                COALESCE(COUNT(DISTINCT fr.id), 0) as fuel_records,
+                                                COALESCE(COUNT(DISTINCT mr.id), 0) as maintenance_records,
+                                                COALESCE(COUNT(DISTINCT f.id), 0) as fines_count,
+                                                COALESCE(COUNT(DISTINCT s.id), 0) as claims_count
+                                                FROM vehicles v
+                                                LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id AND fr.fecha >= ${periodDate}
+                                                LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
+                                                LEFT JOIN fines f ON v.id = f.vehicle_id AND f.fecha >= ${periodDate}
+                                                LEFT JOIN siniestros s ON v.id = s.vehicle_id AND s.fecha_siniestro >= ${periodDate}
+                                                WHERE v.id IN (${placeholders})
+                                                GROUP BY v.id
+                                                ORDER BY total_cost DESC`, 
+                                                vehicleIds, (err, vehicleComparisons) => {
+                                                    
+                                                    // Get cost breakdown by category
+                                                    const totalFuel = fuelDataWithConsumption.reduce((sum, v) => sum + (v.total_cost || 0), 0);
+                                                    const totalMaintenance = maintenanceData.reduce((sum, v) => sum + (v.total_cost || 0), 0);
+                                                    const totalFines = (finesData || []).reduce((sum, v) => sum + (v.total_cost || 0), 0);
+                                                    const totalClaims = (claimsData || []).reduce((sum, v) => sum + (v.total_cost || 0), 0);
+                                                    
+                                                    // Get vehicle status breakdown
+                                                    const vehicleStatus = vehicles.reduce((acc, v) => {
+                                                        acc[v.estado] = (acc[v.estado] || 0) + 1;
+                                                        return acc;
+                                                    }, {});
+                                                    
+                                                                    // Calculate comprehensive stats
+                                                                    const stats = {
+                                                                        totalVehicles: vehicles.length,
+                                                                        activeVehicles: vehicles.filter(v => v.estado === 'Activo').length,
+                                                                        totalFuelCost: totalFuel,
+                                                                        totalMaintenanceCost: totalMaintenance,
+                                                                        totalFinesCost: totalFines,
+                                                                        totalClaimsCost: totalClaims,
+                                                                        totalCost: totalFuel + totalMaintenance + totalFines + totalClaims,
+                                                                        totalRecords: fuelDataWithConsumption.reduce((sum, v) => sum + (v.fuel_records_count || 0), 0),
+                                                                        totalMaintenanceRecords: maintenanceData.reduce((sum, v) => sum + (v.maintenance_count || 0), 0),
+                                                                        totalFines: (finesData || []).reduce((sum, v) => sum + (v.fines_count || 0), 0),
+                                                                        totalClaims: (claimsData || []).reduce((sum, v) => sum + (v.claims_count || 0), 0),
+                                                                        cartaPorte: cartaPorteStats && cartaPorteStats[0] ? cartaPorteStats[0] : {},
+                                                                        avgFuelConsumption: fuelDataWithConsumption.length > 0 
+                                                                            ? (fuelDataWithConsumption.reduce((sum, v) => sum + (v.avgConsumption || 0), 0) / fuelDataWithConsumption.filter(v => v.avgConsumption > 0).length).toFixed(2)
+                                                                            : 0,
+                                                                        avgMaintenanceCost: maintenanceData.length > 0
+                                                                            ? (maintenanceData.reduce((sum, v) => sum + (v.total_cost || 0), 0) / maintenanceData.length).toFixed(2)
+                                                                            : 0
+                                                                    };
+                                                                    
+                                                                    res.render('reports', {
+                                                                        user: req.session,
+                                                                        vehicles: vehicles,
+                                                                        period: period,
+                                                                        stats: stats,
+                                                                        fuelData: fuelDataWithConsumption,
+                                                                        maintenanceData: maintenanceData || [],
+                                                                        finesData: finesData || [],
+                                                                        policiesData: policiesData || [],
+                                                                        claimsData: claimsData || [],
+                                                                        tiresData: tiresData || [],
+                                                                        cartaPorteData: cartaPorteStats || [],
+                                                                        monthlyTrends: mergedMonthlyTrends,
+                                                                        weeklyTrends: weeklyTrends || [],
+                                                                        dailyTrends: dailyTrends || [],
+                                                                        vehicleComparisons: vehicleComparisons || [],
+                                                                        fuelEfficiency: fuelEfficiency || [],
+                                                                        maintenanceFrequency: maintenanceFrequency || [],
+                                                                        topCostDrivers: topCostDrivers || [],
+                                                                        cartaPorteMonthly: cartaPorteMonthly || [],
+                                                                        destinationStates: destinationStates || [],
+                                                                        costBreakdown: [
+                                                                            { category: 'Combustible', amount: totalFuel, color: '#4da6ff' },
+                                                                            { category: 'Mantenimiento', amount: totalMaintenance, color: '#28a745' },
+                                                                            { category: 'Multas', amount: totalFines, color: '#ffc107' },
+                                                                            { category: 'Siniestros', amount: totalClaims, color: '#dc3545' }
+                                                                        ],
+                                                                        vehicleStatus: vehicleStatus
+                                                                    });
+                                                                });
+                                                            });
+                                                        });
+                                                    });
+                                                });
+                                            });
+                                                });
+                                            });
+                                        });
+                                    });
+                                });
                             });
                         });
                     });
