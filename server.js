@@ -5129,6 +5129,7 @@ app.get('/reports', requireAuth, (req, res) => {
             });
         });
     });
+});
 
 // PDF Report Generation Route
 app.get('/api/download-report', requireAuth, (req, res) => {
