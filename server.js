@@ -3069,9 +3069,14 @@ app.get('/dashboard', requireAuth, (req, res) => {
                             fuelStats = { totalFuelCost: 0 };
                         }
                         
-                        // Convert to number
+                        // Convert to number and handle both lowercase and camelCase
                         if (fuelStats) {
-                            fuelStats.totalFuelCost = parseFloat(fuelStats.totalFuelCost) || 0;
+                            // Handle both totalfuelcost (from DB) and totalFuelCost (expected)
+                            const fuelCost = fuelStats.totalFuelCost !== undefined 
+                                ? fuelStats.totalFuelCost 
+                                : (fuelStats.totalfuelcost !== undefined ? fuelStats.totalfuelcost : 0);
+                            fuelStats.totalFuelCost = parseFloat(fuelCost) || 0;
+                            console.log('📊 Processed fuelStats:', fuelStats);
                         } else {
                             fuelStats = { totalFuelCost: 0 };
                         }
@@ -3089,9 +3094,14 @@ app.get('/dashboard', requireAuth, (req, res) => {
                                 maintStats = { pendingMaintenance: 0 };
                             }
                             
-                            // Convert to number
+                            // Convert to number and handle both lowercase and camelCase
                             if (maintStats) {
-                                maintStats.pendingMaintenance = parseInt(maintStats.pendingMaintenance) || 0;
+                                // Handle both pendingmaintenance (from DB) and pendingMaintenance (expected)
+                                const pendingMaint = maintStats.pendingMaintenance !== undefined 
+                                    ? maintStats.pendingMaintenance 
+                                    : (maintStats.pendingmaintenance !== undefined ? maintStats.pendingmaintenance : 0);
+                                maintStats.pendingMaintenance = parseInt(pendingMaint) || 0;
+                                console.log('📊 Processed maintStats:', maintStats);
                             } else {
                                 maintStats = { pendingMaintenance: 0 };
                             }
