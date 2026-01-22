@@ -415,13 +415,13 @@
                     <div class="kpi-label">Total Vehículos</div>
                     <div class="kpi-icon vehicles">
                         <i class="fas fa-car"></i>
-                    </div>
-                </div>
+            </div>
+            </div>
                 <div class="kpi-value"><%= stats.totalVehicles || 0 %></div>
                 <div class="kpi-change">
                     <i class="fas fa-info-circle"></i>
                     <%= stats.activeVehicles || 0 %> activos
-                </div>
+            </div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-header">
@@ -492,25 +492,25 @@
 
         <!-- Tabs para diferentes secciones -->
         <div class="tabs">
-            <button class="tab active" onclick="showTab('overview')">
+            <button class="tab active" onclick="showTab('overview', this)">
                 <i class="fas fa-chart-pie"></i> Resumen General
             </button>
-            <button class="tab" onclick="showTab('fuel')">
+            <button class="tab" onclick="showTab('fuel', this)">
                 <i class="fas fa-gas-pump"></i> Combustible
             </button>
-            <button class="tab" onclick="showTab('maintenance')">
+            <button class="tab" onclick="showTab('maintenance', this)">
                 <i class="fas fa-tools"></i> Mantenimiento
             </button>
-            <button class="tab" onclick="showTab('fines')">
+            <button class="tab" onclick="showTab('fines', this)">
                 <i class="fas fa-exclamation-triangle"></i> Multas
             </button>
-            <button class="tab" onclick="showTab('claims')">
+            <button class="tab" onclick="showTab('claims', this)">
                 <i class="fas fa-car-crash"></i> Siniestros
             </button>
-            <button class="tab" onclick="showTab('carta-porte')">
+            <button class="tab" onclick="showTab('carta-porte', this)">
                 <i class="fas fa-file-invoice"></i> Carta Porte
             </button>
-            <button class="tab" onclick="showTab('vehicles')">
+            <button class="tab" onclick="showTab('vehicles', this)">
                 <i class="fas fa-car"></i> Por Vehículo
             </button>
         </div>
@@ -533,19 +533,19 @@
             <% } %>
 
             <!-- Tendencias Mensuales -->
-            <% if (monthlyTrends && monthlyTrends.length > 0) { %>
-            <div class="section">
-                <div class="section-header">
-                    <h2 class="section-title">
-                        <i class="fas fa-chart-line"></i>
+        <% if (monthlyTrends && monthlyTrends.length > 0) { %>
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-line"></i>
                         Tendencias Mensuales de Costos
-                    </h2>
-                </div>
-                <div class="chart-container chart-container-large">
-                    <canvas id="monthlyTrendsChart"></canvas>
-                </div>
+                </h2>
             </div>
-            <% } %>
+                <div class="chart-container chart-container-large">
+                <canvas id="monthlyTrendsChart"></canvas>
+            </div>
+        </div>
+        <% } %>
 
             <!-- Tendencias Semanales -->
             <% if (weeklyTrends && weeklyTrends.length > 0) { %>
@@ -625,49 +625,49 @@
             </div>
             <% } %>
 
-            <!-- Consumo de Combustible por Vehículo -->
-            <% if (fuelData && fuelData.length > 0) { %>
-            <div class="section">
-                <div class="section-header">
-                    <h2 class="section-title">
-                        <i class="fas fa-gas-pump"></i>
+        <!-- Consumo de Combustible por Vehículo -->
+        <% if (fuelData && fuelData.length > 0) { %>
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-gas-pump"></i>
                         Consumo de Combustible Detallado
-                    </h2>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Vehículo</th>
-                            <th>Registros</th>
-                            <th>Total Litros</th>
-                            <th>Costo Total</th>
-                            <th>Consumo Promedio</th>
-                            <th>Kilometraje Recorrido</th>
+                </h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vehículo</th>
+                        <th>Registros</th>
+                        <th>Total Litros</th>
+                        <th>Costo Total</th>
+                        <th>Consumo Promedio</th>
+                        <th>Kilometraje Recorrido</th>
                             <th>Precio Promedio/Litro</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% fuelData.forEach(function(vehicle) { %>
-                        <tr>
-                            <td class="font-weight-bold">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></td>
-                            <td><%= vehicle.fuel_records_count || 0 %></td>
-                            <td><%= (vehicle.total_litros || 0).toFixed(2) %> L</td>
-                            <td class="font-weight-bold">$<%= (vehicle.total_cost || 0).toFixed(2) %></td>
-                            <td>
-                                <% if (vehicle.avgConsumption > 0) { %>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% fuelData.forEach(function(vehicle) { %>
+                    <tr>
+                        <td class="font-weight-bold">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></td>
+                        <td><%= vehicle.fuel_records_count || 0 %></td>
+                        <td><%= (vehicle.total_litros || 0).toFixed(2) %> L</td>
+                        <td class="font-weight-bold">$<%= (vehicle.total_cost || 0).toFixed(2) %></td>
+                        <td>
+                            <% if (vehicle.avgConsumption > 0) { %>
                                     <span class="badge badge-success"><%= vehicle.avgConsumption %> km/L</span>
-                                <% } else { %>
+                            <% } else { %>
                                     <span class="badge badge-warning">N/A</span>
-                                <% } %>
-                            </td>
+                            <% } %>
+                        </td>
                             <td><%= (vehicle.kmDiff || 0).toLocaleString() %> km</td>
                             <td>$<%= (vehicle.avg_price_per_liter || 0).toFixed(2) %></td>
-                        </tr>
-                        <% }); %>
-                    </tbody>
-                </table>
-            </div>
-            <% } %>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
         </div>
 
         <!-- Tab: Mantenimiento -->
@@ -687,41 +687,41 @@
             </div>
             <% } %>
 
-            <!-- Mantenimientos por Vehículo -->
-            <% if (maintenanceData && maintenanceData.length > 0) { %>
-            <div class="section">
-                <div class="section-header">
-                    <h2 class="section-title">
-                        <i class="fas fa-tools"></i>
+        <!-- Mantenimientos por Vehículo -->
+        <% if (maintenanceData && maintenanceData.length > 0) { %>
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-tools"></i>
                         Mantenimientos Detallados
-                    </h2>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Vehículo</th>
-                            <th>Total Mantenimientos</th>
-                            <th>Preventivos</th>
-                            <th>Correctivos</th>
-                            <th>Costo Total</th>
+                </h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vehículo</th>
+                        <th>Total Mantenimientos</th>
+                        <th>Preventivos</th>
+                        <th>Correctivos</th>
+                        <th>Costo Total</th>
                             <th>Costo Promedio</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% maintenanceData.forEach(function(vehicle) { %>
-                        <tr>
-                            <td class="font-weight-bold">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></td>
-                            <td><%= vehicle.maintenance_count || 0 %></td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% maintenanceData.forEach(function(vehicle) { %>
+                    <tr>
+                        <td class="font-weight-bold">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></td>
+                        <td><%= vehicle.maintenance_count || 0 %></td>
                             <td><span class="badge badge-success"><%= vehicle.preventive_count || 0 %></span></td>
                             <td><span class="badge badge-danger"><%= vehicle.corrective_count || 0 %></span></td>
-                            <td class="font-weight-bold">$<%= (vehicle.total_cost || 0).toFixed(2) %></td>
+                        <td class="font-weight-bold">$<%= (vehicle.total_cost || 0).toFixed(2) %></td>
                             <td>$<%= (vehicle.avg_cost || 0).toFixed(2) %></td>
-                        </tr>
-                        <% }); %>
-                    </tbody>
-                </table>
-            </div>
-            <% } %>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
         </div>
 
         <!-- Tab: Multas -->
@@ -866,18 +866,18 @@
 
         <!-- Tab: Por Vehículo -->
         <div id="vehicles" class="tab-content">
-            <% if (vehicleComparisons && vehicleComparisons.length > 0) { %>
-            <div class="section">
-                <div class="section-header">
-                    <h2 class="section-title">
-                        <i class="fas fa-chart-bar"></i>
+        <% if (vehicleComparisons && vehicleComparisons.length > 0) { %>
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-bar"></i>
                         Comparativa de Costos Totales por Vehículo
-                    </h2>
-                </div>
+                </h2>
+            </div>
                 <div class="chart-container chart-container-large">
                     <canvas id="vehicleComparisonsChart"></canvas>
-                </div>
             </div>
+        </div>
 
             <div class="section">
                 <div class="section-header">
@@ -907,7 +907,7 @@
                                     <span class="badge badge-success"><%= vehicle.estado %></span>
                                 <% } else { %>
                                     <span class="badge badge-warning"><%= vehicle.estado %></span>
-                                <% } %>
+        <% } %>
                             </td>
                             <td>$<%= (vehicle.total_fuel_cost || 0).toFixed(2) %></td>
                             <td>$<%= (vehicle.total_maintenance_cost || 0).toFixed(2) %></td>
@@ -925,7 +925,7 @@
 
     <script>
         // Tab functionality
-        function showTab(tabName) {
+        function showTab(tabName, buttonElement) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -935,8 +935,15 @@
             });
             
             // Show selected tab
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
+            const tabContent = document.getElementById(tabName);
+            if (tabContent) {
+                tabContent.classList.add('active');
+            }
+            
+            // Activate the clicked button
+            if (buttonElement) {
+                buttonElement.classList.add('active');
+            }
         }
 
         // Chart.js configuration

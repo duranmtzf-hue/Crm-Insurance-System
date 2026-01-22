@@ -905,7 +905,7 @@ app.post('/login', (req, res) => {
                 if (user.role === 'operador') {
                     res.redirect('/operador/rutas');
                 } else {
-                    res.redirect('/dashboard');
+                res.redirect('/dashboard');
                 }
             });
         } else {
@@ -1042,15 +1042,15 @@ app.get('/billing', requireAuth, (req, res) => {
                                     if (err4) {
                                         console.error('Error loading cartas porte:', err4);
                                         cartasPorte = [];
-                                    }
+                            }
 
-                                    res.render('billing', {
-                                        user: req.session,
-                                        orders: orders || [],
-                                        invoices: invoices || [],
+                            res.render('billing', {
+                                user: req.session,
+                                orders: orders || [],
+                                invoices: invoices || [],
                                         vehicles: vehicles || [],
                                         cartasPorte: cartasPorte || []
-                                    });
+                            });
                                 }
                             );
                         }
@@ -4656,6 +4656,13 @@ app.get('/reports', requireAuth, (req, res) => {
                 tiresData: [],
                 cartaPorteData: [],
                 monthlyTrends: [],
+                weeklyTrends: [],
+                dailyTrends: [],
+                fuelEfficiency: [],
+                maintenanceFrequency: [],
+                topCostDrivers: [],
+                cartaPorteMonthly: [],
+                destinationStates: [],
                 costBreakdown: [],
                 vehicleStatus: []
             });
@@ -4784,18 +4791,18 @@ app.get('/reports', requireAuth, (req, res) => {
                                     [userId], (err, cartaPorteStats) => {
                                     
                                     // Get monthly trends for all costs
-                                    db.all(`SELECT 
-                                        strftime('%Y-%m', fecha) as month,
-                                        SUM(costo_total) as fuel_cost,
-                                        SUM(litros) as total_litros,
-                                        COUNT(DISTINCT vehicle_id) as vehicles_count
-                                        FROM fuel_records
-                                        WHERE vehicle_id IN (${placeholders})
-                                        AND fecha >= ${periodDate}
-                                        GROUP BY strftime('%Y-%m', fecha)
-                                        ORDER BY month`, 
-                                        vehicleIds, (err, monthlyTrends) => {
-                                        
+                db.all(`SELECT 
+                    strftime('%Y-%m', fecha) as month,
+                    SUM(costo_total) as fuel_cost,
+                    SUM(litros) as total_litros,
+                    COUNT(DISTINCT vehicle_id) as vehicles_count
+                    FROM fuel_records
+                    WHERE vehicle_id IN (${placeholders})
+                    AND fecha >= ${periodDate}
+                    GROUP BY strftime('%Y-%m', fecha)
+                    ORDER BY month`, 
+                    vehicleIds, (err, monthlyTrends) => {
+                    
                                         // Get monthly maintenance costs
                                         db.all(`SELECT 
                                             strftime('%Y-%m', fecha) as month,
@@ -4901,11 +4908,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                     vehicleIds, (err, maintenanceFrequency) => {
                                                                     
                                                                     // Get top cost drivers (vehicles with highest costs)
-                                                                    db.allConverted(`SELECT 
-                                                                        v.id,
-                                                                        v.numero_vehiculo,
-                                                                        v.marca,
-                                                                        v.modelo,
+                    db.allConverted(`SELECT 
+                        v.id,
+                        v.numero_vehiculo,
+                        v.marca,
+                        v.modelo,
                                                                         COALESCE(SUM(fr.costo_total), 0) as fuel_cost,
                                                                         COALESCE(SUM(mr.costo), 0) as maintenance_cost,
                                                                         COALESCE(SUM(f.monto), 0) as fines_cost,
@@ -5027,24 +5034,24 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                     v.marca,
                                                                                     v.modelo,
                                                                                     v.estado,
-                                                                                    COALESCE(SUM(fr.costo_total), 0) as total_fuel_cost,
-                                                                                    COALESCE(SUM(mr.costo), 0) as total_maintenance_cost,
+                        COALESCE(SUM(fr.costo_total), 0) as total_fuel_cost,
+                        COALESCE(SUM(mr.costo), 0) as total_maintenance_cost,
                                                                                     COALESCE(SUM(f.monto), 0) as total_fines_cost,
                                                                                     COALESCE(SUM(s.costo_reparacion), 0) as total_claims_cost,
                                                                                     (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0) + COALESCE(SUM(f.monto), 0) + COALESCE(SUM(s.costo_reparacion), 0)) as total_cost,
-                                                                                    COALESCE(COUNT(DISTINCT fr.id), 0) as fuel_records,
+                        COALESCE(COUNT(DISTINCT fr.id), 0) as fuel_records,
                                                                                     COALESCE(COUNT(DISTINCT mr.id), 0) as maintenance_records,
                                                                                     COALESCE(COUNT(DISTINCT f.id), 0) as fines_count,
                                                                                     COALESCE(COUNT(DISTINCT s.id), 0) as claims_count
-                                                                                    FROM vehicles v
-                                                                                    LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id AND fr.fecha >= ${periodDate}
-                                                                                    LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
+                        FROM vehicles v
+                        LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id AND fr.fecha >= ${periodDate}
+                        LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
                                                                                     LEFT JOIN fines f ON v.id = f.vehicle_id AND f.fecha >= ${periodDate}
                                                                                     LEFT JOIN siniestros s ON v.id = s.vehicle_id AND s.fecha_siniestro >= ${periodDate}
-                                                                                    WHERE v.id IN (${placeholders})
-                                                                                    GROUP BY v.id
+                        WHERE v.id IN (${placeholders})
+                        GROUP BY v.id
                                                                                     ORDER BY total_cost DESC`, 
-                                                                                    vehicleIds, (err, vehicleComparisons) => {
+                        vehicleIds, (err, vehicleComparisons) => {
                                                                                         
                                                                                         // Get cost breakdown by category
                                                                                         const totalFuel = fuelDataWithConsumption.reduce((sum, v) => sum + (v.total_cost || 0), 0);
@@ -5079,14 +5086,14 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                                 ? (maintenanceData.reduce((sum, v) => sum + (v.total_cost || 0), 0) / maintenanceData.length).toFixed(2)
                                                                                                 : 0
                                                                                         };
-                                                                                        
-                                                                                        res.render('reports', {
-                                                                                            user: req.session,
-                                                                                            vehicles: vehicles,
-                                                                                            period: period,
+                            
+                            res.render('reports', {
+                                user: req.session,
+                                vehicles: vehicles,
+                                period: period,
                                                                                             stats: stats,
-                                                                                            fuelData: fuelDataWithConsumption,
-                                                                                            maintenanceData: maintenanceData || [],
+                                fuelData: fuelDataWithConsumption,
+                                maintenanceData: maintenanceData || [],
                                                                                             finesData: finesData || [],
                                                                                             policiesData: policiesData || [],
                                                                                             claimsData: claimsData || [],
@@ -5123,13 +5130,13 @@ app.get('/reports', requireAuth, (req, res) => {
                                     });
                                 });
                             });
+                            });
                         });
                     });
                 });
             });
         });
     });
-});
 
 // PDF Report Generation Route
 app.get('/api/download-report', requireAuth, (req, res) => {
