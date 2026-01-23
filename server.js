@@ -5181,75 +5181,94 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                 
                                                                                 // Merge monthly trends
                                                                                 const monthlyMap = new Map();
-                                                                                monthlyTrends.forEach(t => {
-                                                                                    monthlyMap.set(t.month, { 
-                                                                                        ...t, 
-                                                                                        maintenance_cost: 0, 
-                                                                                        maintenance_count: 0,
-                                                                                        fines_cost: 0,
-                                                                                        fines_count: 0,
-                                                                                        claims_cost: 0,
-                                                                                        claims_count: 0
-                                                                                    });
-                                                                                });
-                                                                                monthlyMaintenance.forEach(m => {
-                                                                                    if (monthlyMap.has(m.month)) {
-                                                                                        monthlyMap.get(m.month).maintenance_cost = m.maintenance_cost || 0;
-                                                                                        monthlyMap.get(m.month).maintenance_count = m.maintenance_count || 0;
-                                                                                    } else {
-                                                                                        monthlyMap.set(m.month, { 
-                                                                                            month: m.month, 
-                                                                                            fuel_cost: 0, 
-                                                                                            total_litros: 0, 
-                                                                                            vehicles_count: 0,
-                                                                                            maintenance_cost: m.maintenance_cost || 0,
-                                                                                            maintenance_count: m.maintenance_count || 0,
+                                                                                if (monthlyTrends && Array.isArray(monthlyTrends)) {
+                                                                                    for (let i = 0; i < monthlyTrends.length; i++) {
+                                                                                        const t = monthlyTrends[i];
+                                                                                        monthlyMap.set(t.month, { 
+                                                                                            month: t.month,
+                                                                                            fuel_cost: t.fuel_cost || 0,
+                                                                                            total_litros: t.total_litros || 0,
+                                                                                            vehicles_count: t.vehicles_count || 0,
+                                                                                            maintenance_cost: 0, 
+                                                                                            maintenance_count: 0,
                                                                                             fines_cost: 0,
                                                                                             fines_count: 0,
                                                                                             claims_cost: 0,
                                                                                             claims_count: 0
                                                                                         });
                                                                                     }
-                                                                                });
-                                                                                (monthlyFines || []).forEach(f => {
-                                                                                    if (monthlyMap.has(f.month)) {
-                                                                                        monthlyMap.get(f.month).fines_cost = f.fines_cost || 0;
-                                                                                        monthlyMap.get(f.month).fines_count = f.fines_count || 0;
-                                                                                    } else {
-                                                                                        monthlyMap.set(f.month, { 
-                                                                                            month: f.month, 
-                                                                                            fuel_cost: 0, 
-                                                                                            total_litros: 0, 
-                                                                                            vehicles_count: 0,
-                                                                                            maintenance_cost: 0,
-                                                                                            maintenance_count: 0,
-                                                                                            fines_cost: f.fines_cost || 0,
-                                                                                            fines_count: f.fines_count || 0,
-                                                                                            claims_cost: 0,
-                                                                                            claims_count: 0
-                                                                                        });
+                                                                                }
+                                                                                if (monthlyMaintenance && Array.isArray(monthlyMaintenance)) {
+                                                                                    for (let i = 0; i < monthlyMaintenance.length; i++) {
+                                                                                        const m = monthlyMaintenance[i];
+                                                                                        if (monthlyMap.has(m.month)) {
+                                                                                            monthlyMap.get(m.month).maintenance_cost = m.maintenance_cost || 0;
+                                                                                            monthlyMap.get(m.month).maintenance_count = m.maintenance_count || 0;
+                                                                                        } else {
+                                                                                            monthlyMap.set(m.month, { 
+                                                                                                month: m.month, 
+                                                                                                fuel_cost: 0, 
+                                                                                                total_litros: 0, 
+                                                                                                vehicles_count: 0,
+                                                                                                maintenance_cost: m.maintenance_cost || 0,
+                                                                                                maintenance_count: m.maintenance_count || 0,
+                                                                                                fines_cost: 0,
+                                                                                                fines_count: 0,
+                                                                                                claims_cost: 0,
+                                                                                                claims_count: 0
+                                                                                            });
+                                                                                        }
                                                                                     }
-                                                                                });
-                                                                                (monthlyClaims || []).forEach(c => {
-                                                                                    if (monthlyMap.has(c.month)) {
-                                                                                        monthlyMap.get(c.month).claims_cost = c.claims_cost || 0;
-                                                                                        monthlyMap.get(c.month).claims_count = c.claims_count || 0;
-                                                                                    } else {
-                                                                                        monthlyMap.set(c.month, { 
-                                                                                            month: c.month, 
-                                                                                            fuel_cost: 0, 
-                                                                                            total_litros: 0, 
-                                                                                            vehicles_count: 0,
-                                                                                            maintenance_cost: 0,
-                                                                                            maintenance_count: 0,
-                                                                                            fines_cost: 0,
-                                                                                            fines_count: 0,
-                                                                                            claims_cost: c.claims_cost || 0,
-                                                                                            claims_count: c.claims_count || 0
-                                                                                        });
+                                                                                }
+                                                                                if (monthlyFines && Array.isArray(monthlyFines)) {
+                                                                                    for (let i = 0; i < monthlyFines.length; i++) {
+                                                                                        const f = monthlyFines[i];
+                                                                                        if (monthlyMap.has(f.month)) {
+                                                                                            monthlyMap.get(f.month).fines_cost = f.fines_cost || 0;
+                                                                                            monthlyMap.get(f.month).fines_count = f.fines_count || 0;
+                                                                                        } else {
+                                                                                            monthlyMap.set(f.month, { 
+                                                                                                month: f.month, 
+                                                                                                fuel_cost: 0, 
+                                                                                                total_litros: 0, 
+                                                                                                vehicles_count: 0,
+                                                                                                maintenance_cost: 0,
+                                                                                                maintenance_count: 0,
+                                                                                                fines_cost: f.fines_cost || 0,
+                                                                                                fines_count: f.fines_count || 0,
+                                                                                                claims_cost: 0,
+                                                                                                claims_count: 0
+                                                                                            });
+                                                                                        }
                                                                                     }
+                                                                                }
+                                                                                if (monthlyClaims && Array.isArray(monthlyClaims)) {
+                                                                                    for (let i = 0; i < monthlyClaims.length; i++) {
+                                                                                        const c = monthlyClaims[i];
+                                                                                        if (monthlyMap.has(c.month)) {
+                                                                                            monthlyMap.get(c.month).claims_cost = c.claims_cost || 0;
+                                                                                            monthlyMap.get(c.month).claims_count = c.claims_count || 0;
+                                                                                        } else {
+                                                                                            monthlyMap.set(c.month, { 
+                                                                                                month: c.month, 
+                                                                                                fuel_cost: 0, 
+                                                                                                total_litros: 0, 
+                                                                                                vehicles_count: 0,
+                                                                                                maintenance_cost: 0,
+                                                                                                maintenance_count: 0,
+                                                                                                fines_cost: 0,
+                                                                                                fines_count: 0,
+                                                                                                claims_cost: c.claims_cost || 0,
+                                                                                                claims_count: c.claims_count || 0
+                                                                                            });
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                                const mergedMonthlyTrends = Array.from(monthlyMap.values()).sort((a, b) => {
+                                                                                    if (a.month < b.month) return -1;
+                                                                                    if (a.month > b.month) return 1;
+                                                                                    return 0;
                                                                                 });
-                                                                                const mergedMonthlyTrends = Array.from(monthlyMap.values()).sort((a, b) => a.month.localeCompare(b.month));
                                                                                 
                                                                                 // Get operator salaries (Fixed Cost)
                                                                                 db.allConverted(`SELECT 
@@ -5699,27 +5718,34 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                             variableExpenses: variableExpenses || [],
                                                                                             vehicleCostsPerKm: vehicleCostsPerKm || {}
                                                                                         });
-                                                                                    });
-                                                                            });
-                                                                        });
-                                                                    });
-                                                                });
-                                                            });
-                                                        });
-                                                    });
-                                                });
-                                            });
-                                        });
-                                    });
-                                });
-                            });
-                        });
-                    });
-                });
-            });
-        });
-    }); // End db.all vehicles
-}); // End app.get('/reports')
+                                                                                    }); // vehicleComparisons
+                                                                            }); // policyCosts
+                                                                        }); // tireCosts
+                                                                    }); // kilometersData
+                                                                }); // variableExpenses
+                                                            }); // perDiemExpenses
+                                                        }); // tollPayments
+                                                    }); // operatorSalaries
+                                                }); // destinationStates
+                                            }); // cartaPorteMonthly
+                                        }); // topCostDrivers
+                                    }); // maintenanceFrequency
+                                }); // fuelEfficiency
+                            }); // dailyTrends
+                        }); // weeklyTrends
+                    }); // monthlyClaims
+                }); // monthlyFines
+            }); // monthlyMaintenance
+        }); // monthlyTrends
+    }); // cartaPorteStats
+}); // tiresData
+}); // claimsData
+}); // policiesData
+}); // finesData
+}); // maintenanceData
+}); // fuelData
+}); // vehicles
+}); // app.get('/reports')
 
 // PDF Report Generation Route
 app.get('/api/download-report', requireAuth, (req, res) => {
