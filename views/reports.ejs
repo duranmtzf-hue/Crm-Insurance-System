@@ -1733,6 +1733,152 @@
             });
         }
         <% } %>
+
+        // Fixed vs Variable Costs Chart
+        <% if (typeof fixedVariableBreakdown !== 'undefined' && fixedVariableBreakdown && fixedVariableBreakdown.length > 0) { %>
+        const fixedVariableCtx = document.getElementById('fixedVariableChart');
+        if (fixedVariableCtx) {
+            try {
+                new Chart(fixedVariableCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [<%= fixedVariableBreakdown.map(c => `'${c.category}'`).join(',') %>],
+                        datasets: [{
+                            data: [<%= fixedVariableBreakdown.map(c => c.amount).join(',') %>],
+                            backgroundColor: [<%= fixedVariableBreakdown.map(c => `'${c.color}'`).join(',') %>],
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${label}: $${value.toLocaleString('es-MX', {minimumFractionDigits: 2})} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('Fixed vs Variable Chart created successfully');
+            } catch (error) {
+                console.error('Error creating Fixed vs Variable Chart:', error);
+            }
+        }
+        <% } %>
+
+        // Fixed Costs Breakdown Chart
+        <% if (typeof fixedCostsBreakdown !== 'undefined' && fixedCostsBreakdown && fixedCostsBreakdown.length > 0) { %>
+        const fixedCostsCtx = document.getElementById('fixedCostsChart');
+        if (fixedCostsCtx) {
+            try {
+                new Chart(fixedCostsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: [<%= fixedCostsBreakdown.map(c => `'${c.category}'`).join(',') %>],
+                        datasets: [{
+                            label: 'Costo',
+                            data: [<%= fixedCostsBreakdown.map(c => c.amount).join(',') %>],
+                            backgroundColor: [<%= fixedCostsBreakdown.map(c => `'${c.color}'`).join(',') %>],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `$${context.parsed.y.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString('es-MX');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('Fixed Costs Chart created successfully');
+            } catch (error) {
+                console.error('Error creating Fixed Costs Chart:', error);
+            }
+        }
+        <% } %>
+
+        // Variable Costs Breakdown Chart
+        <% if (typeof variableCostsBreakdown !== 'undefined' && variableCostsBreakdown && variableCostsBreakdown.length > 0) { %>
+        const variableCostsCtx = document.getElementById('variableCostsChart');
+        if (variableCostsCtx) {
+            try {
+                new Chart(variableCostsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: [<%= variableCostsBreakdown.map(c => `'${c.category}'`).join(',') %>],
+                        datasets: [{
+                            label: 'Costo',
+                            data: [<%= variableCostsBreakdown.map(c => c.amount).join(',') %>],
+                            backgroundColor: [<%= variableCostsBreakdown.map(c => `'${c.color}'`).join(',') %>],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `$${context.parsed.y.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString('es-MX');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('Variable Costs Chart created successfully');
+            } catch (error) {
+                console.error('Error creating Variable Costs Chart:', error);
+            }
+        }
+        <% } %>
+
+        console.log('All charts initialized');
     </script>
 </body>
 </html>
