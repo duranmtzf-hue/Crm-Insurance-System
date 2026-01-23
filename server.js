@@ -4878,7 +4878,16 @@ app.get('/reports', requireAuth, (req, res) => {
                 cartaPorteMonthly: [],
                 destinationStates: [],
                 costBreakdown: [],
-                vehicleStatus: []
+                vehicleStatus: {},
+                // Cost per km data (empty when no vehicles)
+                fixedVariableBreakdown: [],
+                fixedCostsBreakdown: [],
+                variableCostsBreakdown: [],
+                kilometersData: [],
+                operatorSalaries: [],
+                tollPayments: [],
+                perDiemExpenses: [],
+                variableExpenses: []
             });
         }
         

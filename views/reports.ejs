@@ -1130,7 +1130,13 @@
                             });
                         }
                         kilometersData.forEach(function(kmData) {
-                            var vehicle = vehicles.find(function(v) { return v.id === kmData.id; });
+                            var vehicle = null;
+                            for (var i = 0; i < vehicles.length; i++) {
+                                if (vehicles[i].id === kmData.id) {
+                                    vehicle = vehicles[i];
+                                    break;
+                                }
+                            }
                             if (!vehicle) return;
                             var costs = vehicleCostsMap[kmData.id] || { fixed: 0, variable: 0 };
                             var kmTraveled = kmData.km_traveled || 0;
