@@ -5527,35 +5527,109 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                                                 const totalCostPerKm = totalKilometers > 0 ? ((totalFixedCosts + totalVariableCosts) / totalKilometers) : 0;
                                                                                                                 
                                                                                                                 // Legacy costs (for backward compatibility)
-                                                                                                                const totalFines = (finesData || []).reduce((sum, v) => sum + (v.total_cost || 0), 0);
-                                                                                                                const totalClaims = (claimsData || []).reduce((sum, v) => sum + (v.total_cost || 0), 0);
+                                                                                                                let totalFines = 0;
+                                                                                                                if (finesData && Array.isArray(finesData)) {
+                                                                                                                    for (let i = 0; i < finesData.length; i++) {
+                                                                                                                        totalFines += (finesData[i].total_cost || 0);
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                
+                                                                                                                let totalClaims = 0;
+                                                                                                                if (claimsData && Array.isArray(claimsData)) {
+                                                                                                                    for (let i = 0; i < claimsData.length; i++) {
+                                                                                                                        totalClaims += (claimsData[i].total_cost || 0);
+                                                                                                                    }
+                                                                                                                }
                                                                                         
                                                                                         // Get vehicle status breakdown
-                                                                                        const vehicleStatus = vehicles.reduce((acc, v) => {
-                                                                                            acc[v.estado] = (acc[v.estado] || 0) + 1;
-                                                                                            return acc;
-                                                                                        }, {});
+                                                                                        const vehicleStatus = {};
+                                                                                        if (vehicles && Array.isArray(vehicles)) {
+                                                                                            for (let i = 0; i < vehicles.length; i++) {
+                                                                                                const v = vehicles[i];
+                                                                                                vehicleStatus[v.estado] = (vehicleStatus[v.estado] || 0) + 1;
+                                                                                            }
+                                                                                        }
                                                                                         
                                                                                         // Calculate comprehensive stats
                                                                                         const stats = {
                                                                                             totalVehicles: vehicles.length,
-                                                                                            activeVehicles: vehicles.filter(v => v.estado === 'Activo').length,
+                                                                                            activeVehicles: (() => {
+                                                                                                let count = 0;
+                                                                                                if (vehicles && Array.isArray(vehicles)) {
+                                                                                                    for (let i = 0; i < vehicles.length; i++) {
+                                                                                                        if (vehicles[i].estado === 'Activo') {
+                                                                                                            count++;
+                                                                                                        }
+                                                                                                    }
+                                                                                                }
+                                                                                                return count;
+                                                                                            })(),
                                                                                             totalFuelCost: totalFuel,
                                                                                             totalMaintenanceCost: totalMaintenance,
                                                                                             totalFinesCost: totalFines,
                                                                                             totalClaimsCost: totalClaims,
                                                                                             totalCost: totalFuel + totalMaintenance + totalFines + totalClaims,
-                                                                                            totalRecords: fuelDataWithConsumption.reduce((sum, v) => sum + (v.fuel_records_count || 0), 0),
-                                                                                            totalMaintenanceRecords: maintenanceData.reduce((sum, v) => sum + (v.maintenance_count || 0), 0),
-                                                                                            totalFines: (finesData || []).reduce((sum, v) => sum + (v.fines_count || 0), 0),
-                                                                                            totalClaims: (claimsData || []).reduce((sum, v) => sum + (v.claims_count || 0), 0),
+                                                                                            totalRecords: (() => {
+                                                                                                let sum = 0;
+                                                                                                if (fuelDataWithConsumption && Array.isArray(fuelDataWithConsumption)) {
+                                                                                                    for (let i = 0; i < fuelDataWithConsumption.length; i++) {
+                                                                                                        sum += (fuelDataWithConsumption[i].fuel_records_count || 0);
+                                                                                                    }
+                                                                                                }
+                                                                                                return sum;
+                                                                                            })(),
+                                                                                            totalMaintenanceRecords: (() => {
+                                                                                                let sum = 0;
+                                                                                                if (maintenanceData && Array.isArray(maintenanceData)) {
+                                                                                                    for (let i = 0; i < maintenanceData.length; i++) {
+                                                                                                        sum += (maintenanceData[i].maintenance_count || 0);
+                                                                                                    }
+                                                                                                }
+                                                                                                return sum;
+                                                                                            })(),
+                                                                                            totalFines: (() => {
+                                                                                                let sum = 0;
+                                                                                                if (finesData && Array.isArray(finesData)) {
+                                                                                                    for (let i = 0; i < finesData.length; i++) {
+                                                                                                        sum += (finesData[i].fines_count || 0);
+                                                                                                    }
+                                                                                                }
+                                                                                                return sum;
+                                                                                            })(),
+                                                                                            totalClaims: (() => {
+                                                                                                let sum = 0;
+                                                                                                if (claimsData && Array.isArray(claimsData)) {
+                                                                                                    for (let i = 0; i < claimsData.length; i++) {
+                                                                                                        sum += (claimsData[i].claims_count || 0);
+                                                                                                    }
+                                                                                                }
+                                                                                                return sum;
+                                                                                            })(),
                                                                                             cartaPorte: cartaPorteStats && cartaPorteStats[0] ? cartaPorteStats[0] : {},
-                                                                                            avgFuelConsumption: fuelDataWithConsumption.length > 0 
-                                                                                                ? (fuelDataWithConsumption.reduce((sum, v) => sum + (v.avgConsumption || 0), 0) / fuelDataWithConsumption.filter(v => v.avgConsumption > 0).length).toFixed(2)
-                                                                                                : 0,
-                                                                                            avgMaintenanceCost: maintenanceData.length > 0
-                                                                                                ? (maintenanceData.reduce((sum, v) => sum + (v.total_cost || 0), 0) / maintenanceData.length).toFixed(2)
-                                                                                                : 0,
+                                                                                            avgFuelConsumption: (() => {
+                                                                                                if (fuelDataWithConsumption && fuelDataWithConsumption.length > 0) {
+                                                                                                    let sum = 0;
+                                                                                                    let count = 0;
+                                                                                                    for (let i = 0; i < fuelDataWithConsumption.length; i++) {
+                                                                                                        if (fuelDataWithConsumption[i].avgConsumption > 0) {
+                                                                                                            sum += (fuelDataWithConsumption[i].avgConsumption || 0);
+                                                                                                            count++;
+                                                                                                        }
+                                                                                                    }
+                                                                                                    return count > 0 ? (sum / count).toFixed(2) : '0';
+                                                                                                }
+                                                                                                return '0';
+                                                                                            })(),
+                                                                                            avgMaintenanceCost: (() => {
+                                                                                                if (maintenanceData && maintenanceData.length > 0) {
+                                                                                                    let sum = 0;
+                                                                                                    for (let i = 0; i < maintenanceData.length; i++) {
+                                                                                                        sum += (maintenanceData[i].total_cost || 0);
+                                                                                                    }
+                                                                                                    return (sum / maintenanceData.length).toFixed(2);
+                                                                                                }
+                                                                                                return '0';
+                                                                                            })(),
                                                                                             // New cost per km metrics
                                                                                             totalFixedCosts: totalFixedCosts,
                                                                                             totalVariableCosts: totalVariableCosts,
