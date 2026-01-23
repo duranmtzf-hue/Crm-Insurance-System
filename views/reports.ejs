@@ -1018,7 +1018,7 @@
                                     <span class="badge badge-success"><%= vehicle.estado %></span>
                                 <% } else { %>
                                     <span class="badge badge-warning"><%= vehicle.estado %></span>
-        <% } %>
+                                <% } %>
                             </td>
                             <td>$<%= (vehicle.total_fuel_cost || 0).toFixed(2) %></td>
                             <td>$<%= (vehicle.total_maintenance_cost || 0).toFixed(2) %></td>
@@ -1232,7 +1232,6 @@
         } else {
             console.warn('Cost Breakdown Chart canvas not found');
         }
-        <% } %>
         <% } else { %>
         console.log('No cost breakdown data available or all amounts are zero');
         <% } %>
