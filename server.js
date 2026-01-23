@@ -5718,7 +5718,8 @@ app.get('/reports', requireAuth, (req, res) => {
                 });
             });
         });
-    });
+    }); // End db.all vehicles
+}); // End app.get('/reports')
 
 // PDF Report Generation Route
 app.get('/api/download-report', requireAuth, (req, res) => {
