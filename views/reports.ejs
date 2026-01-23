@@ -533,6 +533,49 @@
             </div>
         </div>
 
+        <!-- KPIs de Costo por Kilómetro -->
+        <div class="kpi-grid" style="margin-top: 20px;">
+            <div class="kpi-card" style="border-left: 4px solid #001f3f;">
+                <div class="kpi-header">
+                    <div class="kpi-label">Costo Total por Km</div>
+                    <div class="kpi-icon" style="background: #001f3f;">
+                        <i class="fas fa-route"></i>
+                    </div>
+                </div>
+                <div class="kpi-value">$<%= (stats.totalCostPerKm || 0).toFixed(2) %></div>
+                <div class="kpi-change">
+                    <i class="fas fa-road"></i>
+                    <%= (stats.totalKilometers || 0).toLocaleString('es-MX') %> km recorridos
+                </div>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid #001f3f;">
+                <div class="kpi-header">
+                    <div class="kpi-label">Costo Fijo por Km</div>
+                    <div class="kpi-icon" style="background: #001f3f;">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                </div>
+                <div class="kpi-value">$<%= (stats.fixedCostPerKm || 0).toFixed(2) %></div>
+                <div class="kpi-change">
+                    <i class="fas fa-dollar-sign"></i>
+                    $<%= (stats.totalFixedCosts || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %> total
+                </div>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid #87ceeb;">
+                <div class="kpi-header">
+                    <div class="kpi-label">Costo Variable por Km</div>
+                    <div class="kpi-icon" style="background: #87ceeb;">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+                <div class="kpi-value">$<%= (stats.variableCostPerKm || 0).toFixed(2) %></div>
+                <div class="kpi-change">
+                    <i class="fas fa-dollar-sign"></i>
+                    $<%= (stats.totalVariableCosts || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %> total
+                </div>
+            </div>
+        </div>
+
         <!-- Tabs para diferentes secciones -->
         <div class="tabs">
             <button class="tab active" onclick="showTab('overview', this)">
@@ -555,6 +598,9 @@
             </button>
             <button class="tab" onclick="showTab('vehicles', this)">
                 <i class="fas fa-car"></i> Por Vehículo
+            </button>
+            <button class="tab" onclick="showTab('cost-per-km', this)">
+                <i class="fas fa-route"></i> Costo por Km
             </button>
         </div>
 
@@ -983,6 +1029,134 @@
                         <% }); %>
                     </tbody>
                 </table>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- Tab: Costo por Kilómetro -->
+        <div id="cost-per-km" class="tab-content">
+            <!-- Resumen de Costos Fijos vs Variables -->
+            <% if (fixedVariableBreakdown && fixedVariableBreakdown.length > 0) { %>
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-balance-scale"></i>
+                        Costos Fijos vs Variables
+                    </h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="fixedVariableChart"></canvas>
+                </div>
+            </div>
+            <% } %>
+
+            <!-- Desglose de Costos Fijos -->
+            <% if (fixedCostsBreakdown && fixedCostsBreakdown.length > 0) { %>
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-lock"></i>
+                        Desglose de Costos Fijos
+                    </h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="fixedCostsChart"></canvas>
+                </div>
+            </div>
+            <% } %>
+
+            <!-- Desglose de Costos Variables -->
+            <% if (variableCostsBreakdown && variableCostsBreakdown.length > 0) { %>
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-chart-line"></i>
+                        Desglose de Costos Variables
+                    </h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="variableCostsChart"></canvas>
+                </div>
+            </div>
+            <% } %>
+
+            <!-- Tabla de Costo por Km por Vehículo -->
+            <% if (kilometersData && kilometersData.length > 0) { %>
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-table"></i>
+                        Costo por Kilómetro por Vehículo
+                    </h2>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Vehículo</th>
+                            <th>Kilómetros Recorridos</th>
+                            <th>Costos Fijos</th>
+                            <th>Costos Variables</th>
+                            <th>Total Costos</th>
+                            <th>Costo Fijo/Km</th>
+                            <th>Costo Variable/Km</th>
+                            <th>Costo Total/Km</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% 
+                        var vehicleCostsMap = {};
+                        if (operatorSalaries) {
+                            operatorSalaries.forEach(function(item) {
+                                if (!vehicleCostsMap[item.id]) vehicleCostsMap[item.id] = { fixed: 0, variable: 0 };
+                                vehicleCostsMap[item.id].fixed += (item.total_salary_cost || 0);
+                            });
+                        }
+                        if (tollPayments) {
+                            tollPayments.forEach(function(item) {
+                                if (!vehicleCostsMap[item.id]) vehicleCostsMap[item.id] = { fixed: 0, variable: 0 };
+                                vehicleCostsMap[item.id].variable += (item.total_toll_cost || 0);
+                            });
+                        }
+                        if (perDiemExpenses) {
+                            perDiemExpenses.forEach(function(item) {
+                                if (!vehicleCostsMap[item.id]) vehicleCostsMap[item.id] = { fixed: 0, variable: 0 };
+                                vehicleCostsMap[item.id].variable += (item.total_per_diem_cost || 0);
+                            });
+                        }
+                        if (variableExpenses) {
+                            variableExpenses.forEach(function(item) {
+                                if (!vehicleCostsMap[item.id]) vehicleCostsMap[item.id] = { fixed: 0, variable: 0 };
+                                vehicleCostsMap[item.id].variable += (item.total_variable_expense_cost || 0);
+                            });
+                        }
+                        kilometersData.forEach(function(kmData) {
+                            var vehicle = vehicles.find(function(v) { return v.id === kmData.id; });
+                            if (!vehicle) return;
+                            var costs = vehicleCostsMap[kmData.id] || { fixed: 0, variable: 0 };
+                            var kmTraveled = kmData.km_traveled || 0;
+                            var fixedCostPerKm = kmTraveled > 0 ? (costs.fixed / kmTraveled) : 0;
+                            var variableCostPerKm = kmTraveled > 0 ? (costs.variable / kmTraveled) : 0;
+                            var totalCostPerKm = fixedCostPerKm + variableCostPerKm;
+                        %>
+                        <tr>
+                            <td class="font-weight-bold">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></td>
+                            <td><%= (kmTraveled || 0).toLocaleString('es-MX') %> km</td>
+                            <td>$<%= (costs.fixed || 0).toFixed(2) %></td>
+                            <td>$<%= (costs.variable || 0).toFixed(2) %></td>
+                            <td class="font-weight-bold">$<%= ((costs.fixed || 0) + (costs.variable || 0)).toFixed(2) %></td>
+                            <td>$<%= fixedCostPerKm.toFixed(2) %></td>
+                            <td>$<%= variableCostPerKm.toFixed(2) %></td>
+                            <td class="font-weight-bold text-primary">$<%= totalCostPerKm.toFixed(2) %></td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+            <% } else { %>
+            <div class="section">
+                <div class="loading">
+                    <i class="fas fa-info-circle"></i> No hay datos de kilómetros recorridos para el período seleccionado
+                </div>
             </div>
             <% } %>
         </div>
