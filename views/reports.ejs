@@ -1129,20 +1129,22 @@
                                 vehicleCostsMap[item.id].variable += (item.total_variable_expense_cost || 0);
                             });
                         }
-                        kilometersData.forEach(function(kmData) {
-                            var vehicle = null;
-                            for (var i = 0; i < vehicles.length; i++) {
-                                if (vehicles[i].id === kmData.id) {
-                                    vehicle = vehicles[i];
-                                    break;
+                        if (kilometersData && kilometersData.length > 0) {
+                            for (var kmIdx = 0; kmIdx < kilometersData.length; kmIdx++) {
+                                var kmData = kilometersData[kmIdx];
+                                var vehicle = null;
+                                for (var i = 0; i < vehicles.length; i++) {
+                                    if (vehicles[i].id === kmData.id) {
+                                        vehicle = vehicles[i];
+                                        break;
+                                    }
                                 }
-                            }
-                            if (!vehicle) return;
-                            var costs = vehicleCostsMap[kmData.id] || { fixed: 0, variable: 0 };
-                            var kmTraveled = kmData.km_traveled || 0;
-                            var fixedCostPerKm = kmTraveled > 0 ? (costs.fixed / kmTraveled) : 0;
-                            var variableCostPerKm = kmTraveled > 0 ? (costs.variable / kmTraveled) : 0;
-                            var totalCostPerKm = fixedCostPerKm + variableCostPerKm;
+                                if (!vehicle) continue;
+                                var costs = vehicleCostsMap[kmData.id] || { fixed: 0, variable: 0 };
+                                var kmTraveled = kmData.km_traveled || 0;
+                                var fixedCostPerKm = kmTraveled > 0 ? (costs.fixed / kmTraveled) : 0;
+                                var variableCostPerKm = kmTraveled > 0 ? (costs.variable / kmTraveled) : 0;
+                                var totalCostPerKm = fixedCostPerKm + variableCostPerKm;
                         %>
                         <tr>
                             <td class="font-weight-bold">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></td>
@@ -1154,7 +1156,9 @@
                             <td>$<%= variableCostPerKm.toFixed(2) %></td>
                             <td class="font-weight-bold text-primary">$<%= totalCostPerKm.toFixed(2) %></td>
                         </tr>
-                        <% }); %>
+                        <% 
+                            }
+                        } %>
                     </tbody>
                 </table>
             </div>
