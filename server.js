@@ -5983,11 +5983,18 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                         }
                                                                                     }
                                                                                 }
-                                                                                const mergedMonthlyTrends = Array.from(monthlyMap.values()).sort((a, b) => {
-                                                                                    if (a.month < b.month) return -1;
-                                                                                    if (a.month > b.month) return 1;
-                                                                                    return 0;
-                                                                                });
+                                                                                let mergedMonthlyTrends = [];
+                                                                                try {
+                                                                                    mergedMonthlyTrends = Array.from(monthlyMap.values()).sort((a, b) => {
+                                                                                        if (a.month < b.month) return -1;
+                                                                                        if (a.month > b.month) return 1;
+                                                                                        return 0;
+                                                                                    });
+                                                                                } catch (mergeError) {
+                                                                                    console.error('Error merging monthly trends:', mergeError);
+                                                                                    mergedMonthlyTrends = [];
+                                                                                }
+                                                                                if (!mergedMonthlyTrends) mergedMonthlyTrends = [];
                                                                                 
                                                                                 // Get operator salaries (Fixed Cost)
                                                                                 db.allConverted(`SELECT 
