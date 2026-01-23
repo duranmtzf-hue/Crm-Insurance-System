@@ -1104,32 +1104,7 @@
                     </thead>
                     <tbody>
                         <% 
-                        var vehicleCostsMap = {};
-                        if (operatorSalaries) {
-                            operatorSalaries.forEach(function(item) {
-                                if (!vehicleCostsMap[item.id]) vehicleCostsMap[item.id] = { fixed: 0, variable: 0 };
-                                vehicleCostsMap[item.id].fixed += (item.total_salary_cost || 0);
-                            });
-                        }
-                        if (tollPayments) {
-                            tollPayments.forEach(function(item) {
-                                if (!vehicleCostsMap[item.id]) vehicleCostsMap[item.id] = { fixed: 0, variable: 0 };
-                                vehicleCostsMap[item.id].variable += (item.total_toll_cost || 0);
-                            });
-                        }
-                        if (perDiemExpenses) {
-                            perDiemExpenses.forEach(function(item) {
-                                if (!vehicleCostsMap[item.id]) vehicleCostsMap[item.id] = { fixed: 0, variable: 0 };
-                                vehicleCostsMap[item.id].variable += (item.total_per_diem_cost || 0);
-                            });
-                        }
-                        if (variableExpenses) {
-                            variableExpenses.forEach(function(item) {
-                                if (!vehicleCostsMap[item.id]) vehicleCostsMap[item.id] = { fixed: 0, variable: 0 };
-                                vehicleCostsMap[item.id].variable += (item.total_variable_expense_cost || 0);
-                            });
-                        }
-                        if (kilometersData && kilometersData.length > 0) {
+                        if (kilometersData && kilometersData.length > 0 && typeof vehicleCostsPerKm !== 'undefined') {
                             for (var kmIdx = 0; kmIdx < kilometersData.length; kmIdx++) {
                                 var kmData = kilometersData[kmIdx];
                                 var vehicle = null;
@@ -1140,25 +1115,40 @@
                                     }
                                 }
                                 if (!vehicle) continue;
-                                var costs = vehicleCostsMap[kmData.id] || { fixed: 0, variable: 0 };
+                                
+                                // Get all costs for this vehicle
+                                var vCosts = vehicleCostsPerKm[kmData.id] || { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                
+                                // Calculate fixed costs: Fuel + Tires + Maintenance + Policies + Salaries
+                                var fixedCosts = (vCosts.fuel || 0) + (vCosts.tires || 0) + (vCosts.maintenance || 0) + (vCosts.policies || 0) + (vCosts.salaries || 0);
+                                
+                                // Calculate variable costs: Tolls + Per Diem + Other Variable Expenses
+                                var variableCosts = (vCosts.tolls || 0) + (vCosts.perDiem || 0) + (vCosts.variable || 0);
+                                
                                 var kmTraveled = kmData.km_traveled || 0;
-                                var fixedCostPerKm = kmTraveled > 0 ? (costs.fixed / kmTraveled) : 0;
-                                var variableCostPerKm = kmTraveled > 0 ? (costs.variable / kmTraveled) : 0;
+                                var fixedCostPerKm = kmTraveled > 0 ? (fixedCosts / kmTraveled) : 0;
+                                var variableCostPerKm = kmTraveled > 0 ? (variableCosts / kmTraveled) : 0;
                                 var totalCostPerKm = fixedCostPerKm + variableCostPerKm;
                         %>
                         <tr>
                             <td class="font-weight-bold">#<%= vehicle.numero_vehiculo %> - <%= vehicle.marca %> <%= vehicle.modelo %></td>
                             <td><%= (kmTraveled || 0).toLocaleString('es-MX') %> km</td>
-                            <td>$<%= (costs.fixed || 0).toFixed(2) %></td>
-                            <td>$<%= (costs.variable || 0).toFixed(2) %></td>
-                            <td class="font-weight-bold">$<%= ((costs.fixed || 0) + (costs.variable || 0)).toFixed(2) %></td>
+                            <td>$<%= fixedCosts.toFixed(2) %></td>
+                            <td>$<%= variableCosts.toFixed(2) %></td>
+                            <td class="font-weight-bold">$<%= (fixedCosts + variableCosts).toFixed(2) %></td>
                             <td>$<%= fixedCostPerKm.toFixed(2) %></td>
                             <td>$<%= variableCostPerKm.toFixed(2) %></td>
                             <td class="font-weight-bold text-primary">$<%= totalCostPerKm.toFixed(2) %></td>
                         </tr>
                         <% 
                             }
-                        } %>
+                        } else { %>
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">
+                                <i class="fas fa-info-circle"></i> No hay datos de kilómetros recorridos para calcular el costo por km
+                            </td>
+                        </tr>
+                        <% } %>
                     </tbody>
                 </table>
             </div>

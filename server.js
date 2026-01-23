@@ -4887,7 +4887,8 @@ app.get('/reports', requireAuth, (req, res) => {
                 operatorSalaries: [],
                 tollPayments: [],
                 perDiemExpenses: [],
-                variableExpenses: []
+                variableExpenses: [],
+                vehicleCostsPerKm: {}
             });
         }
         
@@ -5336,31 +5337,78 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                                             GROUP BY v.id`, 
                                                                                                             vehicleIds, (err, policyCosts) => {
                                                                                                             
-                                                                                                            // Get vehicle comparisons with all costs
-                                                                                                            db.allConverted(`SELECT 
-                                                                                                                v.id,
-                                                                                                                v.numero_vehiculo,
-                                                                                                                v.marca,
-                                                                                                                v.modelo,
-                                                                                                                v.estado,
-                                                                                                                COALESCE(SUM(fr.costo_total), 0) as total_fuel_cost,
-                                                                                                                COALESCE(SUM(mr.costo), 0) as total_maintenance_cost,
-                                                                                                                COALESCE(SUM(f.monto), 0) as total_fines_cost,
-                                                                                                                COALESCE(SUM(s.costo_reparacion), 0) as total_claims_cost,
-                                                                                                                (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0) + COALESCE(SUM(f.monto), 0) + COALESCE(SUM(s.costo_reparacion), 0)) as total_cost,
-                                                                                                                COALESCE(COUNT(DISTINCT fr.id), 0) as fuel_records,
-                                                                                                                COALESCE(COUNT(DISTINCT mr.id), 0) as maintenance_records,
-                                                                                                                COALESCE(COUNT(DISTINCT f.id), 0) as fines_count,
-                                                                                                                COALESCE(COUNT(DISTINCT s.id), 0) as claims_count
-                                                                                                                FROM vehicles v
-                                                                                                                LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id AND fr.fecha >= ${periodDate}
-                                                                                                                LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
-                                                                                                                LEFT JOIN fines f ON v.id = f.vehicle_id AND f.fecha >= ${periodDate}
-                                                                                                                LEFT JOIN siniestros s ON v.id = s.vehicle_id AND s.fecha_siniestro >= ${periodDate}
-                                                                                                                WHERE v.id IN (${placeholders})
-                                                                                                                GROUP BY v.id
-                                                                                                                ORDER BY total_cost DESC`, 
-                                                                                                                vehicleIds, (err, vehicleComparisons) => {
+                                                                                // Get vehicle comparisons with all costs including fixed and variable
+                                                                                db.allConverted(`SELECT 
+                                                                                    v.id,
+                                                                                    v.numero_vehiculo,
+                                                                                    v.marca,
+                                                                                    v.modelo,
+                                                                                    v.estado,
+                                                                                    COALESCE(SUM(fr.costo_total), 0) as total_fuel_cost,
+                                                                                    COALESCE(SUM(mr.costo), 0) as total_maintenance_cost,
+                                                                                    COALESCE(SUM(f.monto), 0) as total_fines_cost,
+                                                                                    COALESCE(SUM(s.costo_reparacion), 0) as total_claims_cost,
+                                                                                    (COALESCE(SUM(fr.costo_total), 0) + COALESCE(SUM(mr.costo), 0) + COALESCE(SUM(f.monto), 0) + COALESCE(SUM(s.costo_reparacion), 0)) as total_cost,
+                                                                                    COALESCE(COUNT(DISTINCT fr.id), 0) as fuel_records,
+                                                                                    COALESCE(COUNT(DISTINCT mr.id), 0) as maintenance_records,
+                                                                                    COALESCE(COUNT(DISTINCT f.id), 0) as fines_count,
+                                                                                    COALESCE(COUNT(DISTINCT s.id), 0) as claims_count
+                                                                                    FROM vehicles v
+                                                                                    LEFT JOIN fuel_records fr ON v.id = fr.vehicle_id AND fr.fecha >= ${periodDate}
+                                                                                    LEFT JOIN maintenance_records mr ON v.id = mr.vehicle_id AND mr.fecha >= ${periodDate}
+                                                                                    LEFT JOIN fines f ON v.id = f.vehicle_id AND f.fecha >= ${periodDate}
+                                                                                    LEFT JOIN siniestros s ON v.id = s.vehicle_id AND s.fecha_siniestro >= ${periodDate}
+                                                                                    WHERE v.id IN (${placeholders})
+                                                                                    GROUP BY v.id
+                                                                                    ORDER BY total_cost DESC`, 
+                                                                                    vehicleIds, (err, vehicleComparisons) => {
+                                                                                    
+                                                                                    // Create a comprehensive vehicle costs map for cost per km calculation
+                                                                                    const vehicleCostsPerKm = {};
+                                                                                    (vehicleComparisons || []).forEach(v => {
+                                                                                        vehicleCostsPerKm[v.id] = {
+                                                                                            fuel: v.total_fuel_cost || 0,
+                                                                                            maintenance: v.total_maintenance_cost || 0,
+                                                                                            fines: v.total_fines_cost || 0,
+                                                                                            claims: v.total_claims_cost || 0
+                                                                                        };
+                                                                                    });
+                                                                                    
+                                                                                    // Add tire costs
+                                                                                    (tireCosts || []).forEach(t => {
+                                                                                        if (!vehicleCostsPerKm[t.id]) vehicleCostsPerKm[t.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                        vehicleCostsPerKm[t.id].tires = t.total_tire_cost || 0;
+                                                                                    });
+                                                                                    
+                                                                                    // Add policy costs
+                                                                                    (policyCosts || []).forEach(p => {
+                                                                                        if (!vehicleCostsPerKm[p.id]) vehicleCostsPerKm[p.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                        vehicleCostsPerKm[p.id].policies = p.total_policy_cost || 0;
+                                                                                    });
+                                                                                    
+                                                                                    // Add operator salaries
+                                                                                    (operatorSalaries || []).forEach(os => {
+                                                                                        if (!vehicleCostsPerKm[os.id]) vehicleCostsPerKm[os.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                        vehicleCostsPerKm[os.id].salaries = os.total_salary_cost || 0;
+                                                                                    });
+                                                                                    
+                                                                                    // Add toll payments
+                                                                                    (tollPayments || []).forEach(tp => {
+                                                                                        if (!vehicleCostsPerKm[tp.id]) vehicleCostsPerKm[tp.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                        vehicleCostsPerKm[tp.id].tolls = tp.total_toll_cost || 0;
+                                                                                    });
+                                                                                    
+                                                                                    // Add per diem expenses
+                                                                                    (perDiemExpenses || []).forEach(pde => {
+                                                                                        if (!vehicleCostsPerKm[pde.id]) vehicleCostsPerKm[pde.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                        vehicleCostsPerKm[pde.id].perDiem = pde.total_per_diem_cost || 0;
+                                                                                    });
+                                                                                    
+                                                                                    // Add variable expenses
+                                                                                    (variableExpenses || []).forEach(ve => {
+                                                                                        if (!vehicleCostsPerKm[ve.id]) vehicleCostsPerKm[ve.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                        vehicleCostsPerKm[ve.id].variable = ve.total_variable_expense_cost || 0;
+                                                                                    });
                                                                                                                 
                                                                                                                 // Calculate Fixed Costs: Fuel + Tires + Maintenance + Policies + Operator Salaries
                                                                                                                 const totalFuel = fuelDataWithConsumption.reduce((sum, v) => sum + (v.total_cost || 0), 0);
@@ -5480,7 +5528,8 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                             operatorSalaries: operatorSalaries || [],
                                                                                             tollPayments: tollPayments || [],
                                                                                             perDiemExpenses: perDiemExpenses || [],
-                                                                                            variableExpenses: variableExpenses || []
+                                                                                            variableExpenses: variableExpenses || [],
+                                                                                            vehicleCostsPerKm: vehicleCostsPerKm || {}
                                                                                         });
                                                                                     });
                                                                             });
