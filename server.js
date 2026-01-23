@@ -5545,6 +5545,11 @@ app.get('/reports', requireAuth, (req, res) => {
             WHERE v.id IN (${placeholders})
             GROUP BY v.id`, 
             vehicleIds, (err, fuelData) => {
+                if (err) {
+                    console.error('Error loading fuel data:', err);
+                    fuelData = [];
+                }
+                if (!fuelData) fuelData = [];
             
             // Calculate consumption for each vehicle
             const fuelDataWithConsumption = fuelData.map(v => {
@@ -5573,6 +5578,11 @@ app.get('/reports', requireAuth, (req, res) => {
                 WHERE v.id IN (${placeholders})
                 GROUP BY v.id`, 
                 vehicleIds, (err, maintenanceData) => {
+                    if (err) {
+                        console.error('Error loading maintenance data:', err);
+                        maintenanceData = [];
+                    }
+                    if (!maintenanceData) maintenanceData = [];
                 
                 // Get fines statistics
                 db.all(`SELECT 
@@ -5589,6 +5599,11 @@ app.get('/reports', requireAuth, (req, res) => {
                     WHERE v.id IN (${placeholders})
                     GROUP BY v.id`, 
                     vehicleIds, (err, finesData) => {
+                        if (err) {
+                            console.error('Error loading fines data:', err);
+                            finesData = [];
+                        }
+                        if (!finesData) finesData = [];
                     
                     // Get insurance policies statistics
                     db.all(`SELECT 
@@ -5602,6 +5617,11 @@ app.get('/reports', requireAuth, (req, res) => {
                         WHERE v.id IN (${placeholders})
                         GROUP BY v.id`, 
                         vehicleIds, (err, policiesData) => {
+                            if (err) {
+                                console.error('Error loading policies data:', err);
+                                policiesData = [];
+                            }
+                            if (!policiesData) policiesData = [];
                         
                         // Get claims (siniestros) statistics
                         db.all(`SELECT 
@@ -5615,6 +5635,11 @@ app.get('/reports', requireAuth, (req, res) => {
                             WHERE v.id IN (${placeholders})
                             GROUP BY v.id`, 
                             vehicleIds, (err, claimsData) => {
+                                if (err) {
+                                    console.error('Error loading claims data:', err);
+                                    claimsData = [];
+                                }
+                                if (!claimsData) claimsData = [];
                             
                             // Get tires statistics
                             db.all(`SELECT 
@@ -5629,6 +5654,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                 WHERE v.id IN (${placeholders})
                                 GROUP BY v.id`, 
                                 vehicleIds, (err, tiresData) => {
+                                    if (err) {
+                                        console.error('Error loading tires data:', err);
+                                        tiresData = [];
+                                    }
+                                    if (!tiresData) tiresData = [];
                                 
                                 // Get Carta Porte statistics
                                 db.all(`SELECT 
@@ -5642,6 +5672,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                     FROM carta_porte
                                     WHERE user_id = ? AND fecha >= ${periodDate}`, 
                                     [userId], (err, cartaPorteStats) => {
+                                        if (err) {
+                                            console.error('Error loading carta porte stats:', err);
+                                            cartaPorteStats = [];
+                                        }
+                                        if (!cartaPorteStats) cartaPorteStats = [];
                                     
                                     // Get monthly trends for all costs
                 db.all(`SELECT 
@@ -5655,6 +5690,11 @@ app.get('/reports', requireAuth, (req, res) => {
                     GROUP BY strftime('%Y-%m', fecha)
                     ORDER BY month`, 
                     vehicleIds, (err, monthlyTrends) => {
+                        if (err) {
+                            console.error('Error loading monthly trends:', err);
+                            monthlyTrends = [];
+                        }
+                        if (!monthlyTrends) monthlyTrends = [];
                     
                                         // Get monthly maintenance costs
                                         db.all(`SELECT 
@@ -6317,10 +6357,16 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                             cartaPorteMonthly: cartaPorteMonthly || [],
                                                                                             destinationStates: destinationStates || [],
                                                                                             costBreakdown: [
-                                                                                                { category: 'Combustible', amount: totalFuel, color: '#4da6ff' },
-                                                                                                { category: 'Mantenimiento', amount: totalMaintenance, color: '#28a745' },
-                                                                                                { category: 'Multas', amount: totalFines, color: '#ffc107' },
-                                                                                                { category: 'Siniestros', amount: totalClaims, color: '#dc3545' }
+                                                                                                { category: 'Combustible', amount: totalFuel || 0, color: '#ff9800' },
+                                                                                                { category: 'Llantas', amount: totalTires || 0, color: '#607d8b' },
+                                                                                                { category: 'Mantenimiento', amount: totalMaintenance || 0, color: '#9c27b0' },
+                                                                                                { category: 'Pólizas', amount: totalPolicies || 0, color: '#2196f3' },
+                                                                                                { category: 'Sueldos', amount: totalOperatorSalaries || 0, color: '#667eea' },
+                                                                                                { category: 'Casetas', amount: totalTolls || 0, color: '#f5576c' },
+                                                                                                { category: 'Viáticos', amount: totalPerDiem || 0, color: '#4facfe' },
+                                                                                                { category: 'Variables', amount: totalVariableExpenses || 0, color: '#28a745' },
+                                                                                                { category: 'Multas', amount: totalFines || 0, color: '#ffc107' },
+                                                                                                { category: 'Siniestros', amount: totalClaims || 0, color: '#dc3545' }
                                                                                             ],
                                                                                             vehicleStatus: vehicleStatus,
                                                                                             // Cost per km data
