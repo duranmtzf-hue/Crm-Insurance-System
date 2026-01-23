@@ -5707,6 +5707,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                             GROUP BY strftime('%Y-%m', fecha)
                                             ORDER BY month`, 
                                             vehicleIds, (err, monthlyMaintenance) => {
+                                                if (err) {
+                                                    console.error('Error loading monthly maintenance:', err);
+                                                    monthlyMaintenance = [];
+                                                }
+                                                if (!monthlyMaintenance) monthlyMaintenance = [];
                                             
                                             // Get monthly fines and claims costs
                                             db.all(`SELECT 
@@ -5719,6 +5724,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                 GROUP BY strftime('%Y-%m', fecha)
                                                 ORDER BY month`, 
                                                 vehicleIds, (err, monthlyFines) => {
+                                                    if (err) {
+                                                        console.error('Error loading monthly fines:', err);
+                                                        monthlyFines = [];
+                                                    }
+                                                    if (!monthlyFines) monthlyFines = [];
                                                 
                                                 db.all(`SELECT 
                                                     strftime('%Y-%m', fecha_siniestro) as month,
@@ -5730,6 +5740,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                     GROUP BY strftime('%Y-%m', fecha_siniestro)
                                                     ORDER BY month`, 
                                                     vehicleIds, (err, monthlyClaims) => {
+                                                        if (err) {
+                                                            console.error('Error loading monthly claims:', err);
+                                                            monthlyClaims = [];
+                                                        }
+                                                        if (!monthlyClaims) monthlyClaims = [];
                                                     
                                                     // Get weekly trends for last 12 weeks
                                                     db.all(`SELECT 
@@ -5744,6 +5759,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                         ORDER BY week
                                                         LIMIT 12`, 
                                                         vehicleIds, (err, weeklyTrends) => {
+                                                            if (err) {
+                                                                console.error('Error loading weekly trends:', err);
+                                                                weeklyTrends = [];
+                                                            }
+                                                            if (!weeklyTrends) weeklyTrends = [];
                                                         
                                                         // Get daily fuel consumption for last 30 days
                                                         db.all(`SELECT 
@@ -5757,6 +5777,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                             GROUP BY date(fecha)
                                                             ORDER BY day`, 
                                                             vehicleIds, (err, dailyTrends) => {
+                                                                if (err) {
+                                                                    console.error('Error loading daily trends:', err);
+                                                                    dailyTrends = [];
+                                                                }
+                                                                if (!dailyTrends) dailyTrends = [];
                                                             
                                                             // Get fuel efficiency by vehicle (top performers)
                                                             db.all(`SELECT 
@@ -5779,6 +5804,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                 HAVING SUM(fr.litros) > 0
                                                                 ORDER BY km_per_liter DESC`, 
                                                                 vehicleIds, (err, fuelEfficiency) => {
+                                                                    if (err) {
+                                                                        console.error('Error loading fuel efficiency:', err);
+                                                                        fuelEfficiency = [];
+                                                                    }
+                                                                    if (!fuelEfficiency) fuelEfficiency = [];
                                                                 
                                                                 // Get maintenance frequency analysis
                                                                 db.all(`SELECT 
@@ -5799,6 +5829,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                     WHERE v.id IN (${placeholders})
                                                                     GROUP BY v.id`, 
                                                                     vehicleIds, (err, maintenanceFrequency) => {
+                                                                        if (err) {
+                                                                            console.error('Error loading maintenance frequency:', err);
+                                                                            maintenanceFrequency = [];
+                                                                        }
+                                                                        if (!maintenanceFrequency) maintenanceFrequency = [];
                                                                     
                                                                     // Get top cost drivers (vehicles with highest costs)
                     db.allConverted(`SELECT 
@@ -5821,6 +5856,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                         ORDER BY total_cost DESC
                                                                         LIMIT 10`, 
                                                                         vehicleIds, (err, topCostDrivers) => {
+                                                                            if (err) {
+                                                                                console.error('Error loading top cost drivers:', err);
+                                                                                topCostDrivers = [];
+                                                                            }
+                                                                            if (!topCostDrivers) topCostDrivers = [];
                                                                         
                                                                         // Get carta porte detailed statistics
                                                                         db.all(`SELECT 
@@ -5835,6 +5875,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                             GROUP BY strftime('%Y-%m', fecha)
                                                                             ORDER BY month`, 
                                                                             [userId], (err, cartaPorteMonthly) => {
+                                                                                if (err) {
+                                                                                    console.error('Error loading carta porte monthly:', err);
+                                                                                    cartaPorteMonthly = [];
+                                                                                }
+                                                                                if (!cartaPorteMonthly) cartaPorteMonthly = [];
                                                                             
                                                                             // Get destination states distribution
                                                                             db.all(`SELECT 
@@ -5847,6 +5892,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                 ORDER BY count DESC
                                                                                 LIMIT 10`, 
                                                                                 [userId], (err, destinationStates) => {
+                                                                                    if (err) {
+                                                                                        console.error('Error loading destination states:', err);
+                                                                                        destinationStates = [];
+                                                                                    }
+                                                                                    if (!destinationStates) destinationStates = [];
                                                                                 
                                                                                 // Merge monthly trends
                                                                                 const monthlyMap = new Map();
@@ -6085,6 +6135,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                     GROUP BY v.id
                                                                                     ORDER BY total_cost DESC`, 
                                                                                     vehicleIds, (err, vehicleComparisons) => {
+                                                                                        if (err) {
+                                                                                            console.error('Error loading vehicle comparisons:', err);
+                                                                                            vehicleComparisons = [];
+                                                                                        }
+                                                                                        if (!vehicleComparisons) vehicleComparisons = [];
                                                                                     
                                                                                     // Create a comprehensive vehicle costs map for cost per km calculation
                                                                                     const vehicleCostsPerKm = {};
@@ -6379,6 +6434,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                             totalVariableExpensesCost: totalVariableExpenses
                                                                                         };
                             
+                                                                                        try {
                                                                                         res.render('reports', {
                                                                                             user: req.session,
                                                                                             vehicles: vehicles,
@@ -6437,6 +6493,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                             variableExpenses: variableExpenses || [],
                                                                                             vehicleCostsPerKm: vehicleCostsPerKm || {}
                                                                                         });
+                                                                                        } catch (renderError) {
+                                                                                            console.error('Error rendering reports template:', renderError);
+                                                                                            console.error('Stack:', renderError.stack);
+                                                                                            return res.status(500).send('Error al renderizar reportes: ' + renderError.message);
+                                                                                        }
                                                                                     }); // vehicleComparisons
                                                                             }); // policyCosts
                                                                         }); // tireCosts
