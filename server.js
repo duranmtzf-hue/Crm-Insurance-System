@@ -5713,7 +5713,6 @@ app.get('/reports', requireAuth, (req, res) => {
                                     });
                                 });
                             });
-                            });
                         });
                     });
                 });
