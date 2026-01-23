@@ -231,6 +231,10 @@ function convertSQL(sql) {
         // Maneja: strftime('%Y-%m', fecha), strftime('%Y-%m', fr.fecha), etc.
         converted = converted.replace(/strftime\('%Y-%m',\s*([a-zA-Z_][a-zA-Z0-9_.]*)\)/gi, "TO_CHAR($1, 'YYYY-MM')");
         
+        // strftime('%Y-W%W', column) → TO_CHAR(column, 'IYYY-IW') (ISO week format)
+        // Maneja: strftime('%Y-W%W', fecha)
+        converted = converted.replace(/strftime\('%Y-W%W',\s*([a-zA-Z_][a-zA-Z0-9_.]*)\)/gi, "TO_CHAR($1, 'IYYY-\"W\"IW')");
+        
         // Convertir sqlite_master a información_schema para PostgreSQL
         converted = converted.replace(/sqlite_master/gi, 'information_schema.tables');
         converted = converted.replace(/type='table'/gi, "table_type='BASE TABLE'");

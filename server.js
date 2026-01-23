@@ -5476,7 +5476,7 @@ app.get('/reports', requireAuth, (req, res) => {
     const period = req.query.period || '6months'; // 1month, 3months, 6months, 12months
     
     // Get user vehicles
-    db.all('SELECT * FROM vehicles WHERE user_id = ?', [userId], (err, vehicles) => {
+    db.allConverted('SELECT * FROM vehicles WHERE user_id = ?', [userId], (err, vehicles) => {
         if (err) {
             return res.status(500).send('Error al cargar vehículos');
         }
@@ -5528,7 +5528,7 @@ app.get('/reports', requireAuth, (req, res) => {
         else if (period === '12months') periodDate = "date('now', '-12 months')";
         
         // Get detailed fuel statistics
-        db.all(`SELECT 
+        db.allConverted(`SELECT 
             v.id,
             v.numero_vehiculo,
             v.marca,
@@ -5563,7 +5563,7 @@ app.get('/reports', requireAuth, (req, res) => {
             });
             
             // Get maintenance statistics
-            db.all(`SELECT 
+            db.allConverted(`SELECT 
                 v.id,
                 v.numero_vehiculo,
                 v.marca,
@@ -5585,7 +5585,7 @@ app.get('/reports', requireAuth, (req, res) => {
                     if (!maintenanceData) maintenanceData = [];
                 
                 // Get fines statistics
-                db.all(`SELECT 
+                db.allConverted(`SELECT 
                     v.id,
                     v.numero_vehiculo,
                     v.marca,
@@ -5606,7 +5606,7 @@ app.get('/reports', requireAuth, (req, res) => {
                         if (!finesData) finesData = [];
                     
                     // Get insurance policies statistics
-                    db.all(`SELECT 
+                    db.allConverted(`SELECT 
                         v.id,
                         v.numero_vehiculo,
                         COUNT(ip.id) as policies_count,
@@ -5624,7 +5624,7 @@ app.get('/reports', requireAuth, (req, res) => {
                             if (!policiesData) policiesData = [];
                         
                         // Get claims (siniestros) statistics
-                        db.all(`SELECT 
+                        db.allConverted(`SELECT 
                             v.id,
                             v.numero_vehiculo,
                             COUNT(s.id) as claims_count,
@@ -5642,7 +5642,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                 if (!claimsData) claimsData = [];
                             
                             // Get tires statistics
-                            db.all(`SELECT 
+                            db.allConverted(`SELECT 
                                 v.id,
                                 v.numero_vehiculo,
                                 COUNT(t.id) as tires_count,
@@ -5661,7 +5661,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                     if (!tiresData) tiresData = [];
                                 
                                 // Get Carta Porte statistics
-                                db.all(`SELECT 
+                                db.allConverted(`SELECT 
                                     COUNT(*) as total_cartas,
                                     SUM(CASE WHEN estado = 'Emitida' THEN 1 ELSE 0 END) as emitidas,
                                     SUM(CASE WHEN estado = 'Borrador' THEN 1 ELSE 0 END) as borradores,
@@ -5679,7 +5679,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                         if (!cartaPorteStats) cartaPorteStats = [];
                                     
                                     // Get monthly trends for all costs
-                db.all(`SELECT 
+                db.allConverted(`SELECT 
                     strftime('%Y-%m', fecha) as month,
                     SUM(costo_total) as fuel_cost,
                     SUM(litros) as total_litros,
@@ -5697,7 +5697,7 @@ app.get('/reports', requireAuth, (req, res) => {
                         if (!monthlyTrends) monthlyTrends = [];
                     
                                         // Get monthly maintenance costs
-                                        db.all(`SELECT 
+                                        db.allConverted(`SELECT 
                                             strftime('%Y-%m', fecha) as month,
                                             SUM(costo) as maintenance_cost,
                                             COUNT(*) as maintenance_count
@@ -5714,7 +5714,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                                 if (!monthlyMaintenance) monthlyMaintenance = [];
                                             
                                             // Get monthly fines and claims costs
-                                            db.all(`SELECT 
+                                            db.allConverted(`SELECT 
                                                 strftime('%Y-%m', fecha) as month,
                                                 SUM(monto) as fines_cost,
                                                 COUNT(*) as fines_count
@@ -5730,7 +5730,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                                     }
                                                     if (!monthlyFines) monthlyFines = [];
                                                 
-                                                db.all(`SELECT 
+                                                db.allConverted(`SELECT 
                                                     strftime('%Y-%m', fecha_siniestro) as month,
                                                     SUM(costo_reparacion) as claims_cost,
                                                     COUNT(*) as claims_count
@@ -5747,7 +5747,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                                         if (!monthlyClaims) monthlyClaims = [];
                                                     
                                                     // Get weekly trends for last 12 weeks
-                                                    db.all(`SELECT 
+                                                    db.allConverted(`SELECT 
                                                         strftime('%Y-W%W', fecha) as week,
                                                         SUM(costo_total) as fuel_cost,
                                                         SUM(litros) as total_litros,
@@ -5766,7 +5766,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                                             if (!weeklyTrends) weeklyTrends = [];
                                                         
                                                         // Get daily fuel consumption for last 30 days
-                                                        db.all(`SELECT 
+                                                        db.allConverted(`SELECT 
                                                             date(fecha) as day,
                                                             SUM(costo_total) as fuel_cost,
                                                             SUM(litros) as total_litros,
@@ -5784,7 +5784,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                 if (!dailyTrends) dailyTrends = [];
                                                             
                                                             // Get fuel efficiency by vehicle (top performers)
-                                                            db.all(`SELECT 
+                                                            db.allConverted(`SELECT 
                                                                 v.id,
                                                                 v.numero_vehiculo,
                                                                 v.marca,
@@ -5811,7 +5811,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                     if (!fuelEfficiency) fuelEfficiency = [];
                                                                 
                                                                 // Get maintenance frequency analysis
-                                                                db.all(`SELECT 
+                                                                db.allConverted(`SELECT 
                                                                     v.id,
                                                                     v.numero_vehiculo,
                                                                     v.marca,
@@ -5863,7 +5863,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                             if (!topCostDrivers) topCostDrivers = [];
                                                                         
                                                                         // Get carta porte detailed statistics
-                                                                        db.all(`SELECT 
+                                                                        db.allConverted(`SELECT 
                                                                             strftime('%Y-%m', fecha) as month,
                                                                             COUNT(*) as total_cartas,
                                                                             SUM(CASE WHEN estado = 'Emitida' THEN 1 ELSE 0 END) as emitidas,
@@ -5882,7 +5882,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                 if (!cartaPorteMonthly) cartaPorteMonthly = [];
                                                                             
                                                                             // Get destination states distribution
-                                                                            db.all(`SELECT 
+                                                                            db.allConverted(`SELECT 
                                                                                 destino_estado,
                                                                                 COUNT(*) as count,
                                                                                 SUM(valor_declarado) as total_valor
@@ -6065,7 +6065,7 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                                     if (!variableExpenses) variableExpenses = [];
                                                                                                 
                                                                                                 // Get total kilometers traveled in period
-                                                                                                db.all(`SELECT 
+                                                                                                db.allConverted(`SELECT 
                                                                                                     v.id,
                                                                                                     MIN(fr.kilometraje) as min_km,
                                                                                                     MAX(fr.kilometraje) as max_km,
