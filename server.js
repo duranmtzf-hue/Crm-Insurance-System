@@ -3869,16 +3869,548 @@ app.get('/expenses', requireAuth, (req, res) => {
             return res.status(500).send('Error al cargar vehículos');
         }
         
+        const vehicleIds = vehicles.length > 0 ? vehicles.map(v => v.id) : [];
+        const placeholders = vehicleIds.length > 0 ? vehicleIds.map(() => '?').join(',') : '';
+        
         // Get operators for dropdown
         db.all('SELECT id, nombre FROM operators WHERE user_id = ? AND estado = ? ORDER BY nombre', [userId, 'Activo'], (err, operators) => {
             if (err) {
                 console.error('Error loading operators:', err);
             }
             
-            res.render('expenses', { 
-                user: req.session, 
-                vehicles: vehicles || [], 
-                operators: operators || [] 
+            if (vehicleIds.length === 0) {
+                return res.render('expenses', { 
+                    user: req.session, 
+                    vehicles: vehicles || [], 
+                    operators: operators || [],
+                    expenseSummary: {
+                        totalFixed: 0,
+                        totalVariable: 0,
+                        totalExpenses: 0,
+                        byVehicle: [],
+                        recentExpenses: []
+                    }
+                });
+            }
+            
+            // Get operator salaries (fixed costs)
+            db.all(`SELECT 
+                v.id as vehicle_id,
+                v.numero_vehiculo,
+                v.marca,
+                v.modelo,
+                COALESCE(SUM(os.sueldo_mensual), 0) as total_salaries
+                FROM vehicles v
+                LEFT JOIN operator_salaries os ON v.id = os.vehicle_id
+                WHERE v.id IN (${placeholders})
+                GROUP BY v.id, v.numero_vehiculo, v.marca, v.modelo`, 
+                vehicleIds, (err, salaryData) => {
+                
+                // Get toll payments (variable costs)
+                db.all(`SELECT 
+                    v.id as vehicle_id,
+                    COALESCE(SUM(tp.monto), 0) as total_tolls
+                    FROM vehicles v
+                    LEFT JOIN toll_payments tp ON v.id = tp.vehicle_id
+                    WHERE v.id IN (${placeholders})
+                    GROUP BY v.id`, 
+                    vehicleIds, (err, tollData) => {
+                    
+                    // Get per diem expenses (variable costs)
+                    db.all(`SELECT 
+                        v.id as vehicle_id,
+                        COALESCE(SUM(pd.monto), 0) as total_per_diem
+                        FROM vehicles v
+                        LEFT JOIN per_diem_expenses pd ON v.id = pd.vehicle_id
+                        WHERE v.id IN (${placeholders})
+                        GROUP BY v.id`, 
+                        vehicleIds, (err, perDiemData) => {
+                        
+                        // Get other variable expenses
+                        db.all(`SELECT 
+                            v.id as vehicle_id,
+                            COALESCE(SUM(ve.monto), 0) as total_variable_expenses
+                            FROM vehicles v
+                            LEFT JOIN variable_expenses ve ON v.id = ve.vehicle_id
+                            WHERE v.id IN (${placeholders})
+                            GROUP BY v.id`, 
+                            vehicleIds, (err, variableExpenseData) => {
+                            
+                            // Get fuel costs (fixed)
+                            db.all(`SELECT 
+                                v.id as vehicle_id,
+                                COALESCE(SUM(f.costo_total), 0) as total_fuel
+                                FROM vehicles v
+                                LEFT JOIN fuel f ON v.id = f.vehicle_id
+                                WHERE v.id IN (${placeholders})
+                                GROUP BY v.id`, 
+                                vehicleIds, (err, fuelData) => {
+                                
+                                // Get tire costs (fixed)
+                                db.all(`SELECT 
+                                    v.id as vehicle_id,
+                                    COALESCE(SUM(t.costo), 0) as total_tires
+                                    FROM vehicles v
+                                    LEFT JOIN tires t ON v.id = t.vehicle_id
+                                    WHERE v.id IN (${placeholders})
+                                    GROUP BY v.id`, 
+                                    vehicleIds, (err, tireData) => {
+                                    
+                                    // Get maintenance costs (fixed)
+                                    db.all(`SELECT 
+                                        v.id as vehicle_id,
+                                        COALESCE(SUM(m.costo), 0) as total_maintenance
+                                        FROM vehicles v
+                                        LEFT JOIN maintenance m ON v.id = m.vehicle_id
+                                        WHERE v.id IN (${placeholders})
+                                        GROUP BY v.id`, 
+                                        vehicleIds, (err, maintenanceData) => {
+                                        
+                                        // Get policy costs (fixed)
+                                        db.all(`SELECT 
+                                            v.id as vehicle_id,
+                                            COALESCE(SUM(p.prima_anual), 0) as total_policies
+                                            FROM vehicles v
+                                            LEFT JOIN insurance_policies p ON v.id = p.vehicle_id
+                                            WHERE v.id IN (${placeholders})
+                                            GROUP BY v.id`, 
+                                            vehicleIds, (err, policyData) => {
+                                            
+                                            // Get kilometers traveled
+                                            db.all(`SELECT 
+                                                v.id as vehicle_id,
+                                                COALESCE(SUM(cp.kilometros_recorridos), 0) as total_km
+                                                FROM vehicles v
+                                                LEFT JOIN carta_porte cp ON v.id = cp.vehicle_id
+                                                WHERE v.id IN (${placeholders})
+                                                GROUP BY v.id`, 
+                                                vehicleIds, (err, kmData) => {
+                                                
+                                                // Build expense summary by vehicle
+                                                const expenseByVehicle = {};
+                                                
+                                                for (let i = 0; i < salaryData.length; i++) {
+                                                    const v = salaryData[i];
+                                                    expenseByVehicle[v.vehicle_id] = {
+                                                        vehicle_id: v.vehicle_id,
+                                                        numero_vehiculo: v.numero_vehiculo,
+                                                        marca: v.marca,
+                                                        modelo: v.modelo,
+                                                        fixed: parseFloat(v.total_salaries || 0),
+                                                        variable: 0,
+                                                        total_km: 0
+                                                    };
+                                                }
+                                                
+                                                // Add fuel costs
+                                                for (let i = 0; i < fuelData.length; i++) {
+                                                    const f = fuelData[i];
+                                                    if (expenseByVehicle[f.vehicle_id]) {
+                                                        expenseByVehicle[f.vehicle_id].fixed += parseFloat(f.total_fuel || 0);
+                                                    }
+                                                }
+                                                
+                                                // Add tire costs
+                                                for (let i = 0; i < tireData.length; i++) {
+                                                    const t = tireData[i];
+                                                    if (expenseByVehicle[t.vehicle_id]) {
+                                                        expenseByVehicle[t.vehicle_id].fixed += parseFloat(t.total_tires || 0);
+                                                    }
+                                                }
+                                                
+                                                // Add maintenance costs
+                                                for (let i = 0; i < maintenanceData.length; i++) {
+                                                    const m = maintenanceData[i];
+                                                    if (expenseByVehicle[m.vehicle_id]) {
+                                                        expenseByVehicle[m.vehicle_id].fixed += parseFloat(m.total_maintenance || 0);
+                                                    }
+                                                }
+                                                
+                                                // Add policy costs
+                                                for (let i = 0; i < policyData.length; i++) {
+                                                    const p = policyData[i];
+                                                    if (expenseByVehicle[p.vehicle_id]) {
+                                                        expenseByVehicle[p.vehicle_id].fixed += parseFloat(p.total_policies || 0);
+                                                    }
+                                                }
+                                                
+                                                // Add toll payments
+                                                for (let i = 0; i < tollData.length; i++) {
+                                                    const t = tollData[i];
+                                                    if (expenseByVehicle[t.vehicle_id]) {
+                                                        expenseByVehicle[t.vehicle_id].variable += parseFloat(t.total_tolls || 0);
+                                                    }
+                                                }
+                                                
+                                                // Add per diem expenses
+                                                for (let i = 0; i < perDiemData.length; i++) {
+                                                    const pd = perDiemData[i];
+                                                    if (expenseByVehicle[pd.vehicle_id]) {
+                                                        expenseByVehicle[pd.vehicle_id].variable += parseFloat(pd.total_per_diem || 0);
+                                                    }
+                                                }
+                                                
+                                                // Add other variable expenses
+                                                for (let i = 0; i < variableExpenseData.length; i++) {
+                                                    const ve = variableExpenseData[i];
+                                                    if (expenseByVehicle[ve.vehicle_id]) {
+                                                        expenseByVehicle[ve.vehicle_id].variable += parseFloat(ve.total_variable_expenses || 0);
+                                                    }
+                                                }
+                                                
+                                                // Add kilometers
+                                                for (let i = 0; i < kmData.length; i++) {
+                                                    const km = kmData[i];
+                                                    if (expenseByVehicle[km.vehicle_id]) {
+                                                        expenseByVehicle[km.vehicle_id].total_km = parseFloat(km.total_km || 0);
+                                                    }
+                                                }
+                                                
+                                                // Calculate totals
+                                                let totalFixed = 0;
+                                                let totalVariable = 0;
+                                                const byVehicle = [];
+                                                
+                                                for (const vehicleId in expenseByVehicle) {
+                                                    const exp = expenseByVehicle[vehicleId];
+                                                    totalFixed += exp.fixed;
+                                                    totalVariable += exp.variable;
+                                                    
+                                                    const costPerKm = exp.total_km > 0 ? (exp.fixed + exp.variable) / exp.total_km : 0;
+                                                    
+                                                    byVehicle.push({
+                                                        ...exp,
+                                                        total: exp.fixed + exp.variable,
+                                                        cost_per_km: costPerKm
+                                                    });
+                                                }
+                                                
+                                                // Get detailed breakdown by category
+                                                const categoryBreakdown = {
+                                                    fuel: 0,
+                                                    tires: 0,
+                                                    maintenance: 0,
+                                                    policies: 0,
+                                                    salaries: 0,
+                                                    tolls: 0,
+                                                    perDiem: 0,
+                                                    variable: 0
+                                                };
+                                                
+                                                for (let i = 0; i < fuelData.length; i++) {
+                                                    categoryBreakdown.fuel += parseFloat(fuelData[i].total_fuel || 0);
+                                                }
+                                                for (let i = 0; i < tireData.length; i++) {
+                                                    categoryBreakdown.tires += parseFloat(tireData[i].total_tires || 0);
+                                                }
+                                                for (let i = 0; i < maintenanceData.length; i++) {
+                                                    categoryBreakdown.maintenance += parseFloat(maintenanceData[i].total_maintenance || 0);
+                                                }
+                                                for (let i = 0; i < policyData.length; i++) {
+                                                    categoryBreakdown.policies += parseFloat(policyData[i].total_policies || 0);
+                                                }
+                                                for (let i = 0; i < salaryData.length; i++) {
+                                                    categoryBreakdown.salaries += parseFloat(salaryData[i].total_salaries || 0);
+                                                }
+                                                for (let i = 0; i < tollData.length; i++) {
+                                                    categoryBreakdown.tolls += parseFloat(tollData[i].total_tolls || 0);
+                                                }
+                                                for (let i = 0; i < perDiemData.length; i++) {
+                                                    categoryBreakdown.perDiem += parseFloat(perDiemData[i].total_per_diem || 0);
+                                                }
+                                                for (let i = 0; i < variableExpenseData.length; i++) {
+                                                    categoryBreakdown.variable += parseFloat(variableExpenseData[i].total_variable_expenses || 0);
+                                                }
+                                                
+                                                // Get monthly trends (last 6 months)
+                                                db.all(`SELECT 
+                                                    strftime('%Y-%m', fecha) as month,
+                                                    SUM(sueldo_mensual) as salaries
+                                                    FROM operator_salaries os
+                                                    JOIN vehicles v ON os.vehicle_id = v.id
+                                                    WHERE v.user_id = ? AND fecha >= date('now', '-6 months')
+                                                    GROUP BY month
+                                                    ORDER BY month`, 
+                                                    [userId], (err, monthlySalaries) => {
+                                                    
+                                                    db.all(`SELECT 
+                                                        strftime('%Y-%m', fecha) as month,
+                                                        SUM(monto) as tolls
+                                                        FROM toll_payments tp
+                                                        JOIN vehicles v ON tp.vehicle_id = v.id
+                                                        WHERE v.user_id = ? AND fecha >= date('now', '-6 months')
+                                                        GROUP BY month
+                                                        ORDER BY month`, 
+                                                        [userId], (err, monthlyTolls) => {
+                                                        
+                                                        db.all(`SELECT 
+                                                            strftime('%Y-%m', fecha) as month,
+                                                            SUM(monto) as per_diem
+                                                            FROM per_diem_expenses pd
+                                                            JOIN vehicles v ON pd.vehicle_id = v.id
+                                                            WHERE v.user_id = ? AND fecha >= date('now', '-6 months')
+                                                            GROUP BY month
+                                                            ORDER BY month`, 
+                                                            [userId], (err, monthlyPerDiem) => {
+                                                            
+                                                            db.all(`SELECT 
+                                                                strftime('%Y-%m', fecha) as month,
+                                                                SUM(monto) as variable
+                                                                FROM variable_expenses ve
+                                                                JOIN vehicles v ON ve.vehicle_id = v.id
+                                                                WHERE v.user_id = ? AND fecha >= date('now', '-6 months')
+                                                                GROUP BY month
+                                                                ORDER BY month`, 
+                                                                [userId], (err, monthlyVariable) => {
+                                                                
+                                                                db.all(`SELECT 
+                                                                    strftime('%Y-%m', fecha) as month,
+                                                                    SUM(costo_total) as fuel
+                                                                    FROM fuel f
+                                                                    JOIN vehicles v ON f.vehicle_id = v.id
+                                                                    WHERE v.user_id = ? AND fecha >= date('now', '-6 months')
+                                                                    GROUP BY month
+                                                                    ORDER BY month`, 
+                                                                    [userId], (err, monthlyFuel) => {
+                                                                    
+                                                                    db.all(`SELECT 
+                                                                        strftime('%Y-%m', fecha) as month,
+                                                                        SUM(costo) as maintenance
+                                                                        FROM maintenance m
+                                                                        JOIN vehicles v ON m.vehicle_id = v.id
+                                                                        WHERE v.user_id = ? AND fecha >= date('now', '-6 months')
+                                                                        GROUP BY month
+                                                                        ORDER BY month`, 
+                                                                        [userId], (err, monthlyMaintenance) => {
+                                                                        
+                                                                        // Get top expenses
+                                                                        db.all(`SELECT 
+                                                                            'Sueldo' as tipo,
+                                                                            os.sueldo_mensual as monto,
+                                                                            v.numero_vehiculo,
+                                                                            v.marca,
+                                                                            v.modelo,
+                                                                            os.fecha
+                                                                            FROM operator_salaries os
+                                                                            JOIN vehicles v ON os.vehicle_id = v.id
+                                                                            WHERE v.user_id = ?
+                                                                            UNION ALL
+                                                                            SELECT 
+                                                                            'Caseta' as tipo,
+                                                                            tp.monto as monto,
+                                                                            v.numero_vehiculo,
+                                                                            v.marca,
+                                                                            v.modelo,
+                                                                            tp.fecha
+                                                                            FROM toll_payments tp
+                                                                            JOIN vehicles v ON tp.vehicle_id = v.id
+                                                                            WHERE v.user_id = ?
+                                                                            UNION ALL
+                                                                            SELECT 
+                                                                            'Viático' as tipo,
+                                                                            pd.monto as monto,
+                                                                            v.numero_vehiculo,
+                                                                            v.marca,
+                                                                            v.modelo,
+                                                                            pd.fecha
+                                                                            FROM per_diem_expenses pd
+                                                                            JOIN vehicles v ON pd.vehicle_id = v.id
+                                                                            WHERE v.user_id = ?
+                                                                            UNION ALL
+                                                                            SELECT 
+                                                                            'Variable' as tipo,
+                                                                            ve.monto as monto,
+                                                                            v.numero_vehiculo,
+                                                                            v.marca,
+                                                                            v.modelo,
+                                                                            ve.fecha
+                                                                            FROM variable_expenses ve
+                                                                            JOIN vehicles v ON ve.vehicle_id = v.id
+                                                                            WHERE v.user_id = ?
+                                                                            UNION ALL
+                                                                            SELECT 
+                                                                            'Combustible' as tipo,
+                                                                            f.costo_total as monto,
+                                                                            v.numero_vehiculo,
+                                                                            v.marca,
+                                                                            v.modelo,
+                                                                            f.fecha
+                                                                            FROM fuel f
+                                                                            JOIN vehicles v ON f.vehicle_id = v.id
+                                                                            WHERE v.user_id = ?
+                                                                            UNION ALL
+                                                                            SELECT 
+                                                                            'Mantenimiento' as tipo,
+                                                                            m.costo as monto,
+                                                                            v.numero_vehiculo,
+                                                                            v.marca,
+                                                                            v.modelo,
+                                                                            m.fecha
+                                                                            FROM maintenance m
+                                                                            JOIN vehicles v ON m.vehicle_id = v.id
+                                                                            WHERE v.user_id = ?
+                                                                            UNION ALL
+                                                                            SELECT 
+                                                                            'Llantas' as tipo,
+                                                                            t.costo as monto,
+                                                                            v.numero_vehiculo,
+                                                                            v.marca,
+                                                                            v.modelo,
+                                                                            t.fecha_instalacion as fecha
+                                                                            FROM tires t
+                                                                            JOIN vehicles v ON t.vehicle_id = v.id
+                                                                            WHERE v.user_id = ?
+                                                                            ORDER BY monto DESC
+                                                                            LIMIT 20`, 
+                                                                            [userId, userId, userId, userId, userId, userId, userId], (err, topExpenses) => {
+                                                                            
+                                                                            // Get recent expenses (last 15)
+                                                                            db.all(`SELECT 
+                                                                                'Sueldo' as tipo,
+                                                                                os.fecha as fecha,
+                                                                                os.sueldo_mensual as monto,
+                                                                                v.numero_vehiculo,
+                                                                                v.marca,
+                                                                                v.modelo
+                                                                                FROM operator_salaries os
+                                                                                JOIN vehicles v ON os.vehicle_id = v.id
+                                                                                WHERE v.user_id = ?
+                                                                                UNION ALL
+                                                                                SELECT 
+                                                                                'Caseta' as tipo,
+                                                                                tp.fecha as fecha,
+                                                                                tp.monto as monto,
+                                                                                v.numero_vehiculo,
+                                                                                v.marca,
+                                                                                v.modelo
+                                                                                FROM toll_payments tp
+                                                                                JOIN vehicles v ON tp.vehicle_id = v.id
+                                                                                WHERE v.user_id = ?
+                                                                                UNION ALL
+                                                                                SELECT 
+                                                                                'Viático' as tipo,
+                                                                                pd.fecha as fecha,
+                                                                                pd.monto as monto,
+                                                                                v.numero_vehiculo,
+                                                                                v.marca,
+                                                                                v.modelo
+                                                                                FROM per_diem_expenses pd
+                                                                                JOIN vehicles v ON pd.vehicle_id = v.id
+                                                                                WHERE v.user_id = ?
+                                                                                UNION ALL
+                                                                                SELECT 
+                                                                                'Variable' as tipo,
+                                                                                ve.fecha as fecha,
+                                                                                ve.monto as monto,
+                                                                                v.numero_vehiculo,
+                                                                                v.marca,
+                                                                                v.modelo
+                                                                                FROM variable_expenses ve
+                                                                                JOIN vehicles v ON ve.vehicle_id = v.id
+                                                                                WHERE v.user_id = ?
+                                                                                ORDER BY fecha DESC
+                                                                                LIMIT 15`, 
+                                                                                [userId, userId, userId, userId], (err, recentExpenses) => {
+                                                                                
+                                                                                // Calculate averages and statistics
+                                                                                const vehicleCount = byVehicle.length;
+                                                                                const avgFixedPerVehicle = vehicleCount > 0 ? totalFixed / vehicleCount : 0;
+                                                                                const avgVariablePerVehicle = vehicleCount > 0 ? totalVariable / vehicleCount : 0;
+                                                                                const avgTotalPerVehicle = vehicleCount > 0 ? (totalFixed + totalVariable) / vehicleCount : 0;
+                                                                                
+                                                                                let totalKm = 0;
+                                                                                for (let i = 0; i < byVehicle.length; i++) {
+                                                                                    totalKm += byVehicle[i].total_km || 0;
+                                                                                }
+                                                                                const avgCostPerKm = totalKm > 0 ? (totalFixed + totalVariable) / totalKm : 0;
+                                                                                
+                                                                                // Build monthly trends data
+                                                                                const monthlyTrendsMap = {};
+                                                                                const allMonths = new Set();
+                                                                                
+                                                                                for (let i = 0; i < monthlySalaries.length; i++) {
+                                                                                    const m = monthlySalaries[i];
+                                                                                    allMonths.add(m.month);
+                                                                                    if (!monthlyTrendsMap[m.month]) monthlyTrendsMap[m.month] = {};
+                                                                                    monthlyTrendsMap[m.month].salaries = parseFloat(m.salaries || 0);
+                                                                                }
+                                                                                for (let i = 0; i < monthlyTolls.length; i++) {
+                                                                                    const m = monthlyTolls[i];
+                                                                                    allMonths.add(m.month);
+                                                                                    if (!monthlyTrendsMap[m.month]) monthlyTrendsMap[m.month] = {};
+                                                                                    monthlyTrendsMap[m.month].tolls = parseFloat(m.tolls || 0);
+                                                                                }
+                                                                                for (let i = 0; i < monthlyPerDiem.length; i++) {
+                                                                                    const m = monthlyPerDiem[i];
+                                                                                    allMonths.add(m.month);
+                                                                                    if (!monthlyTrendsMap[m.month]) monthlyTrendsMap[m.month] = {};
+                                                                                    monthlyTrendsMap[m.month].perDiem = parseFloat(m.per_diem || 0);
+                                                                                }
+                                                                                for (let i = 0; i < monthlyVariable.length; i++) {
+                                                                                    const m = monthlyVariable[i];
+                                                                                    allMonths.add(m.month);
+                                                                                    if (!monthlyTrendsMap[m.month]) monthlyTrendsMap[m.month] = {};
+                                                                                    monthlyTrendsMap[m.month].variable = parseFloat(m.variable || 0);
+                                                                                }
+                                                                                for (let i = 0; i < monthlyFuel.length; i++) {
+                                                                                    const m = monthlyFuel[i];
+                                                                                    allMonths.add(m.month);
+                                                                                    if (!monthlyTrendsMap[m.month]) monthlyTrendsMap[m.month] = {};
+                                                                                    monthlyTrendsMap[m.month].fuel = parseFloat(m.fuel || 0);
+                                                                                }
+                                                                                for (let i = 0; i < monthlyMaintenance.length; i++) {
+                                                                                    const m = monthlyMaintenance[i];
+                                                                                    allMonths.add(m.month);
+                                                                                    if (!monthlyTrendsMap[m.month]) monthlyTrendsMap[m.month] = {};
+                                                                                    monthlyTrendsMap[m.month].maintenance = parseFloat(m.maintenance || 0);
+                                                                                }
+                                                                                
+                                                                                const monthlyTrends = Array.from(allMonths).sort().map(month => ({
+                                                                                    month: month,
+                                                                                    fixed: (monthlyTrendsMap[month].fuel || 0) + (monthlyTrendsMap[month].maintenance || 0) + (monthlyTrendsMap[month].salaries || 0),
+                                                                                    variable: (monthlyTrendsMap[month].tolls || 0) + (monthlyTrendsMap[month].perDiem || 0) + (monthlyTrendsMap[month].variable || 0),
+                                                                                    total: ((monthlyTrendsMap[month].fuel || 0) + (monthlyTrendsMap[month].maintenance || 0) + (monthlyTrendsMap[month].salaries || 0)) + ((monthlyTrendsMap[month].tolls || 0) + (monthlyTrendsMap[month].perDiem || 0) + (monthlyTrendsMap[month].variable || 0))
+                                                                                }));
+                                                                                
+                                                                                res.render('expenses', { 
+                                                                                    user: req.session, 
+                                                                                    vehicles: vehicles || [], 
+                                                                                    operators: operators || [],
+                                                                                    expenseSummary: {
+                                                                                        totalFixed: totalFixed,
+                                                                                        totalVariable: totalVariable,
+                                                                                        totalExpenses: totalFixed + totalVariable,
+                                                                                        byVehicle: byVehicle,
+                                                                                        recentExpenses: recentExpenses || [],
+                                                                                        categoryBreakdown: categoryBreakdown,
+                                                                                        monthlyTrends: monthlyTrends,
+                                                                                        topExpenses: topExpenses || [],
+                                                                                        statistics: {
+                                                                                            vehicleCount: vehicleCount,
+                                                                                            avgFixedPerVehicle: avgFixedPerVehicle,
+                                                                                            avgVariablePerVehicle: avgVariablePerVehicle,
+                                                                                            avgTotalPerVehicle: avgTotalPerVehicle,
+                                                                                            totalKm: totalKm,
+                                                                                            avgCostPerKm: avgCostPerKm
+                                                                                        }
+                                                                                    }
+                                                                                });
+                                                                            });
+                                                                        });
+                                                                    });
+                                                                });
+                                                            });
+                                                        });
+                                                    });
+                                                });
+                                            });
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
             });
         });
     });

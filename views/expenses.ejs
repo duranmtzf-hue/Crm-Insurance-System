@@ -6,6 +6,7 @@
     <title>Gestión de Gastos | CRM Insurance System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --primary: #001f3f;
@@ -228,6 +229,246 @@
             <h1><i class="fas fa-dollar-sign"></i> Gestión de Gastos</h1>
             <p>Registra costos fijos y variables para calcular el costo por kilómetro</p>
         </div>
+
+        <!-- Expense Summary KPIs -->
+        <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div style="padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.9rem; opacity: 0.9;">Total Costos Fijos</span>
+                        <i class="fas fa-lock" style="font-size: 1.5rem; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 2rem; font-weight: 700;">
+                        $<%= (expenseSummary.totalFixed || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                    </div>
+                    <% if (expenseSummary.statistics && expenseSummary.statistics.vehicleCount > 0) { %>
+                    <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 5px;">
+                        Promedio: $<%= (expenseSummary.statistics.avgFixedPerVehicle || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+            <div class="card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                <div style="padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.9rem; opacity: 0.9;">Total Costos Variables</span>
+                        <i class="fas fa-chart-line" style="font-size: 1.5rem; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 2rem; font-weight: 700;">
+                        $<%= (expenseSummary.totalVariable || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                    </div>
+                    <% if (expenseSummary.statistics && expenseSummary.statistics.vehicleCount > 0) { %>
+                    <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 5px;">
+                        Promedio: $<%= (expenseSummary.statistics.avgVariablePerVehicle || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+            <div class="card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                <div style="padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.9rem; opacity: 0.9;">Total Gastos</span>
+                        <i class="fas fa-dollar-sign" style="font-size: 1.5rem; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 2rem; font-weight: 700;">
+                        $<%= (expenseSummary.totalExpenses || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                    </div>
+                    <% if (expenseSummary.statistics && expenseSummary.statistics.vehicleCount > 0) { %>
+                    <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 5px;">
+                        Promedio: $<%= (expenseSummary.statistics.avgTotalPerVehicle || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+            <% if (expenseSummary.statistics && expenseSummary.statistics.totalKm > 0) { %>
+            <div class="card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white;">
+                <div style="padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.9rem; opacity: 0.9;">Costo Promedio por Km</span>
+                        <i class="fas fa-route" style="font-size: 1.5rem; opacity: 0.8;"></i>
+                    </div>
+                    <div style="font-size: 2rem; font-weight: 700;">
+                        $<%= (expenseSummary.statistics.avgCostPerKm || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                    </div>
+                    <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 5px;">
+                        Total Km: <%= (expenseSummary.statistics.totalKm || 0).toLocaleString('es-MX') %>
+                    </div>
+                </div>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- Charts Section -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <!-- Distribution Chart -->
+            <% if (expenseSummary.categoryBreakdown) { %>
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-chart-pie"></i> Distribución de Gastos por Categoría</h2>
+                </div>
+                <div style="padding: 20px;">
+                    <canvas id="categoryChart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+            <% } %>
+
+            <!-- Fixed vs Variable Chart -->
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fas fa-balance-scale"></i> Costos Fijos vs Variables</h2>
+                </div>
+                <div style="padding: 20px;">
+                    <canvas id="fixedVariableChart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Monthly Trends Chart -->
+            <% if (expenseSummary.monthlyTrends && expenseSummary.monthlyTrends.length > 0) { %>
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <h2><i class="fas fa-chart-line"></i> Tendencias Mensuales (Últimos 6 Meses)</h2>
+                </div>
+                <div style="padding: 20px;">
+                    <canvas id="monthlyTrendsChart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+            <% } %>
+
+            <!-- Vehicle Comparison Chart -->
+            <% if (expenseSummary.byVehicle && expenseSummary.byVehicle.length > 0) { %>
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <h2><i class="fas fa-chart-bar"></i> Comparativa de Gastos por Vehículo</h2>
+                </div>
+                <div style="padding: 20px;">
+                    <canvas id="vehicleComparisonChart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- Top Expenses -->
+        <% if (expenseSummary.topExpenses && expenseSummary.topExpenses.length > 0) { %>
+        <div class="card" style="margin-bottom: 30px;">
+            <div class="card-header">
+                <h2><i class="fas fa-trophy"></i> Top 20 Gastos Más Altos</h2>
+            </div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: var(--light);">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border);">#</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border);">Tipo</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border);">Vehículo</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">Monto</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--border);">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% expenseSummary.topExpenses.forEach(function(exp, index) { %>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px; font-weight: 600; color: var(--gray);"><%= index + 1 %></td>
+                            <td style="padding: 12px;">
+                                <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; 
+                                    background-color: <%= exp.tipo === 'Sueldo' ? '#667eea' : exp.tipo === 'Caseta' ? '#f5576c' : exp.tipo === 'Viático' ? '#4facfe' : exp.tipo === 'Variable' ? '#28a745' : exp.tipo === 'Combustible' ? '#ff9800' : exp.tipo === 'Mantenimiento' ? '#9c27b0' : '#607d8b' %>; 
+                                    color: white;">
+                                    <%= exp.tipo %>
+                                </span>
+                            </td>
+                            <td style="padding: 12px;">#<%= exp.numero_vehiculo %> - <%= exp.marca %> <%= exp.modelo %></td>
+                            <td style="padding: 12px; text-align: right; font-weight: 600; font-size: 1.1rem; color: var(--accent);">
+                                $<%= parseFloat(exp.monto || 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                            </td>
+                            <td style="padding: 12px; text-align: center; color: var(--gray);">
+                                <%= new Date(exp.fecha).toLocaleDateString('es-MX') %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Expense Summary by Vehicle -->
+        <% if (expenseSummary.byVehicle && expenseSummary.byVehicle.length > 0) { %>
+        <div class="card" style="margin-bottom: 30px;">
+            <div class="card-header">
+                <h2><i class="fas fa-table"></i> Resumen de Gastos por Vehículo</h2>
+            </div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: var(--light);">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border);">Vehículo</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">Costos Fijos</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">Costos Variables</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">Total Gastos</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">Km Recorridos</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">Costo por Km</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% expenseSummary.byVehicle.forEach(function(exp) { %>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px; font-weight: 600;">#<%= exp.numero_vehiculo %> - <%= exp.marca %> <%= exp.modelo %></td>
+                            <td style="padding: 12px; text-align: right;">$<%= exp.fixed.toFixed(2) %></td>
+                            <td style="padding: 12px; text-align: right;">$<%= exp.variable.toFixed(2) %></td>
+                            <td style="padding: 12px; text-align: right; font-weight: 600;">$<%= exp.total.toFixed(2) %></td>
+                            <td style="padding: 12px; text-align: right;"><%= (exp.total_km || 0).toLocaleString('es-MX') %> km</td>
+                            <td style="padding: 12px; text-align: right; font-weight: 600; color: var(--accent);">
+                                <% if (exp.cost_per_km > 0) { %>
+                                    $<%= exp.cost_per_km.toFixed(2) %>
+                                <% } else { %>
+                                    <span style="color: var(--gray);">N/A</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Recent Expenses -->
+        <% if (expenseSummary.recentExpenses && expenseSummary.recentExpenses.length > 0) { %>
+        <div class="card" style="margin-bottom: 30px;">
+            <div class="card-header">
+                <h2><i class="fas fa-history"></i> Gastos Recientes</h2>
+            </div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: var(--light);">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border);">Tipo</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border);">Vehículo</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">Monto</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--border);">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% expenseSummary.recentExpenses.forEach(function(exp) { %>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px;">
+                                <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; 
+                                    background-color: <%= exp.tipo === 'Sueldo' ? '#667eea' : exp.tipo === 'Caseta' ? '#f5576c' : exp.tipo === 'Viático' ? '#4facfe' : '#28a745' %>; 
+                                    color: white;">
+                                    <%= exp.tipo %>
+                                </span>
+                            </td>
+                            <td style="padding: 12px;">#<%= exp.numero_vehiculo %> - <%= exp.marca %> <%= exp.modelo %></td>
+                            <td style="padding: 12px; text-align: right; font-weight: 600;">$<%= parseFloat(exp.monto || 0).toFixed(2) %></td>
+                            <td style="padding: 12px; text-align: center; color: var(--gray);">
+                                <%= new Date(exp.fecha).toLocaleDateString('es-MX') %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <% } %>
 
         <div class="info-box">
             <h3><i class="fas fa-info-circle"></i> Clasificación de Gastos</h3>
@@ -572,6 +813,244 @@
                 alert('Error al registrar gasto variable: ' + error.message);
             }
         });
+
+        // Charts
+        <% if (expenseSummary.categoryBreakdown) { %>
+        // Category Distribution Chart
+        const categoryCtx = document.getElementById('categoryChart');
+        if (categoryCtx) {
+            const categoryData = {
+                labels: ['Combustible', 'Llantas', 'Mantenimiento', 'Pólizas', 'Sueldos', 'Casetas', 'Viáticos', 'Variables'],
+                datasets: [{
+                    data: [
+                        <%= expenseSummary.categoryBreakdown.fuel || 0 %>,
+                        <%= expenseSummary.categoryBreakdown.tires || 0 %>,
+                        <%= expenseSummary.categoryBreakdown.maintenance || 0 %>,
+                        <%= expenseSummary.categoryBreakdown.policies || 0 %>,
+                        <%= expenseSummary.categoryBreakdown.salaries || 0 %>,
+                        <%= expenseSummary.categoryBreakdown.tolls || 0 %>,
+                        <%= expenseSummary.categoryBreakdown.perDiem || 0 %>,
+                        <%= expenseSummary.categoryBreakdown.variable || 0 %>
+                    ],
+                    backgroundColor: [
+                        '#ff9800',
+                        '#607d8b',
+                        '#9c27b0',
+                        '#2196f3',
+                        '#667eea',
+                        '#f5576c',
+                        '#4facfe',
+                        '#28a745'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            };
+            new Chart(categoryCtx, {
+                type: 'doughnut',
+                data: categoryData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return label + ': $' + value.toLocaleString('es-MX', {minimumFractionDigits: 2}) + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        <% } %>
+
+        // Fixed vs Variable Chart
+        const fixedVariableCtx = document.getElementById('fixedVariableChart');
+        if (fixedVariableCtx) {
+            new Chart(fixedVariableCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Costos Fijos', 'Costos Variables'],
+                    datasets: [{
+                        data: [<%= expenseSummary.totalFixed || 0 %>, <%= expenseSummary.totalVariable || 0 %>],
+                        backgroundColor: ['#667eea', '#f5576c'],
+                        borderWidth: 3,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = <%= expenseSummary.totalExpenses || 0 %>;
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return label + ': $' + value.toLocaleString('es-MX', {minimumFractionDigits: 2}) + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        <% if (expenseSummary.monthlyTrends && expenseSummary.monthlyTrends.length > 0) { %>
+        // Monthly Trends Chart
+        const monthlyTrendsCtx = document.getElementById('monthlyTrendsChart');
+        if (monthlyTrendsCtx) {
+            const monthlyLabels = [<% expenseSummary.monthlyTrends.forEach(function(trend, index) { %>'<%= trend.month %>'<%= index < expenseSummary.monthlyTrends.length - 1 ? ',' : '' %><% }); %>];
+            new Chart(monthlyTrendsCtx, {
+                type: 'line',
+                data: {
+                    labels: monthlyLabels,
+                    datasets: [
+                        {
+                            label: 'Costos Fijos',
+                            data: [<% expenseSummary.monthlyTrends.forEach(function(trend, index) { %><%= trend.fixed || 0 %><%= index < expenseSummary.monthlyTrends.length - 1 ? ',' : '' %><% }); %>],
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Costos Variables',
+                            data: [<% expenseSummary.monthlyTrends.forEach(function(trend, index) { %><%= trend.variable || 0 %><%= index < expenseSummary.monthlyTrends.length - 1 ? ',' : '' %><% }); %>],
+                            borderColor: '#f5576c',
+                            backgroundColor: 'rgba(245, 87, 108, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Total',
+                            data: [<% expenseSummary.monthlyTrends.forEach(function(trend, index) { %><%= trend.total || 0 %><%= index < expenseSummary.monthlyTrends.length - 1 ? ',' : '' %><% }); %>],
+                            borderColor: '#4facfe',
+                            backgroundColor: 'rgba(79, 172, 254, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            borderDash: [5, 5]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                padding: 15,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + context.parsed.y.toLocaleString('es-MX', {minimumFractionDigits: 2});
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString('es-MX');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        <% } %>
+
+        <% if (expenseSummary.byVehicle && expenseSummary.byVehicle.length > 0) { %>
+        // Vehicle Comparison Chart
+        const vehicleComparisonCtx = document.getElementById('vehicleComparisonChart');
+        if (vehicleComparisonCtx) {
+            const vehicleLabels = [<% expenseSummary.byVehicle.forEach(function(v, index) { %>'#<%= v.numero_vehiculo %>'<%= index < expenseSummary.byVehicle.length - 1 ? ',' : '' %><% }); %>];
+            new Chart(vehicleComparisonCtx, {
+                type: 'bar',
+                data: {
+                    labels: vehicleLabels,
+                    datasets: [
+                        {
+                            label: 'Costos Fijos',
+                            data: [<% expenseSummary.byVehicle.forEach(function(v, index) { %><%= v.fixed || 0 %><%= index < expenseSummary.byVehicle.length - 1 ? ',' : '' %><% }); %>],
+                            backgroundColor: '#667eea',
+                            borderColor: '#667eea',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Costos Variables',
+                            data: [<% expenseSummary.byVehicle.forEach(function(v, index) { %><%= v.variable || 0 %><%= index < expenseSummary.byVehicle.length - 1 ? ',' : '' %><% }); %>],
+                            backgroundColor: '#f5576c',
+                            borderColor: '#f5576c',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                padding: 15,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + context.parsed.y.toLocaleString('es-MX', {minimumFractionDigits: 2});
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString('es-MX');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        <% } %>
     </script>
 </body>
 </html>
