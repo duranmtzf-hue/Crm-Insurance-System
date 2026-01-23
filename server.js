@@ -5365,67 +5365,161 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                     
                                                                                     // Create a comprehensive vehicle costs map for cost per km calculation
                                                                                     const vehicleCostsPerKm = {};
-                                                                                    (vehicleComparisons || []).forEach(v => {
-                                                                                        vehicleCostsPerKm[v.id] = {
-                                                                                            fuel: v.total_fuel_cost || 0,
-                                                                                            maintenance: v.total_maintenance_cost || 0,
-                                                                                            fines: v.total_fines_cost || 0,
-                                                                                            claims: v.total_claims_cost || 0
-                                                                                        };
-                                                                                    });
+                                                                                    
+                                                                                    // Initialize with vehicle comparisons
+                                                                                    if (vehicleComparisons && Array.isArray(vehicleComparisons)) {
+                                                                                        for (let i = 0; i < vehicleComparisons.length; i++) {
+                                                                                            const v = vehicleComparisons[i];
+                                                                                            vehicleCostsPerKm[v.id] = {
+                                                                                                fuel: v.total_fuel_cost || 0,
+                                                                                                maintenance: v.total_maintenance_cost || 0,
+                                                                                                fines: v.total_fines_cost || 0,
+                                                                                                claims: v.total_claims_cost || 0,
+                                                                                                tires: 0,
+                                                                                                policies: 0,
+                                                                                                salaries: 0,
+                                                                                                tolls: 0,
+                                                                                                perDiem: 0,
+                                                                                                variable: 0
+                                                                                            };
+                                                                                        }
+                                                                                    }
                                                                                     
                                                                                     // Add tire costs
-                                                                                    (tireCosts || []).forEach(t => {
-                                                                                        if (!vehicleCostsPerKm[t.id]) vehicleCostsPerKm[t.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
-                                                                                        vehicleCostsPerKm[t.id].tires = t.total_tire_cost || 0;
-                                                                                    });
+                                                                                    if (tireCosts && Array.isArray(tireCosts)) {
+                                                                                        for (let i = 0; i < tireCosts.length; i++) {
+                                                                                            const t = tireCosts[i];
+                                                                                            if (!vehicleCostsPerKm[t.id]) {
+                                                                                                vehicleCostsPerKm[t.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                            }
+                                                                                            vehicleCostsPerKm[t.id].tires = t.total_tire_cost || 0;
+                                                                                        }
+                                                                                    }
                                                                                     
                                                                                     // Add policy costs
-                                                                                    (policyCosts || []).forEach(p => {
-                                                                                        if (!vehicleCostsPerKm[p.id]) vehicleCostsPerKm[p.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
-                                                                                        vehicleCostsPerKm[p.id].policies = p.total_policy_cost || 0;
-                                                                                    });
+                                                                                    if (policyCosts && Array.isArray(policyCosts)) {
+                                                                                        for (let i = 0; i < policyCosts.length; i++) {
+                                                                                            const p = policyCosts[i];
+                                                                                            if (!vehicleCostsPerKm[p.id]) {
+                                                                                                vehicleCostsPerKm[p.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                            }
+                                                                                            vehicleCostsPerKm[p.id].policies = p.total_policy_cost || 0;
+                                                                                        }
+                                                                                    }
                                                                                     
                                                                                     // Add operator salaries
-                                                                                    (operatorSalaries || []).forEach(os => {
-                                                                                        if (!vehicleCostsPerKm[os.id]) vehicleCostsPerKm[os.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
-                                                                                        vehicleCostsPerKm[os.id].salaries = os.total_salary_cost || 0;
-                                                                                    });
+                                                                                    if (operatorSalaries && Array.isArray(operatorSalaries)) {
+                                                                                        for (let i = 0; i < operatorSalaries.length; i++) {
+                                                                                            const os = operatorSalaries[i];
+                                                                                            if (!vehicleCostsPerKm[os.id]) {
+                                                                                                vehicleCostsPerKm[os.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                            }
+                                                                                            vehicleCostsPerKm[os.id].salaries = os.total_salary_cost || 0;
+                                                                                        }
+                                                                                    }
                                                                                     
                                                                                     // Add toll payments
-                                                                                    (tollPayments || []).forEach(tp => {
-                                                                                        if (!vehicleCostsPerKm[tp.id]) vehicleCostsPerKm[tp.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
-                                                                                        vehicleCostsPerKm[tp.id].tolls = tp.total_toll_cost || 0;
-                                                                                    });
+                                                                                    if (tollPayments && Array.isArray(tollPayments)) {
+                                                                                        for (let i = 0; i < tollPayments.length; i++) {
+                                                                                            const tp = tollPayments[i];
+                                                                                            if (!vehicleCostsPerKm[tp.id]) {
+                                                                                                vehicleCostsPerKm[tp.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                            }
+                                                                                            vehicleCostsPerKm[tp.id].tolls = tp.total_toll_cost || 0;
+                                                                                        }
+                                                                                    }
                                                                                     
                                                                                     // Add per diem expenses
-                                                                                    (perDiemExpenses || []).forEach(pde => {
-                                                                                        if (!vehicleCostsPerKm[pde.id]) vehicleCostsPerKm[pde.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
-                                                                                        vehicleCostsPerKm[pde.id].perDiem = pde.total_per_diem_cost || 0;
-                                                                                    });
+                                                                                    if (perDiemExpenses && Array.isArray(perDiemExpenses)) {
+                                                                                        for (let i = 0; i < perDiemExpenses.length; i++) {
+                                                                                            const pde = perDiemExpenses[i];
+                                                                                            if (!vehicleCostsPerKm[pde.id]) {
+                                                                                                vehicleCostsPerKm[pde.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                            }
+                                                                                            vehicleCostsPerKm[pde.id].perDiem = pde.total_per_diem_cost || 0;
+                                                                                        }
+                                                                                    }
                                                                                     
                                                                                     // Add variable expenses
-                                                                                    (variableExpenses || []).forEach(ve => {
-                                                                                        if (!vehicleCostsPerKm[ve.id]) vehicleCostsPerKm[ve.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
-                                                                                        vehicleCostsPerKm[ve.id].variable = ve.total_variable_expense_cost || 0;
-                                                                                    });
+                                                                                    if (variableExpenses && Array.isArray(variableExpenses)) {
+                                                                                        for (let i = 0; i < variableExpenses.length; i++) {
+                                                                                            const ve = variableExpenses[i];
+                                                                                            if (!vehicleCostsPerKm[ve.id]) {
+                                                                                                vehicleCostsPerKm[ve.id] = { fuel: 0, maintenance: 0, fines: 0, claims: 0, tires: 0, policies: 0, salaries: 0, tolls: 0, perDiem: 0, variable: 0 };
+                                                                                            }
+                                                                                            vehicleCostsPerKm[ve.id].variable = ve.total_variable_expense_cost || 0;
+                                                                                        }
+                                                                                    }
                                                                                                                 
                                                                                                                 // Calculate Fixed Costs: Fuel + Tires + Maintenance + Policies + Operator Salaries
-                                                                                                                const totalFuel = fuelDataWithConsumption.reduce((sum, v) => sum + (v.total_cost || 0), 0);
-                                                                                                                const totalTires = (tireCosts || []).reduce((sum, v) => sum + (v.total_tire_cost || 0), 0);
-                                                                                                                const totalMaintenance = maintenanceData.reduce((sum, v) => sum + (v.total_cost || 0), 0);
-                                                                                                                const totalPolicies = (policyCosts || []).reduce((sum, v) => sum + (v.total_policy_cost || 0), 0);
-                                                                                                                const totalOperatorSalaries = (operatorSalaries || []).reduce((sum, v) => sum + (v.total_salary_cost || 0), 0);
+                                                                                                                let totalFuel = 0;
+                                                                                                                if (fuelDataWithConsumption && Array.isArray(fuelDataWithConsumption)) {
+                                                                                                                    for (let i = 0; i < fuelDataWithConsumption.length; i++) {
+                                                                                                                        totalFuel += (fuelDataWithConsumption[i].total_cost || 0);
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                
+                                                                                                                let totalTires = 0;
+                                                                                                                if (tireCosts && Array.isArray(tireCosts)) {
+                                                                                                                    for (let i = 0; i < tireCosts.length; i++) {
+                                                                                                                        totalTires += (tireCosts[i].total_tire_cost || 0);
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                
+                                                                                                                let totalMaintenance = 0;
+                                                                                                                if (maintenanceData && Array.isArray(maintenanceData)) {
+                                                                                                                    for (let i = 0; i < maintenanceData.length; i++) {
+                                                                                                                        totalMaintenance += (maintenanceData[i].total_cost || 0);
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                
+                                                                                                                let totalPolicies = 0;
+                                                                                                                if (policyCosts && Array.isArray(policyCosts)) {
+                                                                                                                    for (let i = 0; i < policyCosts.length; i++) {
+                                                                                                                        totalPolicies += (policyCosts[i].total_policy_cost || 0);
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                
+                                                                                                                let totalOperatorSalaries = 0;
+                                                                                                                if (operatorSalaries && Array.isArray(operatorSalaries)) {
+                                                                                                                    for (let i = 0; i < operatorSalaries.length; i++) {
+                                                                                                                        totalOperatorSalaries += (operatorSalaries[i].total_salary_cost || 0);
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                
                                                                                                                 const totalFixedCosts = totalFuel + totalTires + totalMaintenance + totalPolicies + totalOperatorSalaries;
                                                                                                                 
                                                                                                                 // Calculate Variable Costs: Tolls + Per Diem + Other Variable Expenses
-                                                                                                                const totalTolls = (tollPayments || []).reduce((sum, v) => sum + (v.total_toll_cost || 0), 0);
-                                                                                                                const totalPerDiem = (perDiemExpenses || []).reduce((sum, v) => sum + (v.total_per_diem_cost || 0), 0);
-                                                                                                                const totalVariableExpenses = (variableExpenses || []).reduce((sum, v) => sum + (v.total_variable_expense_cost || 0), 0);
+                                                                                                                let totalTolls = 0;
+                                                                                                                if (tollPayments && Array.isArray(tollPayments)) {
+                                                                                                                    for (let i = 0; i < tollPayments.length; i++) {
+                                                                                                                        totalTolls += (tollPayments[i].total_toll_cost || 0);
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                
+                                                                                                                let totalPerDiem = 0;
+                                                                                                                if (perDiemExpenses && Array.isArray(perDiemExpenses)) {
+                                                                                                                    for (let i = 0; i < perDiemExpenses.length; i++) {
+                                                                                                                        totalPerDiem += (perDiemExpenses[i].total_per_diem_cost || 0);
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                
+                                                                                                                let totalVariableExpenses = 0;
+                                                                                                                if (variableExpenses && Array.isArray(variableExpenses)) {
+                                                                                                                    for (let i = 0; i < variableExpenses.length; i++) {
+                                                                                                                        totalVariableExpenses += (variableExpenses[i].total_variable_expense_cost || 0);
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                
                                                                                                                 const totalVariableCosts = totalTolls + totalPerDiem + totalVariableExpenses;
                                                                                                                 
                                                                                                                 // Calculate total kilometers traveled
-                                                                                                                const totalKilometers = (kilometersData || []).reduce((sum, v) => sum + (v.km_traveled || 0), 0);
+                                                                                                                let totalKilometers = 0;
+                                                                                                                if (kilometersData && Array.isArray(kilometersData)) {
+                                                                                                                    for (let i = 0; i < kilometersData.length; i++) {
+                                                                                                                        totalKilometers += (kilometersData[i].km_traveled || 0);
+                                                                                                                    }
+                                                                                                                }
                                                                                                                 
                                                                                                                 // Calculate cost per kilometer
                                                                                                                 const fixedCostPerKm = totalKilometers > 0 ? (totalFixedCosts / totalKilometers) : 0;
