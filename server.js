@@ -5956,6 +5956,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                     WHERE v.id IN (${placeholders})
                                                                                     GROUP BY v.id`, 
                                                                                     vehicleIds, (err, operatorSalaries) => {
+                                                                                        if (err) {
+                                                                                            console.error('Error loading operator salaries:', err);
+                                                                                            operatorSalaries = [];
+                                                                                        }
+                                                                                        if (!operatorSalaries) operatorSalaries = [];
                                                                                     
                                                                                     // Get toll payments (Variable Cost)
                                                                                     db.allConverted(`SELECT 
@@ -5966,6 +5971,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                         WHERE v.id IN (${placeholders})
                                                                                         GROUP BY v.id`, 
                                                                                         vehicleIds, (err, tollPayments) => {
+                                                                                            if (err) {
+                                                                                                console.error('Error loading toll payments:', err);
+                                                                                                tollPayments = [];
+                                                                                            }
+                                                                                            if (!tollPayments) tollPayments = [];
                                                                                         
                                                                                         // Get per diem expenses (Variable Cost)
                                                                                         db.allConverted(`SELECT 
@@ -5976,6 +5986,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                             WHERE v.id IN (${placeholders})
                                                                                             GROUP BY v.id`, 
                                                                                             vehicleIds, (err, perDiemExpenses) => {
+                                                                                                if (err) {
+                                                                                                    console.error('Error loading per diem expenses:', err);
+                                                                                                    perDiemExpenses = [];
+                                                                                                }
+                                                                                                if (!perDiemExpenses) perDiemExpenses = [];
                                                                                             
                                                                                             // Get other variable expenses
                                                                                             db.allConverted(`SELECT 
@@ -5986,6 +6001,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                                 WHERE v.id IN (${placeholders})
                                                                                                 GROUP BY v.id`, 
                                                                                                 vehicleIds, (err, variableExpenses) => {
+                                                                                                    if (err) {
+                                                                                                        console.error('Error loading variable expenses:', err);
+                                                                                                        variableExpenses = [];
+                                                                                                    }
+                                                                                                    if (!variableExpenses) variableExpenses = [];
                                                                                                 
                                                                                                 // Get total kilometers traveled in period
                                                                                                 db.all(`SELECT 
@@ -5998,6 +6018,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                                     WHERE v.id IN (${placeholders})
                                                                                                     GROUP BY v.id`, 
                                                                                                     vehicleIds, (err, kilometersData) => {
+                                                                                                        if (err) {
+                                                                                                            console.error('Error loading kilometers data:', err);
+                                                                                                            kilometersData = [];
+                                                                                                        }
+                                                                                                        if (!kilometersData) kilometersData = [];
                                                                                                     
                                                                                                     // Get tire costs (Fixed Cost)
                                                                                                     db.allConverted(`SELECT 
@@ -6008,6 +6033,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                                         WHERE v.id IN (${placeholders})
                                                                                                         GROUP BY v.id`, 
                                                                                                         vehicleIds, (err, tireCosts) => {
+                                                                                                            if (err) {
+                                                                                                                console.error('Error loading tire costs:', err);
+                                                                                                                tireCosts = [];
+                                                                                                            }
+                                                                                                            if (!tireCosts) tireCosts = [];
                                                                                                         
                                                                                                         // Get policy costs (Fixed Cost - annual premium prorated)
                                                                                                         db.allConverted(`SELECT 
@@ -6024,6 +6054,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                                             WHERE v.id IN (${placeholders})
                                                                                                             GROUP BY v.id`, 
                                                                                                             vehicleIds, (err, policyCosts) => {
+                                                                                                                if (err) {
+                                                                                                                    console.error('Error loading policy costs:', err);
+                                                                                                                    policyCosts = [];
+                                                                                                                }
+                                                                                                                if (!policyCosts) policyCosts = [];
                                                                                                             
                                                                                 // Get vehicle comparisons with all costs including fixed and variable
                                                                                 db.allConverted(`SELECT 
@@ -6139,36 +6174,53 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                         }
                                                                                     }
                                                                                                                 
-                                                                                                                // Calculate Fixed Costs: Fuel + Tires + Maintenance + Policies + Operator Salaries
+                                                                                                                // Initialize all totals with default values
                                                                                                                 let totalFuel = 0;
+                                                                                                                let totalTires = 0;
+                                                                                                                let totalMaintenance = 0;
+                                                                                                                let totalPolicies = 0;
+                                                                                                                let totalOperatorSalaries = 0;
+                                                                                                                let totalTolls = 0;
+                                                                                                                let totalPerDiem = 0;
+                                                                                                                let totalVariableExpenses = 0;
+                                                                                                                let totalFines = 0;
+                                                                                                                let totalClaims = 0;
+                                                                                                                
+                                                                                                                // Ensure all data arrays are defined
+                                                                                                                if (!tireCosts) tireCosts = [];
+                                                                                                                if (!policyCosts) policyCosts = [];
+                                                                                                                if (!operatorSalaries) operatorSalaries = [];
+                                                                                                                if (!tollPayments) tollPayments = [];
+                                                                                                                if (!perDiemExpenses) perDiemExpenses = [];
+                                                                                                                if (!variableExpenses) variableExpenses = [];
+                                                                                                                if (!kilometersData) kilometersData = [];
+                                                                                                                if (!fuelDataWithConsumption) fuelDataWithConsumption = [];
+                                                                                                                if (!maintenanceData) maintenanceData = [];
+                                                                                                                if (!finesData) finesData = [];
+                                                                                                                if (!claimsData) claimsData = [];
+                                                                                                                
+                                                                                                                // Calculate Fixed Costs: Fuel + Tires + Maintenance + Policies + Operator Salaries
                                                                                                                 if (fuelDataWithConsumption && Array.isArray(fuelDataWithConsumption)) {
                                                                                                                     for (let i = 0; i < fuelDataWithConsumption.length; i++) {
                                                                                                                         totalFuel += (fuelDataWithConsumption[i].total_cost || 0);
                                                                                                                     }
                                                                                                                 }
                                                                                                                 
-                                                                                                                let totalTires = 0;
                                                                                                                 if (tireCosts && Array.isArray(tireCosts)) {
                                                                                                                     for (let i = 0; i < tireCosts.length; i++) {
                                                                                                                         totalTires += (tireCosts[i].total_tire_cost || 0);
                                                                                                                     }
                                                                                                                 }
-                                                                                                                
-                                                                                                                let totalMaintenance = 0;
                                                                                                                 if (maintenanceData && Array.isArray(maintenanceData)) {
                                                                                                                     for (let i = 0; i < maintenanceData.length; i++) {
                                                                                                                         totalMaintenance += (maintenanceData[i].total_cost || 0);
                                                                                                                     }
                                                                                                                 }
-                                                                                                                
-                                                                                                                let totalPolicies = 0;
                                                                                                                 if (policyCosts && Array.isArray(policyCosts)) {
                                                                                                                     for (let i = 0; i < policyCosts.length; i++) {
                                                                                                                         totalPolicies += (policyCosts[i].total_policy_cost || 0);
                                                                                                                     }
                                                                                                                 }
-                                                                                                                
-                                                                                                                let totalOperatorSalaries = 0;
                                                                                                                 if (operatorSalaries && Array.isArray(operatorSalaries)) {
                                                                                                                     for (let i = 0; i < operatorSalaries.length; i++) {
                                                                                                                         totalOperatorSalaries += (operatorSalaries[i].total_salary_cost || 0);
@@ -6178,21 +6230,16 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                                                 const totalFixedCosts = totalFuel + totalTires + totalMaintenance + totalPolicies + totalOperatorSalaries;
                                                                                                                 
                                                                                                                 // Calculate Variable Costs: Tolls + Per Diem + Other Variable Expenses
-                                                                                                                let totalTolls = 0;
                                                                                                                 if (tollPayments && Array.isArray(tollPayments)) {
                                                                                                                     for (let i = 0; i < tollPayments.length; i++) {
                                                                                                                         totalTolls += (tollPayments[i].total_toll_cost || 0);
                                                                                                                     }
                                                                                                                 }
-                                                                                                                
-                                                                                                                let totalPerDiem = 0;
                                                                                                                 if (perDiemExpenses && Array.isArray(perDiemExpenses)) {
                                                                                                                     for (let i = 0; i < perDiemExpenses.length; i++) {
                                                                                                                         totalPerDiem += (perDiemExpenses[i].total_per_diem_cost || 0);
                                                                                                                     }
                                                                                                                 }
-                                                                                                                
-                                                                                                                let totalVariableExpenses = 0;
                                                                                                                 if (variableExpenses && Array.isArray(variableExpenses)) {
                                                                                                                     for (let i = 0; i < variableExpenses.length; i++) {
                                                                                                                         totalVariableExpenses += (variableExpenses[i].total_variable_expense_cost || 0);
@@ -6215,14 +6262,11 @@ app.get('/reports', requireAuth, (req, res) => {
                                                                                                                 const totalCostPerKm = totalKilometers > 0 ? ((totalFixedCosts + totalVariableCosts) / totalKilometers) : 0;
                                                                                                                 
                                                                                                                 // Legacy costs (for backward compatibility)
-                                                                                                                let totalFines = 0;
                                                                                                                 if (finesData && Array.isArray(finesData)) {
                                                                                                                     for (let i = 0; i < finesData.length; i++) {
                                                                                                                         totalFines += (finesData[i].total_cost || 0);
                                                                                                                     }
                                                                                                                 }
-                                                                                                                
-                                                                                                                let totalClaims = 0;
                                                                                                                 if (claimsData && Array.isArray(claimsData)) {
                                                                                                                     for (let i = 0; i < claimsData.length; i++) {
                                                                                                                         totalClaims += (claimsData[i].total_cost || 0);
