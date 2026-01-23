@@ -3927,8 +3927,9 @@ app.get('/expenses', requireAuth, (req, res) => {
                 vehicleIds, (err, salaryData) => {
                     if (err) {
                         console.error('Error loading salaries:', err);
-                        return res.status(500).send('Error al cargar datos de gastos');
+                        salaryData = [];
                     }
+                    if (!salaryData) salaryData = [];
                 
                 // Get toll payments (variable costs)
                 db.all(`SELECT 
@@ -3941,8 +3942,9 @@ app.get('/expenses', requireAuth, (req, res) => {
                     vehicleIds, (err, tollData) => {
                         if (err) {
                             console.error('Error loading tolls:', err);
-                            return res.status(500).send('Error al cargar datos de gastos');
+                            tollData = [];
                         }
+                        if (!tollData) tollData = [];
                     
                     // Get per diem expenses (variable costs)
                     db.all(`SELECT 
@@ -3955,8 +3957,9 @@ app.get('/expenses', requireAuth, (req, res) => {
                         vehicleIds, (err, perDiemData) => {
                             if (err) {
                                 console.error('Error loading per diem:', err);
-                                return res.status(500).send('Error al cargar datos de gastos');
+                                perDiemData = [];
                             }
+                            if (!perDiemData) perDiemData = [];
                         
                         // Get other variable expenses
                         db.all(`SELECT 
@@ -3969,8 +3972,9 @@ app.get('/expenses', requireAuth, (req, res) => {
                             vehicleIds, (err, variableExpenseData) => {
                                 if (err) {
                                     console.error('Error loading variable expenses:', err);
-                                    return res.status(500).send('Error al cargar datos de gastos');
+                                    variableExpenseData = [];
                                 }
+                                if (!variableExpenseData) variableExpenseData = [];
                             
                             // Get fuel costs (fixed)
                             db.all(`SELECT 
@@ -3983,8 +3987,9 @@ app.get('/expenses', requireAuth, (req, res) => {
                                 vehicleIds, (err, fuelData) => {
                                     if (err) {
                                         console.error('Error loading fuel:', err);
-                                        return res.status(500).send('Error al cargar datos de gastos');
+                                        fuelData = [];
                                     }
+                                    if (!fuelData) fuelData = [];
                                 
                                 // Get tire costs (fixed)
                                 db.all(`SELECT 
@@ -3997,8 +4002,9 @@ app.get('/expenses', requireAuth, (req, res) => {
                                     vehicleIds, (err, tireData) => {
                                         if (err) {
                                             console.error('Error loading tires:', err);
-                                            return res.status(500).send('Error al cargar datos de gastos');
+                                            tireData = [];
                                         }
+                                        if (!tireData) tireData = [];
                                     
                                     // Get maintenance costs (fixed)
                                     db.all(`SELECT 
@@ -4011,8 +4017,9 @@ app.get('/expenses', requireAuth, (req, res) => {
                                         vehicleIds, (err, maintenanceData) => {
                                             if (err) {
                                                 console.error('Error loading maintenance:', err);
-                                                return res.status(500).send('Error al cargar datos de gastos');
+                                                maintenanceData = [];
                                             }
+                                            if (!maintenanceData) maintenanceData = [];
                                         
                                         // Get policy costs (fixed)
                                         db.all(`SELECT 
@@ -4025,8 +4032,9 @@ app.get('/expenses', requireAuth, (req, res) => {
                                             vehicleIds, (err, policyData) => {
                                                 if (err) {
                                                     console.error('Error loading policies:', err);
-                                                    return res.status(500).send('Error al cargar datos de gastos');
+                                                    policyData = [];
                                                 }
+                                                if (!policyData) policyData = [];
                                             
                                             // Get kilometers traveled
                                             db.all(`SELECT 
@@ -4039,8 +4047,9 @@ app.get('/expenses', requireAuth, (req, res) => {
                                                 vehicleIds, (err, kmData) => {
                                                     if (err) {
                                                         console.error('Error loading kilometers:', err);
-                                                        return res.status(500).send('Error al cargar datos de gastos');
+                                                        kmData = [];
                                                     }
+                                                    if (!kmData) kmData = [];
                                                 
                                                 // Build expense summary by vehicle
                                                 const expenseByVehicle = {};
