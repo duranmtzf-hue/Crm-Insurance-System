@@ -3888,7 +3888,27 @@ app.get('/expenses', requireAuth, (req, res) => {
                         totalVariable: 0,
                         totalExpenses: 0,
                         byVehicle: [],
-                        recentExpenses: []
+                        recentExpenses: [],
+                        categoryBreakdown: {
+                            fuel: 0,
+                            tires: 0,
+                            maintenance: 0,
+                            policies: 0,
+                            salaries: 0,
+                            tolls: 0,
+                            perDiem: 0,
+                            variable: 0
+                        },
+                        monthlyTrends: [],
+                        topExpenses: [],
+                        statistics: {
+                            vehicleCount: 0,
+                            avgFixedPerVehicle: 0,
+                            avgVariablePerVehicle: 0,
+                            avgTotalPerVehicle: 0,
+                            totalKm: 0,
+                            avgCostPerKm: 0
+                        }
                     }
                 });
             }
@@ -3905,6 +3925,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                 WHERE v.id IN (${placeholders})
                 GROUP BY v.id, v.numero_vehiculo, v.marca, v.modelo`, 
                 vehicleIds, (err, salaryData) => {
+                    if (err) {
+                        console.error('Error loading salaries:', err);
+                        return res.status(500).send('Error al cargar datos de gastos');
+                    }
                 
                 // Get toll payments (variable costs)
                 db.all(`SELECT 
@@ -3915,6 +3939,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                     WHERE v.id IN (${placeholders})
                     GROUP BY v.id`, 
                     vehicleIds, (err, tollData) => {
+                        if (err) {
+                            console.error('Error loading tolls:', err);
+                            return res.status(500).send('Error al cargar datos de gastos');
+                        }
                     
                     // Get per diem expenses (variable costs)
                     db.all(`SELECT 
@@ -3925,6 +3953,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                         WHERE v.id IN (${placeholders})
                         GROUP BY v.id`, 
                         vehicleIds, (err, perDiemData) => {
+                            if (err) {
+                                console.error('Error loading per diem:', err);
+                                return res.status(500).send('Error al cargar datos de gastos');
+                            }
                         
                         // Get other variable expenses
                         db.all(`SELECT 
@@ -3935,6 +3967,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                             WHERE v.id IN (${placeholders})
                             GROUP BY v.id`, 
                             vehicleIds, (err, variableExpenseData) => {
+                                if (err) {
+                                    console.error('Error loading variable expenses:', err);
+                                    return res.status(500).send('Error al cargar datos de gastos');
+                                }
                             
                             // Get fuel costs (fixed)
                             db.all(`SELECT 
@@ -3945,6 +3981,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                 WHERE v.id IN (${placeholders})
                                 GROUP BY v.id`, 
                                 vehicleIds, (err, fuelData) => {
+                                    if (err) {
+                                        console.error('Error loading fuel:', err);
+                                        return res.status(500).send('Error al cargar datos de gastos');
+                                    }
                                 
                                 // Get tire costs (fixed)
                                 db.all(`SELECT 
@@ -3955,6 +3995,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                     WHERE v.id IN (${placeholders})
                                     GROUP BY v.id`, 
                                     vehicleIds, (err, tireData) => {
+                                        if (err) {
+                                            console.error('Error loading tires:', err);
+                                            return res.status(500).send('Error al cargar datos de gastos');
+                                        }
                                     
                                     // Get maintenance costs (fixed)
                                     db.all(`SELECT 
@@ -3965,6 +4009,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                         WHERE v.id IN (${placeholders})
                                         GROUP BY v.id`, 
                                         vehicleIds, (err, maintenanceData) => {
+                                            if (err) {
+                                                console.error('Error loading maintenance:', err);
+                                                return res.status(500).send('Error al cargar datos de gastos');
+                                            }
                                         
                                         // Get policy costs (fixed)
                                         db.all(`SELECT 
@@ -3975,6 +4023,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                             WHERE v.id IN (${placeholders})
                                             GROUP BY v.id`, 
                                             vehicleIds, (err, policyData) => {
+                                                if (err) {
+                                                    console.error('Error loading policies:', err);
+                                                    return res.status(500).send('Error al cargar datos de gastos');
+                                                }
                                             
                                             // Get kilometers traveled
                                             db.all(`SELECT 
@@ -3985,6 +4037,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                                 WHERE v.id IN (${placeholders})
                                                 GROUP BY v.id`, 
                                                 vehicleIds, (err, kmData) => {
+                                                    if (err) {
+                                                        console.error('Error loading kilometers:', err);
+                                                        return res.status(500).send('Error al cargar datos de gastos');
+                                                    }
                                                 
                                                 // Build expense summary by vehicle
                                                 const expenseByVehicle = {};
@@ -4132,6 +4188,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                                     GROUP BY month
                                                     ORDER BY month`, 
                                                     [userId], (err, monthlySalaries) => {
+                                                        if (err) {
+                                                            console.error('Error loading monthly salaries:', err);
+                                                            monthlySalaries = [];
+                                                        }
                                                     
                                                     db.all(`SELECT 
                                                         strftime('%Y-%m', fecha) as month,
@@ -4142,6 +4202,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                                         GROUP BY month
                                                         ORDER BY month`, 
                                                         [userId], (err, monthlyTolls) => {
+                                                            if (err) {
+                                                                console.error('Error loading monthly tolls:', err);
+                                                                monthlyTolls = [];
+                                                            }
                                                         
                                                         db.all(`SELECT 
                                                             strftime('%Y-%m', fecha) as month,
@@ -4152,6 +4216,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                                             GROUP BY month
                                                             ORDER BY month`, 
                                                             [userId], (err, monthlyPerDiem) => {
+                                                                if (err) {
+                                                                    console.error('Error loading monthly per diem:', err);
+                                                                    monthlyPerDiem = [];
+                                                                }
                                                             
                                                             db.all(`SELECT 
                                                                 strftime('%Y-%m', fecha) as month,
@@ -4162,6 +4230,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                                                 GROUP BY month
                                                                 ORDER BY month`, 
                                                                 [userId], (err, monthlyVariable) => {
+                                                                    if (err) {
+                                                                        console.error('Error loading monthly variable:', err);
+                                                                        monthlyVariable = [];
+                                                                    }
                                                                 
                                                                 db.all(`SELECT 
                                                                     strftime('%Y-%m', fecha) as month,
@@ -4172,6 +4244,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                                                     GROUP BY month
                                                                     ORDER BY month`, 
                                                                     [userId], (err, monthlyFuel) => {
+                                                                        if (err) {
+                                                                            console.error('Error loading monthly fuel:', err);
+                                                                            monthlyFuel = [];
+                                                                        }
                                                                     
                                                                     db.all(`SELECT 
                                                                         strftime('%Y-%m', fecha) as month,
@@ -4182,6 +4258,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                                                         GROUP BY month
                                                                         ORDER BY month`, 
                                                                         [userId], (err, monthlyMaintenance) => {
+                                                                            if (err) {
+                                                                                console.error('Error loading monthly maintenance:', err);
+                                                                                monthlyMaintenance = [];
+                                                                            }
                                                                         
                                                                         // Get top expenses
                                                                         db.all(`SELECT 
@@ -4263,6 +4343,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                                                             ORDER BY monto DESC
                                                                             LIMIT 20`, 
                                                                             [userId, userId, userId, userId, userId, userId, userId], (err, topExpenses) => {
+                                                                                if (err) {
+                                                                                    console.error('Error loading top expenses:', err);
+                                                                                    topExpenses = [];
+                                                                                }
                                                                             
                                                                             // Get recent expenses (last 15)
                                                                             db.all(`SELECT 
@@ -4311,6 +4395,10 @@ app.get('/expenses', requireAuth, (req, res) => {
                                                                                 ORDER BY fecha DESC
                                                                                 LIMIT 15`, 
                                                                                 [userId, userId, userId, userId], (err, recentExpenses) => {
+                                                                                    if (err) {
+                                                                                        console.error('Error loading recent expenses:', err);
+                                                                                        recentExpenses = [];
+                                                                                    }
                                                                                 
                                                                                 // Calculate averages and statistics
                                                                                 const vehicleCount = byVehicle.length;
