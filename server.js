@@ -5380,511 +5380,744 @@ app.post('/api/operators', requireAuth, (req, res) => {
     });
 });
 
-// PDF Generation Helper Functions
-function addPDFHeader(doc, title, vehicle, subtitle = '') {
-    const primaryColor = '#001f3f';
-    const accentColor = '#4da6ff';
-    
-    // Header with colored background
-    doc.rect(0, 0, doc.page.width, 120)
-        .fillColor(primaryColor)
-        .fill();
-    
+// PDF Generation Helper Functions (matching complete fleet report format)
+function drawBox(doc, x, y, width, height, color) {
+    doc.rect(x, y, width, height)
+       .fillColor(color)
+       .fill()
+       .fillColor('black');
+}
+
+function drawTableHeader(doc, x, y, width, height, text, color = '#001f3f') {
+    drawBox(doc, x, y, width, height, color);
     doc.fillColor('white')
-        .fontSize(24)
-        .font('Helvetica-Bold')
-        .text(title, 50, 40, { align: 'left' });
-    
-    doc.fillColor('#87ceeb')
-        .fontSize(12)
-        .font('Helvetica')
-        .text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, 50, 70, { align: 'left' });
-    
-    if (subtitle) {
-        doc.text(subtitle, 50, 90, { align: 'left' });
-    }
-    
-    doc.fillColor('white')
-        .fontSize(10)
-        .text(`Generado: ${new Date().toLocaleString('es-MX')}`, doc.page.width - 50, 70, { align: 'right' });
-    
-    doc.moveDown(3);
+       .fontSize(9)
+       .font('Helvetica-Bold')
+       .text(text, x + 5, y + 5, { width: width - 10, align: 'left' })
+       .fillColor('black');
 }
 
-function addPDFFooter(doc) {
-    const darkGray = '#6c757d';
-    const footerY = doc.page.height - 40;
-    doc.fillColor(darkGray)
-        .fontSize(8)
-        .font('Helvetica')
-        .text(`CRM Insurance System - Página ${doc.page.number}`, 50, footerY, { align: 'left' });
-    doc.text(`Generado el ${new Date().toLocaleDateString('es-MX')}`, doc.page.width - 50, footerY, { align: 'right' });
+function drawTableCell(doc, x, y, width, height, text, bold = false) {
+    doc.rect(x, y, width, height)
+       .strokeColor('#dee2e6')
+       .lineWidth(0.5)
+       .stroke();
+    doc.fontSize(8)
+       .font(bold ? 'Helvetica-Bold' : 'Helvetica')
+       .fillColor('black')
+       .text(text || '-', x + 5, y + 5, { width: width - 10, align: 'left' });
 }
 
-function addTableHeader(doc, y, colWidths, headers, pageWidth) {
-    const primaryColor = '#001f3f';
-    const itemHeight = 25;
-    
-    // Header row background
-    doc.rect(50, y - 5, pageWidth, itemHeight)
-        .fillColor(primaryColor)
-        .fill();
-    
-    // Header row text
-    doc.fillColor('white')
-        .fontSize(10)
-        .font('Helvetica-Bold');
-    
-    let x = 55;
-    headers.forEach((header, index) => {
-        doc.text(header, x, y);
-        if (index < headers.length - 1) {
-            x += Object.values(colWidths)[index];
-        }
-    });
-    
-    return y + itemHeight + 5;
-}
-
-function addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight) {
-    const lightGray = '#f5f7fa';
-    const borderColor = '#dee2e6';
-    const primaryColor = '#001f3f';
-    
-    // Alternate row background
-    if (rowIndex % 2 === 0) {
-        doc.rect(50, y - 3, pageWidth, itemHeight)
-            .fillColor(lightGray)
-            .fill();
-    }
-    
-    doc.fillColor('#212529')
-        .fontSize(9)
-        .font('Helvetica');
-    
-    let x = 55;
-    values.forEach((value, index) => {
-        if (typeof value === 'object' && value.bold) {
-            doc.fillColor(primaryColor)
-                .font('Helvetica-Bold')
-                .text(value.text, x, y);
-            doc.fillColor('#212529')
-                .font('Helvetica');
-        } else {
-            doc.text(value, x, y);
-        }
-        if (index < values.length - 1) {
-            x += Object.values(colWidths)[index];
-        }
-    });
-    
-    // Row border
-    doc.strokeColor(borderColor)
-        .lineWidth(0.5)
-        .moveTo(50, y + itemHeight - 3)
-        .lineTo(pageWidth + 50, y + itemHeight - 3)
-        .stroke();
-}
-
-function addTotalSection(doc, y, pageWidth, itemHeight, totals) {
-    const accentColor = '#4da6ff';
-    const primaryColor = '#001f3f';
-    
-    y += 15;
-    doc.rect(50, y - 5, pageWidth, itemHeight + 10)
-        .fillColor(accentColor)
-        .fillOpacity(0.1)
-        .fill();
-    
-    doc.fillColor(primaryColor)
-        .fontSize(11)
-        .font('Helvetica-Bold');
-    
-    totals.forEach((total, index) => {
-        if (index === 0) {
-            doc.text(total, 55, y + 5);
-        } else {
-            doc.text(total, pageWidth + 45, y + 5, { align: 'right' });
-        }
-    });
-    
-    return y + itemHeight + 20;
-}
-
-// PDF Generation Functions for Vehicle Details
+// PDF Generation Functions for Vehicle Details (matching complete fleet report format)
 function generateFuelRecordsPDF(vehicle, fuelRecords, user, res) {
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const doc = new PDFDocument({ 
+        size: 'A4',
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        info: {
+            Title: 'Registros de Combustible',
+            Author: user.nombre || user.username,
+            Subject: 'Registro de Combustible del Vehículo'
+        }
+    });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="registros-combustible-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
     doc.pipe(res);
     
-    // Color scheme matching website
-    const primaryColor = '#001f3f';
-    const accentColor = '#4da6ff';
-    const lightGray = '#f5f7fa';
-    const borderColor = '#dee2e6';
-    const darkGray = '#6c757d';
+    // Header with colored background (exact format from complete report)
+    const headerColor = '#001f3f';
+    drawBox(doc, 0, 0, doc.page.width, 120, headerColor);
     
-    addPDFHeader(doc, 'Registros de Combustible', vehicle);
+    doc.fillColor('white')
+       .fontSize(24).font('Helvetica-Bold')
+       .text('REGISTROS DE COMBUSTIBLE', 50, 30, { align: 'center', width: doc.page.width - 100 });
+    
+    doc.fontSize(11).font('Helvetica')
+       .text(`Generado: ${new Date().toLocaleString('es-ES')}`, 50, 65, { align: 'center', width: doc.page.width - 100 });
+    doc.text(`Empresa: ${user.empresa || 'N/A'}`, 50, 80, { align: 'center', width: doc.page.width - 100 });
+    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, 50, 95, { align: 'center', width: doc.page.width - 100 });
+    
+    doc.fillColor('black');
     
     if (!fuelRecords || fuelRecords.length === 0) {
-        doc.fillColor(darkGray).fontSize(12).text('No hay registros de combustible disponibles.', 50, doc.y, { align: 'left' });
-        addPDFFooter(doc);
+        doc.fontSize(12).text('No hay registros de combustible disponibles.', 50, 160, { align: 'left' });
+        // Footer
+        const footerY = doc.page.height - 40;
+        drawBox(doc, 0, footerY, doc.page.width, 40, '#f8f9fa');
+        doc.fontSize(8).font('Helvetica')
+           .fillColor('#6c757d')
+           .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
+           .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
         doc.end();
         return;
     }
     
-    const itemHeight = 25;
-    const pageWidth = doc.page.width - 100;
-    const colWidths = {
-        fecha: 90,
-        litros: 70,
-        precio: 80,
-        costo: 90,
-        kilometraje: 90,
-        estacion: 120
-    };
+    // Summary Statistics with colored boxes
+    let yPos = 140;
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#001f3f')
+       .text('RESUMEN GENERAL', 50, yPos);
+    yPos += 30;
     
-    let y = doc.y;
-    const headers = ['Fecha', 'Litros', 'Precio/L', 'Costo Total', 'Kilometraje', 'Estación'];
-    y = addTableHeader(doc, y, colWidths, headers, pageWidth);
+    const totalFuelCost = (fuelRecords || []).reduce((sum, r) => {
+        const costo = (r.litros || 0) * (r.precio_litro || 0);
+        return sum + costo;
+    }, 0);
+    const totalLiters = (fuelRecords || []).reduce((sum, r) => sum + (parseFloat(r.litros) || 0), 0);
     
-    let totalCost = 0;
-    let totalLiters = 0;
-    let rowIndex = 0;
+    // Statistics boxes
+    const boxWidth = (doc.page.width - 120) / 2;
+    const boxHeight = 50;
+    
+    drawBox(doc, 50, yPos, boxWidth, boxHeight, '#e8f5e9');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
+       .text('Total Registros', 55, yPos + 5);
+    doc.fontSize(18).text(`${fuelRecords.length}`, 55, yPos + 20);
+    
+    drawBox(doc, 50 + boxWidth + 20, yPos, boxWidth, boxHeight, '#e3f2fd');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
+       .text('Total Litros', 55 + boxWidth + 20, yPos + 5);
+    doc.fontSize(18).text(`${totalLiters.toFixed(2)} L`, 55 + boxWidth + 20, yPos + 20);
+    
+    yPos += boxHeight + 30;
+    
+    // Cost summary table
+    const tableWidth = doc.page.width - 100;
+    const colWidth = tableWidth / 2;
+    
+    drawTableHeader(doc, 50, yPos, colWidth, 25, 'Concepto', '#001f3f');
+    drawTableHeader(doc, 50 + colWidth, yPos, colWidth, 25, 'Monto', '#4da6ff');
+    yPos += 25;
+    
+    drawTableCell(doc, 50, yPos, colWidth, 20, 'Costo Total Combustible', false);
+    doc.fillColor('#28a745').fontSize(9).font('Helvetica-Bold')
+       .text(`$${totalFuelCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 55 + colWidth, yPos + 5);
+    doc.fillColor('black');
+    yPos += 20;
+    
+    drawTableHeader(doc, 50, yPos, colWidth, 25, 'COSTO TOTAL GENERAL', '#001f3f');
+    doc.fillColor('#dc3545').fontSize(12).font('Helvetica-Bold')
+       .text(`$${totalFuelCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 55 + colWidth, yPos + 5);
+    doc.fillColor('black');
+    
+    doc.addPage();
+    
+    // Fuel Records Section with table
+    yPos = 50;
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#001f3f')
+       .text('REGISTROS DE COMBUSTIBLE', 50, yPos);
+    yPos += 30;
+    
+    const fCols = [60, 60, 70, 80, 80, 100];
+    const fHeaders = ['Fecha', 'Litros', 'Precio/L', 'Costo Total', 'Kilometraje', 'Estación'];
+    let xPos = 50;
+    
+    fHeaders.forEach((header, i) => {
+        drawTableHeader(doc, xPos, yPos, fCols[i], 20, header);
+        xPos += fCols[i];
+    });
+    yPos += 20;
     
     fuelRecords.forEach((record) => {
-        if (y > doc.page.height - 120) {
+        if (yPos > doc.page.height - 80) {
             doc.addPage();
-            y = 50;
+            yPos = 50;
+            xPos = 50;
+            fHeaders.forEach((header, i) => {
+                drawTableHeader(doc, xPos, yPos, fCols[i], 20, header);
+                xPos += fCols[i];
+            });
+            yPos += 20;
         }
         
-        const fecha = record.fecha ? new Date(record.fecha).toLocaleDateString('es-MX') : '-';
-        const litros = (record.litros || 0).toFixed(2);
-        const precio = (record.precio_litro || 0).toFixed(2);
+        xPos = 50;
+        drawTableCell(doc, xPos, yPos, fCols[0], 18, new Date(record.fecha).toLocaleDateString('es-ES'));
+        xPos += fCols[0];
+        drawTableCell(doc, xPos, yPos, fCols[1], 18, `${record.litros || 0} L`);
+        xPos += fCols[1];
+        const precioLitro = record.precio_litro || 0;
+        drawTableCell(doc, xPos, yPos, fCols[2], 18, `$${parseFloat(precioLitro).toFixed(2)}`);
+        xPos += fCols[2];
         const costo = (record.litros || 0) * (record.precio_litro || 0);
-        const kilometraje = record.kilometraje ? record.kilometraje.toLocaleString() : '-';
-        const estacion = record.estacion || '-';
-        
-        totalCost += costo;
-        totalLiters += parseFloat(record.litros || 0);
-        
-        const values = [
-            fecha,
-            litros + ' L',
-            '$' + precio,
-            { text: '$' + costo.toFixed(2), bold: true },
-            kilometraje,
-            estacion
-        ];
-        
-        addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight);
-        y += itemHeight;
-        rowIndex++;
+        doc.fillColor('#28a745').fontSize(8).font('Helvetica-Bold')
+           .text(`$${costo.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, xPos + 5, yPos + 5);
+        doc.fillColor('black');
+        xPos += fCols[3];
+        drawTableCell(doc, xPos, yPos, fCols[4], 18, `${(record.kilometraje || 0).toLocaleString()} km`);
+        xPos += fCols[4];
+        drawTableCell(doc, xPos, yPos, fCols[5], 18, record.estacion || '-');
+        yPos += 18;
     });
     
-    y = addTotalSection(doc, y, pageWidth, itemHeight, [
-        `Total Litros: ${totalLiters.toFixed(2)} L`,
-        `Total Costo: $${totalCost.toFixed(2)}`
-    ]);
-    addPDFFooter(doc);
+    // Footer with colored background
+    const footerY = doc.page.height - 40;
+    drawBox(doc, 0, footerY, doc.page.width, 40, '#f8f9fa');
+    doc.fontSize(8).font('Helvetica')
+       .fillColor('#6c757d')
+       .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
+       .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
+    
     doc.end();
 }
 
 function generateMaintenancePDF(vehicle, maintenanceRecords, user, res) {
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const doc = new PDFDocument({ 
+        size: 'A4',
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        info: {
+            Title: 'Mantenimientos',
+            Author: user.nombre || user.username,
+            Subject: 'Registro de Mantenimientos del Vehículo'
+        }
+    });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="mantenimientos-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
     doc.pipe(res);
     
-    const primaryColor = '#001f3f';
-    const accentColor = '#4da6ff';
-    const lightGray = '#f5f7fa';
-    const borderColor = '#dee2e6';
-    const darkGray = '#6c757d';
+    // Header with colored background
+    const headerColor = '#001f3f';
+    drawBox(doc, 0, 0, doc.page.width, 120, headerColor);
     
-    addPDFHeader(doc, 'Mantenimientos', vehicle);
+    doc.fillColor('white')
+       .fontSize(24).font('Helvetica-Bold')
+       .text('MANTENIMIENTOS', 50, 30, { align: 'center', width: doc.page.width - 100 });
+    
+    doc.fontSize(11).font('Helvetica')
+       .text(`Generado: ${new Date().toLocaleString('es-ES')}`, 50, 65, { align: 'center', width: doc.page.width - 100 });
+    doc.text(`Empresa: ${user.empresa || 'N/A'}`, 50, 80, { align: 'center', width: doc.page.width - 100 });
+    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, 50, 95, { align: 'center', width: doc.page.width - 100 });
+    
+    doc.fillColor('black');
     
     if (!maintenanceRecords || maintenanceRecords.length === 0) {
-        doc.fillColor(darkGray).fontSize(12).text('No hay registros de mantenimiento disponibles.', 50, doc.y, { align: 'left' });
-        addPDFFooter(doc);
+        doc.fontSize(12).text('No hay registros de mantenimiento disponibles.', 50, 160, { align: 'left' });
+        const footerY = doc.page.height - 40;
+        drawBox(doc, 0, footerY, doc.page.width, 40, '#f8f9fa');
+        doc.fontSize(8).font('Helvetica')
+           .fillColor('#6c757d')
+           .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
+           .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
         doc.end();
         return;
     }
     
-    const itemHeight = 25;
-    const pageWidth = doc.page.width - 100;
-    const colWidths = {
-        fecha: 90,
-        tipo: 90,
-        kilometraje: 90,
-        descripcion: 180,
-        costo: 90,
-        taller: 120
-    };
+    // Summary Statistics
+    let yPos = 140;
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#001f3f')
+       .text('RESUMEN GENERAL', 50, yPos);
+    yPos += 30;
     
-    let y = doc.y;
-    const headers = ['Fecha', 'Tipo', 'Kilometraje', 'Descripción', 'Costo', 'Taller'];
-    y = addTableHeader(doc, y, colWidths, headers, pageWidth);
+    const totalMaintenanceCost = (maintenanceRecords || []).reduce((sum, r) => sum + (parseFloat(r.costo) || 0), 0);
+    const preventiveCount = (maintenanceRecords || []).filter(r => r.tipo === 'Preventivo').length;
+    const correctiveCount = (maintenanceRecords || []).filter(r => r.tipo === 'Correctivo').length;
     
-    let totalCost = 0;
-    let rowIndex = 0;
+    const boxWidth = (doc.page.width - 120) / 2;
+    const boxHeight = 50;
+    
+    drawBox(doc, 50, yPos, boxWidth, boxHeight, '#fce4ec');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
+       .text('Total Mantenimientos', 55, yPos + 5);
+    doc.fontSize(18).text(`${maintenanceRecords.length}`, 55, yPos + 20);
+    
+    drawBox(doc, 50 + boxWidth + 20, yPos, boxWidth, boxHeight, '#e3f2fd');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
+       .text('Preventivos / Correctivos', 55 + boxWidth + 20, yPos + 5);
+    doc.fontSize(18).text(`${preventiveCount} / ${correctiveCount}`, 55 + boxWidth + 20, yPos + 20);
+    
+    yPos += boxHeight + 30;
+    
+    // Cost summary table
+    const tableWidth = doc.page.width - 100;
+    const colWidth = tableWidth / 2;
+    
+    drawTableHeader(doc, 50, yPos, colWidth, 25, 'Concepto', '#001f3f');
+    drawTableHeader(doc, 50 + colWidth, yPos, colWidth, 25, 'Monto', '#4da6ff');
+    yPos += 25;
+    
+    drawTableCell(doc, 50, yPos, colWidth, 20, 'Costo Total Mantenimientos', false);
+    doc.fillColor('#ffc107').fontSize(9).font('Helvetica-Bold')
+       .text(`$${totalMaintenanceCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 55 + colWidth, yPos + 5);
+    doc.fillColor('black');
+    yPos += 20;
+    
+    drawTableHeader(doc, 50, yPos, colWidth, 25, 'COSTO TOTAL GENERAL', '#001f3f');
+    doc.fillColor('#dc3545').fontSize(12).font('Helvetica-Bold')
+       .text(`$${totalMaintenanceCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 55 + colWidth, yPos + 5);
+    doc.fillColor('black');
+    
+    doc.addPage();
+    
+    // Maintenance Records Section
+    yPos = 50;
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#001f3f')
+       .text('REGISTROS DE MANTENIMIENTO', 50, yPos);
+    yPos += 30;
+    
+    const mCols = [60, 80, 80, 150, 80, 100];
+    const mHeaders = ['Fecha', 'Tipo', 'Kilometraje', 'Descripción', 'Costo', 'Taller'];
+    let xPos = 50;
+    
+    mHeaders.forEach((header, i) => {
+        drawTableHeader(doc, xPos, yPos, mCols[i], 20, header);
+        xPos += mCols[i];
+    });
+    yPos += 20;
     
     maintenanceRecords.forEach((record) => {
-        if (y > doc.page.height - 120) {
+        if (yPos > doc.page.height - 80) {
             doc.addPage();
-            y = 50;
+            yPos = 50;
+            xPos = 50;
+            mHeaders.forEach((header, i) => {
+                drawTableHeader(doc, xPos, yPos, mCols[i], 20, header);
+                xPos += mCols[i];
+            });
+            yPos += 20;
         }
         
-        const fecha = record.fecha ? new Date(record.fecha).toLocaleDateString('es-MX') : '-';
-        const tipo = record.tipo || '-';
-        const kilometraje = record.kilometraje ? record.kilometraje.toLocaleString() : '-';
-        const descripcion = (record.descripcion || '-').substring(0, 35);
-        const costo = record.costo || 0;
-        const taller = (record.taller || '-').substring(0, 18);
-        
-        totalCost += costo;
-        
-        const values = [
-            fecha,
-            tipo,
-            kilometraje,
-            descripcion,
-            { text: '$' + costo.toFixed(2), bold: true },
-            taller
-        ];
-        
-        addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight);
-        y += itemHeight;
-        rowIndex++;
+        xPos = 50;
+        drawTableCell(doc, xPos, yPos, mCols[0], 18, new Date(record.fecha).toLocaleDateString('es-ES'));
+        xPos += mCols[0];
+        drawTableCell(doc, xPos, yPos, mCols[1], 18, record.tipo || '-');
+        xPos += mCols[1];
+        drawTableCell(doc, xPos, yPos, mCols[2], 18, `${(record.kilometraje || 0).toLocaleString()} km`);
+        xPos += mCols[2];
+        drawTableCell(doc, xPos, yPos, mCols[3], 18, (record.descripcion || '-').substring(0, 30));
+        xPos += mCols[3];
+        doc.fillColor('#ffc107').fontSize(8).font('Helvetica-Bold')
+           .text(`$${(parseFloat(record.costo) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, xPos + 5, yPos + 5);
+        doc.fillColor('black');
+        xPos += mCols[4];
+        drawTableCell(doc, xPos, yPos, mCols[5], 18, (record.taller || '-').substring(0, 20));
+        yPos += 18;
     });
     
-    y = addTotalSection(doc, y, pageWidth, itemHeight, [`Total Costo: $${totalCost.toFixed(2)}`]);
-    addPDFFooter(doc);
+    // Footer
+    const footerY = doc.page.height - 40;
+    drawBox(doc, 0, footerY, doc.page.width, 40, '#f8f9fa');
+    doc.fontSize(8).font('Helvetica')
+       .fillColor('#6c757d')
+       .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
+       .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
+    
     doc.end();
 }
 
 function generatePoliciesPDF(vehicle, policies, user, res) {
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const doc = new PDFDocument({ 
+        size: 'A4',
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        info: {
+            Title: 'Pólizas de Seguro',
+            Author: user.nombre || user.username,
+            Subject: 'Pólizas de Seguro del Vehículo'
+        }
+    });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="polizas-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
     doc.pipe(res);
     
-    const primaryColor = '#001f3f';
-    const accentColor = '#4da6ff';
-    const lightGray = '#f5f7fa';
-    const borderColor = '#dee2e6';
-    const darkGray = '#6c757d';
+    // Header with colored background
+    const headerColor = '#001f3f';
+    drawBox(doc, 0, 0, doc.page.width, 120, headerColor);
     
-    addPDFHeader(doc, 'Pólizas de Seguro', vehicle);
+    doc.fillColor('white')
+       .fontSize(24).font('Helvetica-Bold')
+       .text('PÓLIZAS DE SEGURO', 50, 30, { align: 'center', width: doc.page.width - 100 });
+    
+    doc.fontSize(11).font('Helvetica')
+       .text(`Generado: ${new Date().toLocaleString('es-ES')}`, 50, 65, { align: 'center', width: doc.page.width - 100 });
+    doc.text(`Empresa: ${user.empresa || 'N/A'}`, 50, 80, { align: 'center', width: doc.page.width - 100 });
+    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, 50, 95, { align: 'center', width: doc.page.width - 100 });
+    
+    doc.fillColor('black');
     
     if (!policies || policies.length === 0) {
-        doc.fillColor(darkGray).fontSize(12).text('No hay pólizas registradas.', 50, doc.y, { align: 'left' });
-        addPDFFooter(doc);
+        doc.fontSize(12).text('No hay pólizas registradas.', 50, 160, { align: 'left' });
+        const footerY = doc.page.height - 40;
+        drawBox(doc, 0, footerY, doc.page.width, 40, '#f8f9fa');
+        doc.fontSize(8).font('Helvetica')
+           .fillColor('#6c757d')
+           .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
+           .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
         doc.end();
         return;
     }
     
-    const itemHeight = 28;
-    const pageWidth = doc.page.width - 100;
-    const colWidths = {
-        numero: 100,
-        compania: 100,
-        inicio: 85,
-        fin: 85,
-        cobertura: 140,
-        costo: 90,
-        estado: 80
-    };
+    // Summary Statistics
+    let yPos = 140;
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#001f3f')
+       .text('RESUMEN GENERAL', 50, yPos);
+    yPos += 30;
     
-    let y = doc.y;
-    const headers = ['Número', 'Compañía', 'Inicio', 'Fin', 'Cobertura', 'Costo Anual', 'Estado'];
-    y = addTableHeader(doc, y, colWidths, headers, pageWidth);
+    const totalPolicyCost = (policies || []).reduce((sum, p) => sum + (parseFloat(p.costo_anual) || 0), 0);
+    const activePolicies = (policies || []).filter(p => p.estado === 'Vigente').length;
     
-    let totalCost = 0;
-    let rowIndex = 0;
+    const boxWidth = (doc.page.width - 120) / 2;
+    const boxHeight = 50;
+    
+    drawBox(doc, 50, yPos, boxWidth, boxHeight, '#e3f2fd');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
+       .text('Total Pólizas', 55, yPos + 5);
+    doc.fontSize(18).text(`${policies.length}`, 55, yPos + 20);
+    
+    drawBox(doc, 50 + boxWidth + 20, yPos, boxWidth, boxHeight, '#e8f5e9');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
+       .text('Pólizas Vigentes', 55 + boxWidth + 20, yPos + 5);
+    doc.fontSize(18).text(`${activePolicies}`, 55 + boxWidth + 20, yPos + 20);
+    
+    yPos += boxHeight + 30;
+    
+    // Cost summary table
+    const tableWidth = doc.page.width - 100;
+    const colWidth = tableWidth / 2;
+    
+    drawTableHeader(doc, 50, yPos, colWidth, 25, 'Concepto', '#001f3f');
+    drawTableHeader(doc, 50 + colWidth, yPos, colWidth, 25, 'Monto', '#4da6ff');
+    yPos += 25;
+    
+    drawTableCell(doc, 50, yPos, colWidth, 20, 'Costo Total Pólizas', false);
+    doc.fillColor('#17a2b8').fontSize(9).font('Helvetica-Bold')
+       .text(`$${totalPolicyCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 55 + colWidth, yPos + 5);
+    doc.fillColor('black');
+    yPos += 20;
+    
+    drawTableHeader(doc, 50, yPos, colWidth, 25, 'COSTO TOTAL GENERAL', '#001f3f');
+    doc.fillColor('#dc3545').fontSize(12).font('Helvetica-Bold')
+       .text(`$${totalPolicyCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 55 + colWidth, yPos + 5);
+    doc.fillColor('black');
+    
+    doc.addPage();
+    
+    // Policies Section
+    yPos = 50;
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#001f3f')
+       .text('PÓLIZAS DE SEGURO', 50, yPos);
+    yPos += 30;
+    
+    const pCols = [80, 100, 70, 70, 120, 80, 70];
+    const pHeaders = ['Número', 'Compañía', 'Inicio', 'Fin', 'Cobertura', 'Costo Anual', 'Estado'];
+    let xPos = 50;
+    
+    pHeaders.forEach((header, i) => {
+        drawTableHeader(doc, xPos, yPos, pCols[i], 20, header);
+        xPos += pCols[i];
+    });
+    yPos += 20;
     
     policies.forEach((policy) => {
-        if (y > doc.page.height - 120) {
+        if (yPos > doc.page.height - 80) {
             doc.addPage();
-            y = 50;
+            yPos = 50;
+            xPos = 50;
+            pHeaders.forEach((header, i) => {
+                drawTableHeader(doc, xPos, yPos, pCols[i], 20, header);
+                xPos += pCols[i];
+            });
+            yPos += 20;
         }
         
-        const numero = policy.numero_poliza || '-';
-        const compania = (policy.compania || '-').substring(0, 15);
-        const inicio = policy.fecha_inicio ? new Date(policy.fecha_inicio).toLocaleDateString('es-MX') : '-';
-        const fin = policy.fecha_vencimiento ? new Date(policy.fecha_vencimiento).toLocaleDateString('es-MX') : '-';
-        const cobertura = (policy.tipo_cobertura || '-').substring(0, 22);
-        const costo = policy.costo_anual || 0;
-        const estado = policy.estado || '-';
-        
-        totalCost += costo;
-        
-        const values = [
-            numero,
-            compania,
-            inicio,
-            fin,
-            cobertura,
-            { text: '$' + costo.toFixed(2), bold: true },
-            estado
-        ];
-        
-        addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight);
-        y += itemHeight;
-        rowIndex++;
+        xPos = 50;
+        drawTableCell(doc, xPos, yPos, pCols[0], 18, policy.numero_poliza || '-');
+        xPos += pCols[0];
+        drawTableCell(doc, xPos, yPos, pCols[1], 18, (policy.compania || '-').substring(0, 18));
+        xPos += pCols[1];
+        drawTableCell(doc, xPos, yPos, pCols[2], 18, policy.fecha_inicio ? new Date(policy.fecha_inicio).toLocaleDateString('es-ES') : '-');
+        xPos += pCols[2];
+        drawTableCell(doc, xPos, yPos, pCols[3], 18, policy.fecha_vencimiento ? new Date(policy.fecha_vencimiento).toLocaleDateString('es-ES') : '-');
+        xPos += pCols[3];
+        drawTableCell(doc, xPos, yPos, pCols[4], 18, (policy.tipo_cobertura || '-').substring(0, 20));
+        xPos += pCols[4];
+        doc.fillColor('#17a2b8').fontSize(8).font('Helvetica-Bold')
+           .text(`$${(parseFloat(policy.costo_anual) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, xPos + 5, yPos + 5);
+        doc.fillColor('black');
+        xPos += pCols[5];
+        drawTableCell(doc, xPos, yPos, pCols[6], 18, policy.estado || '-');
+        yPos += 18;
     });
     
-    y = addTotalSection(doc, y, pageWidth, itemHeight, [`Total Costo Anual: $${totalCost.toFixed(2)}`]);
-    addPDFFooter(doc);
+    // Footer
+    const footerY = doc.page.height - 40;
+    drawBox(doc, 0, footerY, doc.page.width, 40, '#f8f9fa');
+    doc.fontSize(8).font('Helvetica')
+       .fillColor('#6c757d')
+       .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
+       .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
+    
     doc.end();
 }
 
 function generateTiresPDF(vehicle, tires, user, res) {
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const doc = new PDFDocument({ 
+        size: 'A4',
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        info: {
+            Title: 'Llantas',
+            Author: user.nombre || user.username,
+            Subject: 'Registro de Llantas del Vehículo'
+        }
+    });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="llantas-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
     doc.pipe(res);
     
-    const primaryColor = '#001f3f';
-    const accentColor = '#4da6ff';
-    const lightGray = '#f5f7fa';
-    const borderColor = '#dee2e6';
-    const darkGray = '#6c757d';
+    // Header with colored background
+    const headerColor = '#001f3f';
+    drawBox(doc, 0, 0, doc.page.width, 120, headerColor);
     
-    addPDFHeader(doc, 'Llantas', vehicle);
+    doc.fillColor('white')
+       .fontSize(24).font('Helvetica-Bold')
+       .text('LLANTAS', 50, 30, { align: 'center', width: doc.page.width - 100 });
+    
+    doc.fontSize(11).font('Helvetica')
+       .text(`Generado: ${new Date().toLocaleString('es-ES')}`, 50, 65, { align: 'center', width: doc.page.width - 100 });
+    doc.text(`Empresa: ${user.empresa || 'N/A'}`, 50, 80, { align: 'center', width: doc.page.width - 100 });
+    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, 50, 95, { align: 'center', width: doc.page.width - 100 });
+    
+    doc.fillColor('black');
     
     if (!tires || tires.length === 0) {
-        doc.fillColor(darkGray).fontSize(12).text('No hay llantas registradas.', 50, doc.y, { align: 'left' });
-        addPDFFooter(doc);
+        doc.fontSize(12).text('No hay llantas registradas.', 50, 160, { align: 'left' });
+        const footerY = doc.page.height - 40;
+        drawBox(doc, 0, footerY, doc.page.width, 40, '#f8f9fa');
+        doc.fontSize(8).font('Helvetica')
+           .fillColor('#6c757d')
+           .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
+           .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
         doc.end();
         return;
     }
     
-    const itemHeight = 25;
-    const pageWidth = doc.page.width - 100;
-    const colWidths = {
-        posicion: 85,
-        marca: 110,
-        presion: 75,
-        profundidad: 85,
-        kilometraje: 95,
-        costo: 85,
-        estado: 75
-    };
+    // Summary Statistics
+    let yPos = 140;
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#001f3f')
+       .text('RESUMEN GENERAL', 50, yPos);
+    yPos += 30;
     
-    let y = doc.y;
-    const headers = ['Posición', 'Marca/Modelo', 'Presión', 'Profundidad', 'KM Inst.', 'Costo', 'Estado'];
-    y = addTableHeader(doc, y, colWidths, headers, pageWidth);
+    const totalTireCost = (tires || []).reduce((sum, t) => sum + (parseFloat(t.costo) || 0), 0);
+    const activeTires = (tires || []).filter(t => t.estado === 'Activo').length;
     
-    let totalCost = 0;
-    let rowIndex = 0;
+    const boxWidth = (doc.page.width - 120) / 2;
+    const boxHeight = 50;
+    
+    drawBox(doc, 50, yPos, boxWidth, boxHeight, '#e3f2fd');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
+       .text('Total Llantas', 55, yPos + 5);
+    doc.fontSize(18).text(`${tires.length}`, 55, yPos + 20);
+    
+    drawBox(doc, 50 + boxWidth + 20, yPos, boxWidth, boxHeight, '#e8f5e9');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
+       .text('Llantas Activas', 55 + boxWidth + 20, yPos + 5);
+    doc.fontSize(18).text(`${activeTires}`, 55 + boxWidth + 20, yPos + 20);
+    
+    yPos += boxHeight + 30;
+    
+    // Cost summary table
+    const tableWidth = doc.page.width - 100;
+    const colWidth = tableWidth / 2;
+    
+    drawTableHeader(doc, 50, yPos, colWidth, 25, 'Concepto', '#001f3f');
+    drawTableHeader(doc, 50 + colWidth, yPos, colWidth, 25, 'Monto', '#4da6ff');
+    yPos += 25;
+    
+    drawTableCell(doc, 50, yPos, colWidth, 20, 'Costo Total Llantas', false);
+    doc.fillColor('#17a2b8').fontSize(9).font('Helvetica-Bold')
+       .text(`$${totalTireCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 55 + colWidth, yPos + 5);
+    doc.fillColor('black');
+    yPos += 20;
+    
+    drawTableHeader(doc, 50, yPos, colWidth, 25, 'COSTO TOTAL GENERAL', '#001f3f');
+    doc.fillColor('#dc3545').fontSize(12).font('Helvetica-Bold')
+       .text(`$${totalTireCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 55 + colWidth, yPos + 5);
+    doc.fillColor('black');
+    
+    doc.addPage();
+    
+    // Tires Section
+    yPos = 50;
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#001f3f')
+       .text('LLANTAS', 50, yPos);
+    yPos += 30;
+    
+    const tCols = [70, 100, 70, 80, 80, 80, 70];
+    const tHeaders = ['Posición', 'Marca/Modelo', 'Presión', 'Profundidad', 'KM Inst.', 'Costo', 'Estado'];
+    let xPos = 50;
+    
+    tHeaders.forEach((header, i) => {
+        drawTableHeader(doc, xPos, yPos, tCols[i], 20, header);
+        xPos += tCols[i];
+    });
+    yPos += 20;
     
     tires.forEach((tire) => {
-        if (y > doc.page.height - 120) {
+        if (yPos > doc.page.height - 80) {
             doc.addPage();
-            y = 50;
+            yPos = 50;
+            xPos = 50;
+            tHeaders.forEach((header, i) => {
+                drawTableHeader(doc, xPos, yPos, tCols[i], 20, header);
+                xPos += tCols[i];
+            });
+            yPos += 20;
         }
         
-        const posicion = tire.posicion || '-';
-        const marca = ((tire.marca || '') + ' ' + (tire.modelo || '')).substring(0, 18);
-        const presion = tire.presion_psi ? tire.presion_psi + ' PSI' : '-';
-        const profundidad = tire.profundidad_mm ? tire.profundidad_mm + ' mm' : '-';
-        const kilometraje = tire.kilometraje_instalacion ? tire.kilometraje_instalacion.toLocaleString() : '-';
-        const costo = tire.costo || 0;
-        const estado = tire.estado || 'Activo';
-        
-        totalCost += costo;
-        
-        const values = [
-            posicion,
-            marca,
-            presion,
-            profundidad,
-            kilometraje,
-            { text: '$' + costo.toFixed(2), bold: true },
-            estado
-        ];
-        
-        addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight);
-        y += itemHeight;
-        rowIndex++;
+        xPos = 50;
+        drawTableCell(doc, xPos, yPos, tCols[0], 18, tire.posicion || '-');
+        xPos += tCols[0];
+        drawTableCell(doc, xPos, yPos, tCols[1], 18, `${tire.marca || ''} ${tire.modelo || ''}`.substring(0, 18));
+        xPos += tCols[1];
+        drawTableCell(doc, xPos, yPos, tCols[2], 18, tire.presion_psi ? `${tire.presion_psi} PSI` : '-');
+        xPos += tCols[2];
+        drawTableCell(doc, xPos, yPos, tCols[3], 18, tire.profundidad_mm ? `${tire.profundidad_mm} mm` : '-');
+        xPos += tCols[3];
+        drawTableCell(doc, xPos, yPos, tCols[4], 18, tire.kilometraje_instalacion ? `${tire.kilometraje_instalacion.toLocaleString()} km` : '-');
+        xPos += tCols[4];
+        doc.fillColor('#17a2b8').fontSize(8).font('Helvetica-Bold')
+           .text(`$${(parseFloat(tire.costo) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, xPos + 5, yPos + 5);
+        doc.fillColor('black');
+        xPos += tCols[5];
+        drawTableCell(doc, xPos, yPos, tCols[6], 18, tire.estado || 'Activo');
+        yPos += 18;
     });
     
-    y = addTotalSection(doc, y, pageWidth, itemHeight, [`Total Costo: $${totalCost.toFixed(2)}`]);
-    addPDFFooter(doc);
+    // Footer
+    const footerY = doc.page.height - 40;
+    drawBox(doc, 0, footerY, doc.page.width, 40, '#f8f9fa');
+    doc.fontSize(8).font('Helvetica')
+       .fillColor('#6c757d')
+       .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
+       .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
+    
     doc.end();
 }
 
 function generateOperatorsPDF(vehicle, operators, user, res) {
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const doc = new PDFDocument({ 
+        size: 'A4',
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        info: {
+            Title: 'Operadores',
+            Author: user.nombre || user.username,
+            Subject: 'Registro de Operadores del Vehículo'
+        }
+    });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="operadores-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
     doc.pipe(res);
     
-    const primaryColor = '#001f3f';
-    const accentColor = '#4da6ff';
-    const lightGray = '#f5f7fa';
-    const borderColor = '#dee2e6';
-    const darkGray = '#6c757d';
+    // Header with colored background
+    const headerColor = '#001f3f';
+    drawBox(doc, 0, 0, doc.page.width, 120, headerColor);
     
-    addPDFHeader(doc, 'Operadores', vehicle);
+    doc.fillColor('white')
+       .fontSize(24).font('Helvetica-Bold')
+       .text('OPERADORES', 50, 30, { align: 'center', width: doc.page.width - 100 });
+    
+    doc.fontSize(11).font('Helvetica')
+       .text(`Generado: ${new Date().toLocaleString('es-ES')}`, 50, 65, { align: 'center', width: doc.page.width - 100 });
+    doc.text(`Empresa: ${user.empresa || 'N/A'}`, 50, 80, { align: 'center', width: doc.page.width - 100 });
+    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, 50, 95, { align: 'center', width: doc.page.width - 100 });
+    
+    doc.fillColor('black');
     
     if (!operators || operators.length === 0) {
-        doc.fillColor(darkGray).fontSize(12).text('No hay operadores registrados.', 50, doc.y, { align: 'left' });
-        addPDFFooter(doc);
+        doc.fontSize(12).text('No hay operadores registrados.', 50, 160, { align: 'left' });
+        const footerY = doc.page.height - 40;
+        drawBox(doc, 0, footerY, doc.page.width, 40, '#f8f9fa');
+        doc.fontSize(8).font('Helvetica')
+           .fillColor('#6c757d')
+           .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
+           .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
         doc.end();
         return;
     }
     
-    const itemHeight = 28;
-    const pageWidth = doc.page.width - 100;
-    const colWidths = {
-        nombre: 140,
-        rfc: 100,
-        tipo: 85,
-        vigencia: 90,
-        telefono: 100,
-        direccion: 180,
-        estado: 75
-    };
+    // Summary Statistics
+    let yPos = 140;
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#001f3f')
+       .text('RESUMEN GENERAL', 50, yPos);
+    yPos += 30;
     
-    let y = doc.y;
-    const headers = ['Nombre', 'RFC', 'Tipo Lic.', 'Vigencia', 'Teléfono', 'Dirección', 'Estado'];
-    y = addTableHeader(doc, y, colWidths, headers, pageWidth);
+    const activeOperators = (operators || []).filter(o => o.activo === 1).length;
     
-    let rowIndex = 0;
+    const boxWidth = (doc.page.width - 120) / 2;
+    const boxHeight = 50;
+    
+    drawBox(doc, 50, yPos, boxWidth, boxHeight, '#e3f2fd');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
+       .text('Total Operadores', 55, yPos + 5);
+    doc.fontSize(18).text(`${operators.length}`, 55, yPos + 20);
+    
+    drawBox(doc, 50 + boxWidth + 20, yPos, boxWidth, boxHeight, '#e8f5e9');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#001f3f')
+       .text('Operadores Activos', 55 + boxWidth + 20, yPos + 5);
+    doc.fontSize(18).text(`${activeOperators}`, 55 + boxWidth + 20, yPos + 20);
+    
+    yPos += boxHeight + 30;
+    
+    doc.addPage();
+    
+    // Operators Section
+    yPos = 50;
+    doc.fontSize(18).font('Helvetica-Bold')
+       .fillColor('#001f3f')
+       .text('OPERADORES', 50, yPos);
+    yPos += 30;
+    
+    const oCols = [120, 90, 80, 85, 90, 150, 70];
+    const oHeaders = ['Nombre', 'RFC', 'Tipo Lic.', 'Vigencia', 'Teléfono', 'Dirección', 'Estado'];
+    let xPos = 50;
+    
+    oHeaders.forEach((header, i) => {
+        drawTableHeader(doc, xPos, yPos, oCols[i], 20, header);
+        xPos += oCols[i];
+    });
+    yPos += 20;
     
     operators.forEach((operator) => {
-        if (y > doc.page.height - 120) {
+        if (yPos > doc.page.height - 80) {
             doc.addPage();
-            y = 50;
+            yPos = 50;
+            xPos = 50;
+            oHeaders.forEach((header, i) => {
+                drawTableHeader(doc, xPos, yPos, oCols[i], 20, header);
+                xPos += oCols[i];
+            });
+            yPos += 20;
         }
         
-        const nombre = (operator.nombre || '-').substring(0, 22);
-        const rfc = operator.rfc || '-';
-        const tipo = (operator.tipo_licencia || '-').substring(0, 12);
-        const vigencia = operator.fecha_vencimiento_licencia ? new Date(operator.fecha_vencimiento_licencia).toLocaleDateString('es-MX') : '-';
-        const telefono = operator.telefono || '-';
-        const direccion = (operator.direccion || '-').substring(0, 30);
-        const estado = operator.activo === 1 ? 'Activo' : 'Inactivo';
-        
-        const values = [
-            nombre,
-            rfc,
-            tipo,
-            vigencia,
-            telefono,
-            direccion,
-            estado
-        ];
-        
-        addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight);
-        y += itemHeight;
-        rowIndex++;
+        xPos = 50;
+        drawTableCell(doc, xPos, yPos, oCols[0], 18, (operator.nombre || '-').substring(0, 20));
+        xPos += oCols[0];
+        drawTableCell(doc, xPos, yPos, oCols[1], 18, operator.rfc || '-');
+        xPos += oCols[1];
+        drawTableCell(doc, xPos, yPos, oCols[2], 18, (operator.tipo_licencia || '-').substring(0, 12));
+        xPos += oCols[2];
+        drawTableCell(doc, xPos, yPos, oCols[3], 18, operator.fecha_vencimiento_licencia ? new Date(operator.fecha_vencimiento_licencia).toLocaleDateString('es-ES') : '-');
+        xPos += oCols[3];
+        drawTableCell(doc, xPos, yPos, oCols[4], 18, operator.telefono || '-');
+        xPos += oCols[4];
+        drawTableCell(doc, xPos, yPos, oCols[5], 18, (operator.direccion || '-').substring(0, 25));
+        xPos += oCols[5];
+        drawTableCell(doc, xPos, yPos, oCols[6], 18, operator.activo === 1 ? 'Activo' : 'Inactivo');
+        yPos += 18;
     });
     
-    addPDFFooter(doc);
+    // Footer
+    const footerY = doc.page.height - 40;
+    drawBox(doc, 0, footerY, doc.page.width, 40, '#f8f9fa');
+    doc.fontSize(8).font('Helvetica')
+       .fillColor('#6c757d')
+       .text(`Reporte generado el ${new Date().toLocaleString('es-ES')}`, 50, footerY + 10, { align: 'center', width: doc.page.width - 100 })
+       .text(`Sistema de Gestión de Flotillas - CRM Insurance System`, 50, footerY + 22, { align: 'center', width: doc.page.width - 100 });
+    
     doc.end();
 }
 
