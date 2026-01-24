@@ -5380,62 +5380,181 @@ app.post('/api/operators', requireAuth, (req, res) => {
     });
 });
 
+// PDF Generation Helper Functions
+function addPDFHeader(doc, title, vehicle, subtitle = '') {
+    const primaryColor = '#001f3f';
+    const accentColor = '#4da6ff';
+    
+    // Header with colored background
+    doc.rect(0, 0, doc.page.width, 120)
+        .fillColor(primaryColor)
+        .fill();
+    
+    doc.fillColor('white')
+        .fontSize(24)
+        .font('Helvetica-Bold')
+        .text(title, 50, 40, { align: 'left' });
+    
+    doc.fillColor('#87ceeb')
+        .fontSize(12)
+        .font('Helvetica')
+        .text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, 50, 70, { align: 'left' });
+    
+    if (subtitle) {
+        doc.text(subtitle, 50, 90, { align: 'left' });
+    }
+    
+    doc.fillColor('white')
+        .fontSize(10)
+        .text(`Generado: ${new Date().toLocaleString('es-MX')}`, doc.page.width - 50, 70, { align: 'right' });
+    
+    doc.moveDown(3);
+}
+
+function addPDFFooter(doc) {
+    const darkGray = '#6c757d';
+    const footerY = doc.page.height - 40;
+    doc.fillColor(darkGray)
+        .fontSize(8)
+        .font('Helvetica')
+        .text(`CRM Insurance System - Página ${doc.page.number}`, 50, footerY, { align: 'left' });
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-MX')}`, doc.page.width - 50, footerY, { align: 'right' });
+}
+
+function addTableHeader(doc, y, colWidths, headers, pageWidth) {
+    const primaryColor = '#001f3f';
+    const itemHeight = 25;
+    
+    // Header row background
+    doc.rect(50, y - 5, pageWidth, itemHeight)
+        .fillColor(primaryColor)
+        .fill();
+    
+    // Header row text
+    doc.fillColor('white')
+        .fontSize(10)
+        .font('Helvetica-Bold');
+    
+    let x = 55;
+    headers.forEach((header, index) => {
+        doc.text(header, x, y);
+        if (index < headers.length - 1) {
+            x += Object.values(colWidths)[index];
+        }
+    });
+    
+    return y + itemHeight + 5;
+}
+
+function addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight) {
+    const lightGray = '#f5f7fa';
+    const borderColor = '#dee2e6';
+    const primaryColor = '#001f3f';
+    
+    // Alternate row background
+    if (rowIndex % 2 === 0) {
+        doc.rect(50, y - 3, pageWidth, itemHeight)
+            .fillColor(lightGray)
+            .fill();
+    }
+    
+    doc.fillColor('#212529')
+        .fontSize(9)
+        .font('Helvetica');
+    
+    let x = 55;
+    values.forEach((value, index) => {
+        if (typeof value === 'object' && value.bold) {
+            doc.fillColor(primaryColor)
+                .font('Helvetica-Bold')
+                .text(value.text, x, y);
+            doc.fillColor('#212529')
+                .font('Helvetica');
+        } else {
+            doc.text(value, x, y);
+        }
+        if (index < values.length - 1) {
+            x += Object.values(colWidths)[index];
+        }
+    });
+    
+    // Row border
+    doc.strokeColor(borderColor)
+        .lineWidth(0.5)
+        .moveTo(50, y + itemHeight - 3)
+        .lineTo(pageWidth + 50, y + itemHeight - 3)
+        .stroke();
+}
+
+function addTotalSection(doc, y, pageWidth, itemHeight, totals) {
+    const accentColor = '#4da6ff';
+    const primaryColor = '#001f3f';
+    
+    y += 15;
+    doc.rect(50, y - 5, pageWidth, itemHeight + 10)
+        .fillColor(accentColor)
+        .fillOpacity(0.1)
+        .fill();
+    
+    doc.fillColor(primaryColor)
+        .fontSize(11)
+        .font('Helvetica-Bold');
+    
+    totals.forEach((total, index) => {
+        if (index === 0) {
+            doc.text(total, 55, y + 5);
+        } else {
+            doc.text(total, pageWidth + 45, y + 5, { align: 'right' });
+        }
+    });
+    
+    return y + itemHeight + 20;
+}
+
 // PDF Generation Functions for Vehicle Details
 function generateFuelRecordsPDF(vehicle, fuelRecords, user, res) {
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="registros-combustible-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
     doc.pipe(res);
     
-    // Header
-    doc.fontSize(18).font('Helvetica-Bold').text('Registros de Combustible', { align: 'center' });
-    doc.moveDown(0.5);
-    doc.fontSize(12).font('Helvetica');
-    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, { align: 'center' });
-    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, { align: 'center' });
-    doc.moveDown();
+    // Color scheme matching website
+    const primaryColor = '#001f3f';
+    const accentColor = '#4da6ff';
+    const lightGray = '#f5f7fa';
+    const borderColor = '#dee2e6';
+    const darkGray = '#6c757d';
+    
+    addPDFHeader(doc, 'Registros de Combustible', vehicle);
     
     if (!fuelRecords || fuelRecords.length === 0) {
-        doc.fontSize(10).text('No hay registros de combustible disponibles.', { align: 'center' });
+        doc.fillColor(darkGray).fontSize(12).text('No hay registros de combustible disponibles.', 50, doc.y, { align: 'left' });
+        addPDFFooter(doc);
         doc.end();
         return;
     }
     
-    // Table Header
-    const tableTop = doc.y;
-    const itemHeight = 20;
+    const itemHeight = 25;
     const pageWidth = doc.page.width - 100;
     const colWidths = {
-        fecha: 80,
-        litros: 60,
-        precio: 70,
-        costo: 80,
-        kilometraje: 80,
-        estacion: 100
+        fecha: 90,
+        litros: 70,
+        precio: 80,
+        costo: 90,
+        kilometraje: 90,
+        estacion: 120
     };
     
-    let y = tableTop;
+    let y = doc.y;
+    const headers = ['Fecha', 'Litros', 'Precio/L', 'Costo Total', 'Kilometraje', 'Estación'];
+    y = addTableHeader(doc, y, colWidths, headers, pageWidth);
     
-    // Header row
-    doc.fontSize(9).font('Helvetica-Bold');
-    doc.text('Fecha', 50, y);
-    doc.text('Litros', 50 + colWidths.fecha, y);
-    doc.text('Precio/L', 50 + colWidths.fecha + colWidths.litros, y);
-    doc.text('Costo Total', 50 + colWidths.fecha + colWidths.litros + colWidths.precio, y);
-    doc.text('Kilometraje', 50 + colWidths.fecha + colWidths.litros + colWidths.precio + colWidths.costo, y);
-    doc.text('Estación', 50 + colWidths.fecha + colWidths.litros + colWidths.precio + colWidths.costo + colWidths.kilometraje, y);
-    
-    y += itemHeight;
-    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
-    y += 5;
-    
-    // Data rows
-    doc.fontSize(8).font('Helvetica');
     let totalCost = 0;
     let totalLiters = 0;
+    let rowIndex = 0;
     
-    fuelRecords.forEach((record, index) => {
-        if (y > doc.page.height - 100) {
+    fuelRecords.forEach((record) => {
+        if (y > doc.page.height - 120) {
             doc.addPage();
             y = 50;
         }
@@ -5450,81 +5569,69 @@ function generateFuelRecordsPDF(vehicle, fuelRecords, user, res) {
         totalCost += costo;
         totalLiters += parseFloat(record.litros || 0);
         
-        doc.text(fecha, 50, y);
-        doc.text(litros + ' L', 50 + colWidths.fecha, y);
-        doc.text('$' + precio, 50 + colWidths.fecha + colWidths.litros, y);
-        doc.text('$' + costo.toFixed(2), 50 + colWidths.fecha + colWidths.litros + colWidths.precio, y);
-        doc.text(kilometraje, 50 + colWidths.fecha + colWidths.litros + colWidths.precio + colWidths.costo, y);
-        doc.text(estacion, 50 + colWidths.fecha + colWidths.litros + colWidths.precio + colWidths.costo + colWidths.kilometraje, y);
+        const values = [
+            fecha,
+            litros + ' L',
+            '$' + precio,
+            { text: '$' + costo.toFixed(2), bold: true },
+            kilometraje,
+            estacion
+        ];
         
+        addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight);
         y += itemHeight;
+        rowIndex++;
     });
     
-    // Totals
-    y += 10;
-    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
-    y += 10;
-    doc.fontSize(10).font('Helvetica-Bold');
-    doc.text(`Total Litros: ${totalLiters.toFixed(2)} L`, 50, y);
-    doc.text(`Total Costo: $${totalCost.toFixed(2)}`, pageWidth + 50 - 150, y, { align: 'right' });
-    
+    y = addTotalSection(doc, y, pageWidth, itemHeight, [
+        `Total Litros: ${totalLiters.toFixed(2)} L`,
+        `Total Costo: $${totalCost.toFixed(2)}`
+    ]);
+    addPDFFooter(doc);
     doc.end();
 }
 
 function generateMaintenancePDF(vehicle, maintenanceRecords, user, res) {
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="mantenimientos-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
     doc.pipe(res);
     
-    // Header
-    doc.fontSize(18).font('Helvetica-Bold').text('Mantenimientos', { align: 'center' });
-    doc.moveDown(0.5);
-    doc.fontSize(12).font('Helvetica');
-    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, { align: 'center' });
-    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, { align: 'center' });
-    doc.moveDown();
+    const primaryColor = '#001f3f';
+    const accentColor = '#4da6ff';
+    const lightGray = '#f5f7fa';
+    const borderColor = '#dee2e6';
+    const darkGray = '#6c757d';
+    
+    addPDFHeader(doc, 'Mantenimientos', vehicle);
     
     if (!maintenanceRecords || maintenanceRecords.length === 0) {
-        doc.fontSize(10).text('No hay registros de mantenimiento disponibles.', { align: 'center' });
+        doc.fillColor(darkGray).fontSize(12).text('No hay registros de mantenimiento disponibles.', 50, doc.y, { align: 'left' });
+        addPDFFooter(doc);
         doc.end();
         return;
     }
     
-    // Table
-    const tableTop = doc.y;
     const itemHeight = 25;
     const pageWidth = doc.page.width - 100;
     const colWidths = {
-        fecha: 80,
-        tipo: 80,
-        kilometraje: 80,
-        descripcion: 200,
-        costo: 80,
+        fecha: 90,
+        tipo: 90,
+        kilometraje: 90,
+        descripcion: 180,
+        costo: 90,
         taller: 120
     };
     
-    let y = tableTop;
+    let y = doc.y;
+    const headers = ['Fecha', 'Tipo', 'Kilometraje', 'Descripción', 'Costo', 'Taller'];
+    y = addTableHeader(doc, y, colWidths, headers, pageWidth);
     
-    // Header row
-    doc.fontSize(9).font('Helvetica-Bold');
-    doc.text('Fecha', 50, y);
-    doc.text('Tipo', 50 + colWidths.fecha, y);
-    doc.text('Kilometraje', 50 + colWidths.fecha + colWidths.tipo, y);
-    doc.text('Descripción', 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje, y);
-    doc.text('Costo', 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje + colWidths.descripcion, y);
-    doc.text('Taller', 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje + colWidths.descripcion + colWidths.costo, y);
-    
-    y += itemHeight;
-    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
-    y += 5;
-    
-    // Data rows
-    doc.fontSize(8).font('Helvetica');
     let totalCost = 0;
+    let rowIndex = 0;
     
     maintenanceRecords.forEach((record) => {
-        if (y > doc.page.height - 100) {
+        if (y > doc.page.height - 120) {
             doc.addPage();
             y = 50;
         }
@@ -5532,88 +5639,73 @@ function generateMaintenancePDF(vehicle, maintenanceRecords, user, res) {
         const fecha = record.fecha ? new Date(record.fecha).toLocaleDateString('es-MX') : '-';
         const tipo = record.tipo || '-';
         const kilometraje = record.kilometraje ? record.kilometraje.toLocaleString() : '-';
-        const descripcion = (record.descripcion || '-').substring(0, 40);
+        const descripcion = (record.descripcion || '-').substring(0, 35);
         const costo = record.costo || 0;
-        const taller = (record.taller || '-').substring(0, 20);
+        const taller = (record.taller || '-').substring(0, 18);
         
         totalCost += costo;
         
-        doc.text(fecha, 50, y);
-        doc.text(tipo, 50 + colWidths.fecha, y);
-        doc.text(kilometraje, 50 + colWidths.fecha + colWidths.tipo, y);
-        doc.text(descripcion, 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje, y);
-        doc.text('$' + costo.toFixed(2), 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje + colWidths.descripcion, y);
-        doc.text(taller, 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje + colWidths.descripcion + colWidths.costo, y);
+        const values = [
+            fecha,
+            tipo,
+            kilometraje,
+            descripcion,
+            { text: '$' + costo.toFixed(2), bold: true },
+            taller
+        ];
         
+        addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight);
         y += itemHeight;
+        rowIndex++;
     });
     
-    // Totals
-    y += 10;
-    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
-    y += 10;
-    doc.fontSize(10).font('Helvetica-Bold');
-    doc.text(`Total Costo: $${totalCost.toFixed(2)}`, pageWidth + 50 - 150, y, { align: 'right' });
-    
+    y = addTotalSection(doc, y, pageWidth, itemHeight, [`Total Costo: $${totalCost.toFixed(2)}`]);
+    addPDFFooter(doc);
     doc.end();
 }
 
 function generatePoliciesPDF(vehicle, policies, user, res) {
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="polizas-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
     doc.pipe(res);
     
-    // Header
-    doc.fontSize(18).font('Helvetica-Bold').text('Pólizas de Seguro', { align: 'center' });
-    doc.moveDown(0.5);
-    doc.fontSize(12).font('Helvetica');
-    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, { align: 'center' });
-    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, { align: 'center' });
-    doc.moveDown();
+    const primaryColor = '#001f3f';
+    const accentColor = '#4da6ff';
+    const lightGray = '#f5f7fa';
+    const borderColor = '#dee2e6';
+    const darkGray = '#6c757d';
+    
+    addPDFHeader(doc, 'Pólizas de Seguro', vehicle);
     
     if (!policies || policies.length === 0) {
-        doc.fontSize(10).text('No hay pólizas registradas.', { align: 'center' });
+        doc.fillColor(darkGray).fontSize(12).text('No hay pólizas registradas.', 50, doc.y, { align: 'left' });
+        addPDFFooter(doc);
         doc.end();
         return;
     }
     
-    // Table
-    const tableTop = doc.y;
-    const itemHeight = 30;
+    const itemHeight = 28;
     const pageWidth = doc.page.width - 100;
     const colWidths = {
         numero: 100,
         compania: 100,
-        inicio: 80,
-        fin: 80,
-        cobertura: 150,
-        costo: 80,
+        inicio: 85,
+        fin: 85,
+        cobertura: 140,
+        costo: 90,
         estado: 80
     };
     
-    let y = tableTop;
+    let y = doc.y;
+    const headers = ['Número', 'Compañía', 'Inicio', 'Fin', 'Cobertura', 'Costo Anual', 'Estado'];
+    y = addTableHeader(doc, y, colWidths, headers, pageWidth);
     
-    // Header row
-    doc.fontSize(9).font('Helvetica-Bold');
-    doc.text('Número', 50, y);
-    doc.text('Compañía', 50 + colWidths.numero, y);
-    doc.text('Inicio', 50 + colWidths.numero + colWidths.compania, y);
-    doc.text('Fin', 50 + colWidths.numero + colWidths.compania + colWidths.inicio, y);
-    doc.text('Cobertura', 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin, y);
-    doc.text('Costo Anual', 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin + colWidths.cobertura, y);
-    doc.text('Estado', 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin + colWidths.cobertura + colWidths.costo, y);
-    
-    y += itemHeight;
-    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
-    y += 5;
-    
-    // Data rows
-    doc.fontSize(8).font('Helvetica');
     let totalCost = 0;
+    let rowIndex = 0;
     
     policies.forEach((policy) => {
-        if (y > doc.page.height - 100) {
+        if (y > doc.page.height - 120) {
             doc.addPage();
             y = 50;
         }
@@ -5622,95 +5714,80 @@ function generatePoliciesPDF(vehicle, policies, user, res) {
         const compania = (policy.compania || '-').substring(0, 15);
         const inicio = policy.fecha_inicio ? new Date(policy.fecha_inicio).toLocaleDateString('es-MX') : '-';
         const fin = policy.fecha_vencimiento ? new Date(policy.fecha_vencimiento).toLocaleDateString('es-MX') : '-';
-        const cobertura = (policy.tipo_cobertura || '-').substring(0, 25);
+        const cobertura = (policy.tipo_cobertura || '-').substring(0, 22);
         const costo = policy.costo_anual || 0;
         const estado = policy.estado || '-';
         
         totalCost += costo;
         
-        doc.text(numero, 50, y);
-        doc.text(compania, 50 + colWidths.numero, y);
-        doc.text(inicio, 50 + colWidths.numero + colWidths.compania, y);
-        doc.text(fin, 50 + colWidths.numero + colWidths.compania + colWidths.inicio, y);
-        doc.text(cobertura, 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin, y);
-        doc.text('$' + costo.toFixed(2), 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin + colWidths.cobertura, y);
-        doc.text(estado, 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin + colWidths.cobertura + colWidths.costo, y);
+        const values = [
+            numero,
+            compania,
+            inicio,
+            fin,
+            cobertura,
+            { text: '$' + costo.toFixed(2), bold: true },
+            estado
+        ];
         
+        addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight);
         y += itemHeight;
+        rowIndex++;
     });
     
-    // Totals
-    y += 10;
-    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
-    y += 10;
-    doc.fontSize(10).font('Helvetica-Bold');
-    doc.text(`Total Costo Anual: $${totalCost.toFixed(2)}`, pageWidth + 50 - 150, y, { align: 'right' });
-    
+    y = addTotalSection(doc, y, pageWidth, itemHeight, [`Total Costo Anual: $${totalCost.toFixed(2)}`]);
+    addPDFFooter(doc);
     doc.end();
 }
 
 function generateTiresPDF(vehicle, tires, user, res) {
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="llantas-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
     doc.pipe(res);
     
-    // Header
-    doc.fontSize(18).font('Helvetica-Bold').text('Llantas', { align: 'center' });
-    doc.moveDown(0.5);
-    doc.fontSize(12).font('Helvetica');
-    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, { align: 'center' });
-    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, { align: 'center' });
-    doc.moveDown();
+    const primaryColor = '#001f3f';
+    const accentColor = '#4da6ff';
+    const lightGray = '#f5f7fa';
+    const borderColor = '#dee2e6';
+    const darkGray = '#6c757d';
+    
+    addPDFHeader(doc, 'Llantas', vehicle);
     
     if (!tires || tires.length === 0) {
-        doc.fontSize(10).text('No hay llantas registradas.', { align: 'center' });
+        doc.fillColor(darkGray).fontSize(12).text('No hay llantas registradas.', 50, doc.y, { align: 'left' });
+        addPDFFooter(doc);
         doc.end();
         return;
     }
     
-    // Table
-    const tableTop = doc.y;
     const itemHeight = 25;
     const pageWidth = doc.page.width - 100;
     const colWidths = {
-        posicion: 80,
-        marca: 100,
-        presion: 70,
-        profundidad: 80,
-        kilometraje: 90,
-        costo: 80,
-        estado: 70
+        posicion: 85,
+        marca: 110,
+        presion: 75,
+        profundidad: 85,
+        kilometraje: 95,
+        costo: 85,
+        estado: 75
     };
     
-    let y = tableTop;
+    let y = doc.y;
+    const headers = ['Posición', 'Marca/Modelo', 'Presión', 'Profundidad', 'KM Inst.', 'Costo', 'Estado'];
+    y = addTableHeader(doc, y, colWidths, headers, pageWidth);
     
-    // Header row
-    doc.fontSize(9).font('Helvetica-Bold');
-    doc.text('Posición', 50, y);
-    doc.text('Marca/Modelo', 50 + colWidths.posicion, y);
-    doc.text('Presión', 50 + colWidths.posicion + colWidths.marca, y);
-    doc.text('Profundidad', 50 + colWidths.posicion + colWidths.marca + colWidths.presion, y);
-    doc.text('KM Inst.', 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad, y);
-    doc.text('Costo', 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad + colWidths.kilometraje, y);
-    doc.text('Estado', 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad + colWidths.kilometraje + colWidths.costo, y);
-    
-    y += itemHeight;
-    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
-    y += 5;
-    
-    // Data rows
-    doc.fontSize(8).font('Helvetica');
     let totalCost = 0;
+    let rowIndex = 0;
     
     tires.forEach((tire) => {
-        if (y > doc.page.height - 100) {
+        if (y > doc.page.height - 120) {
             doc.addPage();
             y = 50;
         }
         
         const posicion = tire.posicion || '-';
-        const marca = ((tire.marca || '') + ' ' + (tire.modelo || '')).substring(0, 20);
+        const marca = ((tire.marca || '') + ' ' + (tire.modelo || '')).substring(0, 18);
         const presion = tire.presion_psi ? tire.presion_psi + ' PSI' : '-';
         const profundidad = tire.profundidad_mm ? tire.profundidad_mm + ' mm' : '-';
         const kilometraje = tire.kilometraje_instalacion ? tire.kilometraje_instalacion.toLocaleString() : '-';
@@ -5719,105 +5796,95 @@ function generateTiresPDF(vehicle, tires, user, res) {
         
         totalCost += costo;
         
-        doc.text(posicion, 50, y);
-        doc.text(marca, 50 + colWidths.posicion, y);
-        doc.text(presion, 50 + colWidths.posicion + colWidths.marca, y);
-        doc.text(profundidad, 50 + colWidths.posicion + colWidths.marca + colWidths.presion, y);
-        doc.text(kilometraje, 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad, y);
-        doc.text('$' + costo.toFixed(2), 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad + colWidths.kilometraje, y);
-        doc.text(estado, 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad + colWidths.kilometraje + colWidths.costo, y);
+        const values = [
+            posicion,
+            marca,
+            presion,
+            profundidad,
+            kilometraje,
+            { text: '$' + costo.toFixed(2), bold: true },
+            estado
+        ];
         
+        addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight);
         y += itemHeight;
+        rowIndex++;
     });
     
-    // Totals
-    y += 10;
-    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
-    y += 10;
-    doc.fontSize(10).font('Helvetica-Bold');
-    doc.text(`Total Costo: $${totalCost.toFixed(2)}`, pageWidth + 50 - 150, y, { align: 'right' });
-    
+    y = addTotalSection(doc, y, pageWidth, itemHeight, [`Total Costo: $${totalCost.toFixed(2)}`]);
+    addPDFFooter(doc);
     doc.end();
 }
 
 function generateOperatorsPDF(vehicle, operators, user, res) {
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="operadores-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
     doc.pipe(res);
     
-    // Header
-    doc.fontSize(18).font('Helvetica-Bold').text('Operadores', { align: 'center' });
-    doc.moveDown(0.5);
-    doc.fontSize(12).font('Helvetica');
-    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, { align: 'center' });
-    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, { align: 'center' });
-    doc.moveDown();
+    const primaryColor = '#001f3f';
+    const accentColor = '#4da6ff';
+    const lightGray = '#f5f7fa';
+    const borderColor = '#dee2e6';
+    const darkGray = '#6c757d';
+    
+    addPDFHeader(doc, 'Operadores', vehicle);
     
     if (!operators || operators.length === 0) {
-        doc.fontSize(10).text('No hay operadores registrados.', { align: 'center' });
+        doc.fillColor(darkGray).fontSize(12).text('No hay operadores registrados.', 50, doc.y, { align: 'left' });
+        addPDFFooter(doc);
         doc.end();
         return;
     }
     
-    // Table
-    const tableTop = doc.y;
-    const itemHeight = 30;
+    const itemHeight = 28;
     const pageWidth = doc.page.width - 100;
     const colWidths = {
-        nombre: 150,
+        nombre: 140,
         rfc: 100,
-        tipo: 80,
+        tipo: 85,
         vigencia: 90,
         telefono: 100,
-        direccion: 200,
-        estado: 70
+        direccion: 180,
+        estado: 75
     };
     
-    let y = tableTop;
+    let y = doc.y;
+    const headers = ['Nombre', 'RFC', 'Tipo Lic.', 'Vigencia', 'Teléfono', 'Dirección', 'Estado'];
+    y = addTableHeader(doc, y, colWidths, headers, pageWidth);
     
-    // Header row
-    doc.fontSize(9).font('Helvetica-Bold');
-    doc.text('Nombre', 50, y);
-    doc.text('RFC', 50 + colWidths.nombre, y);
-    doc.text('Tipo Lic.', 50 + colWidths.nombre + colWidths.rfc, y);
-    doc.text('Vigencia', 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo, y);
-    doc.text('Teléfono', 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia, y);
-    doc.text('Dirección', 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia + colWidths.telefono, y);
-    doc.text('Estado', 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia + colWidths.telefono + colWidths.direccion, y);
-    
-    y += itemHeight;
-    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
-    y += 5;
-    
-    // Data rows
-    doc.fontSize(8).font('Helvetica');
+    let rowIndex = 0;
     
     operators.forEach((operator) => {
-        if (y > doc.page.height - 100) {
+        if (y > doc.page.height - 120) {
             doc.addPage();
             y = 50;
         }
         
-        const nombre = (operator.nombre || '-').substring(0, 25);
+        const nombre = (operator.nombre || '-').substring(0, 22);
         const rfc = operator.rfc || '-';
-        const tipo = (operator.tipo_licencia || '-').substring(0, 15);
+        const tipo = (operator.tipo_licencia || '-').substring(0, 12);
         const vigencia = operator.fecha_vencimiento_licencia ? new Date(operator.fecha_vencimiento_licencia).toLocaleDateString('es-MX') : '-';
         const telefono = operator.telefono || '-';
-        const direccion = (operator.direccion || '-').substring(0, 35);
+        const direccion = (operator.direccion || '-').substring(0, 30);
         const estado = operator.activo === 1 ? 'Activo' : 'Inactivo';
         
-        doc.text(nombre, 50, y);
-        doc.text(rfc, 50 + colWidths.nombre, y);
-        doc.text(tipo, 50 + colWidths.nombre + colWidths.rfc, y);
-        doc.text(vigencia, 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo, y);
-        doc.text(telefono, 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia, y);
-        doc.text(direccion, 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia + colWidths.telefono, y);
-        doc.text(estado, 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia + colWidths.telefono + colWidths.direccion, y);
+        const values = [
+            nombre,
+            rfc,
+            tipo,
+            vigencia,
+            telefono,
+            direccion,
+            estado
+        ];
         
+        addTableRow(doc, y, colWidths, values, rowIndex, pageWidth, itemHeight);
         y += itemHeight;
+        rowIndex++;
     });
     
+    addPDFFooter(doc);
     doc.end();
 }
 
