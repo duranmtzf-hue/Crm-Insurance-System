@@ -447,10 +447,16 @@
                     <i class="fas fa-gas-pump"></i>
                     Registros de Combustible
                 </h2>
-                <button class="btn btn-success" onclick="document.getElementById('fuelModal').style.display='block'">
-                    <i class="fas fa-plus"></i>
-                    Agregar Registro
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <a href="/api/vehicle/<%= vehicle.id %>/pdf/fuel" class="btn" style="background-color: #dc3545; color: white;" target="_blank">
+                        <i class="fas fa-file-pdf"></i>
+                        Descargar PDF
+                    </a>
+                    <button class="btn btn-success" onclick="document.getElementById('fuelModal').style.display='block'">
+                        <i class="fas fa-plus"></i>
+                        Agregar Registro
+                    </button>
+                </div>
             </div>
             
             <% if (fuelRecords.length === 0) { %>
@@ -495,10 +501,16 @@
                     <i class="fas fa-tools"></i>
                     Mantenimientos
                 </h2>
-                <button class="btn btn-success" onclick="document.getElementById('maintenanceModal').style.display='block'">
-                    <i class="fas fa-plus"></i>
-                    Agregar Mantenimiento
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <a href="/api/vehicle/<%= vehicle.id %>/pdf/maintenance" class="btn" style="background-color: #dc3545; color: white;" target="_blank">
+                        <i class="fas fa-file-pdf"></i>
+                        Descargar PDF
+                    </a>
+                    <button class="btn btn-success" onclick="document.getElementById('maintenanceModal').style.display='block'">
+                        <i class="fas fa-plus"></i>
+                        Agregar Mantenimiento
+                    </button>
+                </div>
             </div>
             
             <% if (maintenanceRecords.length === 0) { %>
@@ -545,10 +557,16 @@
                     <i class="fas fa-file-contract"></i>
                     Pólizas de Seguro
                 </h2>
-                <button class="btn btn-success" onclick="document.getElementById('policyModal').style.display='block'">
-                    <i class="fas fa-plus"></i>
-                    Agregar Póliza
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <a href="/api/vehicle/<%= vehicle.id %>/pdf/policies" class="btn" style="background-color: #dc3545; color: white;" target="_blank">
+                        <i class="fas fa-file-pdf"></i>
+                        Descargar PDF
+                    </a>
+                    <button class="btn btn-success" onclick="document.getElementById('policyModal').style.display='block'">
+                        <i class="fas fa-plus"></i>
+                        Agregar Póliza
+                    </button>
+                </div>
             </div>
             
             <% if (policies.length === 0) { %>
@@ -595,10 +613,16 @@
                     <i class="fas fa-circle"></i>
                     Llantas
                 </h2>
-                <button class="btn btn-success" onclick="openTireModal()">
-                    <i class="fas fa-plus"></i>
-                    Agregar Llanta
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <a href="/api/vehicle/<%= vehicle.id %>/pdf/tires" class="btn" style="background-color: #dc3545; color: white;" target="_blank">
+                        <i class="fas fa-file-pdf"></i>
+                        Descargar PDF
+                    </a>
+                    <button class="btn btn-success" onclick="openTireModal()">
+                        <i class="fas fa-plus"></i>
+                        Agregar Llanta
+                    </button>
+                </div>
             </div>
             
             <% if (!tires || tires.length === 0) { %>
@@ -652,10 +676,16 @@
                     <i class="fas fa-user-tie"></i>
                     Operadores
                 </h2>
-                <button class="btn btn-success" onclick="openOperatorModal()">
-                    <i class="fas fa-plus"></i>
-                    Agregar Operador
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <a href="/api/vehicle/<%= vehicle.id %>/pdf/operators" class="btn" style="background-color: #dc3545; color: white;" target="_blank">
+                        <i class="fas fa-file-pdf"></i>
+                        Descargar PDF
+                    </a>
+                    <button class="btn btn-success" onclick="openOperatorModal()">
+                        <i class="fas fa-plus"></i>
+                        Agregar Operador
+                    </button>
+                </div>
             </div>
             
             <% if (!operators || operators.length === 0) { %>

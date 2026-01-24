@@ -5380,6 +5380,552 @@ app.post('/api/operators', requireAuth, (req, res) => {
     });
 });
 
+// PDF Generation Functions for Vehicle Details
+function generateFuelRecordsPDF(vehicle, fuelRecords, user, res) {
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="registros-combustible-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
+    doc.pipe(res);
+    
+    // Header
+    doc.fontSize(18).font('Helvetica-Bold').text('Registros de Combustible', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Helvetica');
+    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, { align: 'center' });
+    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, { align: 'center' });
+    doc.moveDown();
+    
+    if (!fuelRecords || fuelRecords.length === 0) {
+        doc.fontSize(10).text('No hay registros de combustible disponibles.', { align: 'center' });
+        doc.end();
+        return;
+    }
+    
+    // Table Header
+    const tableTop = doc.y;
+    const itemHeight = 20;
+    const pageWidth = doc.page.width - 100;
+    const colWidths = {
+        fecha: 80,
+        litros: 60,
+        precio: 70,
+        costo: 80,
+        kilometraje: 80,
+        estacion: 100
+    };
+    
+    let y = tableTop;
+    
+    // Header row
+    doc.fontSize(9).font('Helvetica-Bold');
+    doc.text('Fecha', 50, y);
+    doc.text('Litros', 50 + colWidths.fecha, y);
+    doc.text('Precio/L', 50 + colWidths.fecha + colWidths.litros, y);
+    doc.text('Costo Total', 50 + colWidths.fecha + colWidths.litros + colWidths.precio, y);
+    doc.text('Kilometraje', 50 + colWidths.fecha + colWidths.litros + colWidths.precio + colWidths.costo, y);
+    doc.text('Estación', 50 + colWidths.fecha + colWidths.litros + colWidths.precio + colWidths.costo + colWidths.kilometraje, y);
+    
+    y += itemHeight;
+    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
+    y += 5;
+    
+    // Data rows
+    doc.fontSize(8).font('Helvetica');
+    let totalCost = 0;
+    let totalLiters = 0;
+    
+    fuelRecords.forEach((record, index) => {
+        if (y > doc.page.height - 100) {
+            doc.addPage();
+            y = 50;
+        }
+        
+        const fecha = record.fecha ? new Date(record.fecha).toLocaleDateString('es-MX') : '-';
+        const litros = (record.litros || 0).toFixed(2);
+        const precio = (record.precio_litro || 0).toFixed(2);
+        const costo = (record.litros || 0) * (record.precio_litro || 0);
+        const kilometraje = record.kilometraje ? record.kilometraje.toLocaleString() : '-';
+        const estacion = record.estacion || '-';
+        
+        totalCost += costo;
+        totalLiters += parseFloat(record.litros || 0);
+        
+        doc.text(fecha, 50, y);
+        doc.text(litros + ' L', 50 + colWidths.fecha, y);
+        doc.text('$' + precio, 50 + colWidths.fecha + colWidths.litros, y);
+        doc.text('$' + costo.toFixed(2), 50 + colWidths.fecha + colWidths.litros + colWidths.precio, y);
+        doc.text(kilometraje, 50 + colWidths.fecha + colWidths.litros + colWidths.precio + colWidths.costo, y);
+        doc.text(estacion, 50 + colWidths.fecha + colWidths.litros + colWidths.precio + colWidths.costo + colWidths.kilometraje, y);
+        
+        y += itemHeight;
+    });
+    
+    // Totals
+    y += 10;
+    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
+    y += 10;
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text(`Total Litros: ${totalLiters.toFixed(2)} L`, 50, y);
+    doc.text(`Total Costo: $${totalCost.toFixed(2)}`, pageWidth + 50 - 150, y, { align: 'right' });
+    
+    doc.end();
+}
+
+function generateMaintenancePDF(vehicle, maintenanceRecords, user, res) {
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="mantenimientos-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
+    doc.pipe(res);
+    
+    // Header
+    doc.fontSize(18).font('Helvetica-Bold').text('Mantenimientos', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Helvetica');
+    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, { align: 'center' });
+    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, { align: 'center' });
+    doc.moveDown();
+    
+    if (!maintenanceRecords || maintenanceRecords.length === 0) {
+        doc.fontSize(10).text('No hay registros de mantenimiento disponibles.', { align: 'center' });
+        doc.end();
+        return;
+    }
+    
+    // Table
+    const tableTop = doc.y;
+    const itemHeight = 25;
+    const pageWidth = doc.page.width - 100;
+    const colWidths = {
+        fecha: 80,
+        tipo: 80,
+        kilometraje: 80,
+        descripcion: 200,
+        costo: 80,
+        taller: 120
+    };
+    
+    let y = tableTop;
+    
+    // Header row
+    doc.fontSize(9).font('Helvetica-Bold');
+    doc.text('Fecha', 50, y);
+    doc.text('Tipo', 50 + colWidths.fecha, y);
+    doc.text('Kilometraje', 50 + colWidths.fecha + colWidths.tipo, y);
+    doc.text('Descripción', 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje, y);
+    doc.text('Costo', 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje + colWidths.descripcion, y);
+    doc.text('Taller', 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje + colWidths.descripcion + colWidths.costo, y);
+    
+    y += itemHeight;
+    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
+    y += 5;
+    
+    // Data rows
+    doc.fontSize(8).font('Helvetica');
+    let totalCost = 0;
+    
+    maintenanceRecords.forEach((record) => {
+        if (y > doc.page.height - 100) {
+            doc.addPage();
+            y = 50;
+        }
+        
+        const fecha = record.fecha ? new Date(record.fecha).toLocaleDateString('es-MX') : '-';
+        const tipo = record.tipo || '-';
+        const kilometraje = record.kilometraje ? record.kilometraje.toLocaleString() : '-';
+        const descripcion = (record.descripcion || '-').substring(0, 40);
+        const costo = record.costo || 0;
+        const taller = (record.taller || '-').substring(0, 20);
+        
+        totalCost += costo;
+        
+        doc.text(fecha, 50, y);
+        doc.text(tipo, 50 + colWidths.fecha, y);
+        doc.text(kilometraje, 50 + colWidths.fecha + colWidths.tipo, y);
+        doc.text(descripcion, 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje, y);
+        doc.text('$' + costo.toFixed(2), 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje + colWidths.descripcion, y);
+        doc.text(taller, 50 + colWidths.fecha + colWidths.tipo + colWidths.kilometraje + colWidths.descripcion + colWidths.costo, y);
+        
+        y += itemHeight;
+    });
+    
+    // Totals
+    y += 10;
+    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
+    y += 10;
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text(`Total Costo: $${totalCost.toFixed(2)}`, pageWidth + 50 - 150, y, { align: 'right' });
+    
+    doc.end();
+}
+
+function generatePoliciesPDF(vehicle, policies, user, res) {
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="polizas-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
+    doc.pipe(res);
+    
+    // Header
+    doc.fontSize(18).font('Helvetica-Bold').text('Pólizas de Seguro', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Helvetica');
+    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, { align: 'center' });
+    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, { align: 'center' });
+    doc.moveDown();
+    
+    if (!policies || policies.length === 0) {
+        doc.fontSize(10).text('No hay pólizas registradas.', { align: 'center' });
+        doc.end();
+        return;
+    }
+    
+    // Table
+    const tableTop = doc.y;
+    const itemHeight = 30;
+    const pageWidth = doc.page.width - 100;
+    const colWidths = {
+        numero: 100,
+        compania: 100,
+        inicio: 80,
+        fin: 80,
+        cobertura: 150,
+        costo: 80,
+        estado: 80
+    };
+    
+    let y = tableTop;
+    
+    // Header row
+    doc.fontSize(9).font('Helvetica-Bold');
+    doc.text('Número', 50, y);
+    doc.text('Compañía', 50 + colWidths.numero, y);
+    doc.text('Inicio', 50 + colWidths.numero + colWidths.compania, y);
+    doc.text('Fin', 50 + colWidths.numero + colWidths.compania + colWidths.inicio, y);
+    doc.text('Cobertura', 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin, y);
+    doc.text('Costo Anual', 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin + colWidths.cobertura, y);
+    doc.text('Estado', 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin + colWidths.cobertura + colWidths.costo, y);
+    
+    y += itemHeight;
+    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
+    y += 5;
+    
+    // Data rows
+    doc.fontSize(8).font('Helvetica');
+    let totalCost = 0;
+    
+    policies.forEach((policy) => {
+        if (y > doc.page.height - 100) {
+            doc.addPage();
+            y = 50;
+        }
+        
+        const numero = policy.numero_poliza || '-';
+        const compania = (policy.compania || '-').substring(0, 15);
+        const inicio = policy.fecha_inicio ? new Date(policy.fecha_inicio).toLocaleDateString('es-MX') : '-';
+        const fin = policy.fecha_vencimiento ? new Date(policy.fecha_vencimiento).toLocaleDateString('es-MX') : '-';
+        const cobertura = (policy.tipo_cobertura || '-').substring(0, 25);
+        const costo = policy.costo_anual || 0;
+        const estado = policy.estado || '-';
+        
+        totalCost += costo;
+        
+        doc.text(numero, 50, y);
+        doc.text(compania, 50 + colWidths.numero, y);
+        doc.text(inicio, 50 + colWidths.numero + colWidths.compania, y);
+        doc.text(fin, 50 + colWidths.numero + colWidths.compania + colWidths.inicio, y);
+        doc.text(cobertura, 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin, y);
+        doc.text('$' + costo.toFixed(2), 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin + colWidths.cobertura, y);
+        doc.text(estado, 50 + colWidths.numero + colWidths.compania + colWidths.inicio + colWidths.fin + colWidths.cobertura + colWidths.costo, y);
+        
+        y += itemHeight;
+    });
+    
+    // Totals
+    y += 10;
+    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
+    y += 10;
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text(`Total Costo Anual: $${totalCost.toFixed(2)}`, pageWidth + 50 - 150, y, { align: 'right' });
+    
+    doc.end();
+}
+
+function generateTiresPDF(vehicle, tires, user, res) {
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="llantas-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
+    doc.pipe(res);
+    
+    // Header
+    doc.fontSize(18).font('Helvetica-Bold').text('Llantas', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Helvetica');
+    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, { align: 'center' });
+    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, { align: 'center' });
+    doc.moveDown();
+    
+    if (!tires || tires.length === 0) {
+        doc.fontSize(10).text('No hay llantas registradas.', { align: 'center' });
+        doc.end();
+        return;
+    }
+    
+    // Table
+    const tableTop = doc.y;
+    const itemHeight = 25;
+    const pageWidth = doc.page.width - 100;
+    const colWidths = {
+        posicion: 80,
+        marca: 100,
+        presion: 70,
+        profundidad: 80,
+        kilometraje: 90,
+        costo: 80,
+        estado: 70
+    };
+    
+    let y = tableTop;
+    
+    // Header row
+    doc.fontSize(9).font('Helvetica-Bold');
+    doc.text('Posición', 50, y);
+    doc.text('Marca/Modelo', 50 + colWidths.posicion, y);
+    doc.text('Presión', 50 + colWidths.posicion + colWidths.marca, y);
+    doc.text('Profundidad', 50 + colWidths.posicion + colWidths.marca + colWidths.presion, y);
+    doc.text('KM Inst.', 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad, y);
+    doc.text('Costo', 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad + colWidths.kilometraje, y);
+    doc.text('Estado', 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad + colWidths.kilometraje + colWidths.costo, y);
+    
+    y += itemHeight;
+    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
+    y += 5;
+    
+    // Data rows
+    doc.fontSize(8).font('Helvetica');
+    let totalCost = 0;
+    
+    tires.forEach((tire) => {
+        if (y > doc.page.height - 100) {
+            doc.addPage();
+            y = 50;
+        }
+        
+        const posicion = tire.posicion || '-';
+        const marca = ((tire.marca || '') + ' ' + (tire.modelo || '')).substring(0, 20);
+        const presion = tire.presion_psi ? tire.presion_psi + ' PSI' : '-';
+        const profundidad = tire.profundidad_mm ? tire.profundidad_mm + ' mm' : '-';
+        const kilometraje = tire.kilometraje_instalacion ? tire.kilometraje_instalacion.toLocaleString() : '-';
+        const costo = tire.costo || 0;
+        const estado = tire.estado || 'Activo';
+        
+        totalCost += costo;
+        
+        doc.text(posicion, 50, y);
+        doc.text(marca, 50 + colWidths.posicion, y);
+        doc.text(presion, 50 + colWidths.posicion + colWidths.marca, y);
+        doc.text(profundidad, 50 + colWidths.posicion + colWidths.marca + colWidths.presion, y);
+        doc.text(kilometraje, 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad, y);
+        doc.text('$' + costo.toFixed(2), 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad + colWidths.kilometraje, y);
+        doc.text(estado, 50 + colWidths.posicion + colWidths.marca + colWidths.presion + colWidths.profundidad + colWidths.kilometraje + colWidths.costo, y);
+        
+        y += itemHeight;
+    });
+    
+    // Totals
+    y += 10;
+    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
+    y += 10;
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text(`Total Costo: $${totalCost.toFixed(2)}`, pageWidth + 50 - 150, y, { align: 'right' });
+    
+    doc.end();
+}
+
+function generateOperatorsPDF(vehicle, operators, user, res) {
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="operadores-${vehicle.numero_vehiculo}-${new Date().toISOString().split('T')[0]}.pdf"`);
+    doc.pipe(res);
+    
+    // Header
+    doc.fontSize(18).font('Helvetica-Bold').text('Operadores', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Helvetica');
+    doc.text(`Vehículo: #${vehicle.numero_vehiculo} - ${vehicle.marca} ${vehicle.modelo}`, { align: 'center' });
+    doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, { align: 'center' });
+    doc.moveDown();
+    
+    if (!operators || operators.length === 0) {
+        doc.fontSize(10).text('No hay operadores registrados.', { align: 'center' });
+        doc.end();
+        return;
+    }
+    
+    // Table
+    const tableTop = doc.y;
+    const itemHeight = 30;
+    const pageWidth = doc.page.width - 100;
+    const colWidths = {
+        nombre: 150,
+        rfc: 100,
+        tipo: 80,
+        vigencia: 90,
+        telefono: 100,
+        direccion: 200,
+        estado: 70
+    };
+    
+    let y = tableTop;
+    
+    // Header row
+    doc.fontSize(9).font('Helvetica-Bold');
+    doc.text('Nombre', 50, y);
+    doc.text('RFC', 50 + colWidths.nombre, y);
+    doc.text('Tipo Lic.', 50 + colWidths.nombre + colWidths.rfc, y);
+    doc.text('Vigencia', 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo, y);
+    doc.text('Teléfono', 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia, y);
+    doc.text('Dirección', 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia + colWidths.telefono, y);
+    doc.text('Estado', 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia + colWidths.telefono + colWidths.direccion, y);
+    
+    y += itemHeight;
+    doc.moveTo(50, y).lineTo(pageWidth + 50, y).stroke();
+    y += 5;
+    
+    // Data rows
+    doc.fontSize(8).font('Helvetica');
+    
+    operators.forEach((operator) => {
+        if (y > doc.page.height - 100) {
+            doc.addPage();
+            y = 50;
+        }
+        
+        const nombre = (operator.nombre || '-').substring(0, 25);
+        const rfc = operator.rfc || '-';
+        const tipo = (operator.tipo_licencia || '-').substring(0, 15);
+        const vigencia = operator.fecha_vencimiento_licencia ? new Date(operator.fecha_vencimiento_licencia).toLocaleDateString('es-MX') : '-';
+        const telefono = operator.telefono || '-';
+        const direccion = (operator.direccion || '-').substring(0, 35);
+        const estado = operator.activo === 1 ? 'Activo' : 'Inactivo';
+        
+        doc.text(nombre, 50, y);
+        doc.text(rfc, 50 + colWidths.nombre, y);
+        doc.text(tipo, 50 + colWidths.nombre + colWidths.rfc, y);
+        doc.text(vigencia, 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo, y);
+        doc.text(telefono, 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia, y);
+        doc.text(direccion, 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia + colWidths.telefono, y);
+        doc.text(estado, 50 + colWidths.nombre + colWidths.rfc + colWidths.tipo + colWidths.vigencia + colWidths.telefono + colWidths.direccion, y);
+        
+        y += itemHeight;
+    });
+    
+    doc.end();
+}
+
+// API: Download PDFs for vehicle sections
+app.get('/api/vehicle/:id/pdf/fuel', requireAuth, (req, res) => {
+    const vehicleId = req.params.id;
+    const userId = req.session.userId;
+    
+    db.getConverted('SELECT * FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, vehicle) => {
+        if (err || !vehicle) {
+            return res.status(404).json({ error: 'Vehículo no encontrado' });
+        }
+        
+        db.allConverted('SELECT * FROM fuel_records WHERE vehicle_id = ? ORDER BY fecha DESC', [vehicleId], (err, fuelRecords) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error al cargar registros de combustible' });
+            }
+            
+            const user = req.session;
+            generateFuelRecordsPDF(vehicle, fuelRecords || [], user, res);
+        });
+    });
+});
+
+app.get('/api/vehicle/:id/pdf/maintenance', requireAuth, (req, res) => {
+    const vehicleId = req.params.id;
+    const userId = req.session.userId;
+    
+    db.getConverted('SELECT * FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, vehicle) => {
+        if (err || !vehicle) {
+            return res.status(404).json({ error: 'Vehículo no encontrado' });
+        }
+        
+        db.allConverted('SELECT * FROM maintenance_records WHERE vehicle_id = ? ORDER BY fecha DESC', [vehicleId], (err, maintenanceRecords) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error al cargar registros de mantenimiento' });
+            }
+            
+            const user = req.session;
+            generateMaintenancePDF(vehicle, maintenanceRecords || [], user, res);
+        });
+    });
+});
+
+app.get('/api/vehicle/:id/pdf/policies', requireAuth, (req, res) => {
+    const vehicleId = req.params.id;
+    const userId = req.session.userId;
+    
+    db.getConverted('SELECT * FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, vehicle) => {
+        if (err || !vehicle) {
+            return res.status(404).json({ error: 'Vehículo no encontrado' });
+        }
+        
+        db.allConverted('SELECT * FROM insurance_policies WHERE vehicle_id = ? ORDER BY fecha_vencimiento DESC', [vehicleId], (err, policies) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error al cargar pólizas' });
+            }
+            
+            const user = req.session;
+            generatePoliciesPDF(vehicle, policies || [], user, res);
+        });
+    });
+});
+
+app.get('/api/vehicle/:id/pdf/tires', requireAuth, (req, res) => {
+    const vehicleId = req.params.id;
+    const userId = req.session.userId;
+    
+    db.getConverted('SELECT * FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, vehicle) => {
+        if (err || !vehicle) {
+            return res.status(404).json({ error: 'Vehículo no encontrado' });
+        }
+        
+        db.allConverted('SELECT * FROM tires WHERE vehicle_id = ? ORDER BY fecha_instalacion DESC', [vehicleId], (err, tires) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error al cargar llantas' });
+            }
+            
+            const user = req.session;
+            generateTiresPDF(vehicle, tires || [], user, res);
+        });
+    });
+});
+
+app.get('/api/vehicle/:id/pdf/operators', requireAuth, (req, res) => {
+    const vehicleId = req.params.id;
+    const userId = req.session.userId;
+    
+    db.getConverted('SELECT * FROM vehicles WHERE id = ? AND user_id = ?', [vehicleId, userId], (err, vehicle) => {
+        if (err || !vehicle) {
+            return res.status(404).json({ error: 'Vehículo no encontrado' });
+        }
+        
+        db.allConverted(`SELECT o.*, vo.fecha_asignacion, vo.activo 
+                        FROM operators o
+                        INNER JOIN vehicle_operators vo ON o.id = vo.operator_id
+                        WHERE vo.vehicle_id = ?
+                        ORDER BY vo.fecha_asignacion DESC`, [vehicleId], (err, operators) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error al cargar operadores' });
+            }
+            
+            const user = req.session;
+            generateOperatorsPDF(vehicle, operators || [], user, res);
+        });
+    });
+});
+
 // Fines routes (Multas)
 app.get('/fines', requireAuth, (req, res) => {
     const userId = req.session.userId;
