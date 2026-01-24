@@ -2868,6 +2868,9 @@ app.post('/api/attachments', requireAuth, upload.single('file'), (req, res) => {
             return res.status(403).json({ error: 'Entidad no encontrada o no autorizada' });
         }
 
+        // Guardar solo la ruta relativa (uploads/filename)
+        const relativePath = path.relative(__dirname, file.path).replace(/\\/g, '/');
+        
         db.runConverted(
             `INSERT INTO attachments (user_id, entity_type, entity_id, nombre_archivo, nombre_original, tipo_mime, tamano, ruta_archivo, descripcion, categoria)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -2879,7 +2882,7 @@ app.post('/api/attachments', requireAuth, upload.single('file'), (req, res) => {
                 file.originalname,
                 file.mimetype,
                 file.size,
-                file.path,
+                relativePath,
                 descripcion || null,
                 categoria || 'otro'
             ],
@@ -3544,14 +3547,23 @@ app.get('/vehicles/:id', requireAuth, (req, res) => {
                                         WHERE vo.vehicle_id = ?
                                         ORDER BY vo.fecha_asignacion DESC`, [vehicleId], (err, operators) => {
                             
-                            res.render('vehicle-detail', {
-                                user: req.session,
-                                vehicle: vehicle,
-                                fuelRecords: fuelRecords || [],
-                                maintenanceRecords: maintenanceRecords || [],
-                                policies: policies || [],
-                                tires: tires || [],
-                                operators: operators || []
+                            // Get vehicle images
+                            db.allConverted(`SELECT * FROM attachments 
+                                            WHERE entity_type = 'vehicle' 
+                                            AND entity_id = ? 
+                                            AND categoria = 'imagen_vehiculo'
+                                            ORDER BY created_at DESC`, [vehicleId], (err, images) => {
+                                
+                                res.render('vehicle-detail', {
+                                    user: req.session,
+                                    vehicle: vehicle,
+                                    fuelRecords: fuelRecords || [],
+                                    maintenanceRecords: maintenanceRecords || [],
+                                    policies: policies || [],
+                                    tires: tires || [],
+                                    operators: operators || [],
+                                    images: images || []
+                                });
                             });
                         });
                     });

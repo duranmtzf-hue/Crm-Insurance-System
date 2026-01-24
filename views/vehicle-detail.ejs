@@ -240,6 +240,67 @@
             color: #dee2e6;
             margin-bottom: 12px;
         }
+        /* Image Gallery Styles */
+        .image-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        .image-card:hover .image-container img {
+            transform: scale(1.05);
+        }
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(8px);
+        }
+        .image-modal-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        .image-modal-content img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        .image-modal-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            padding: 30px 40px;
+            color: white;
+        }
+        .image-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+        .image-modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
         /* Modal Styles */
         .modal {
             display: none;
@@ -438,6 +499,56 @@
                 </div>
                 <% } %>
             </div>
+        </div>
+
+        <!-- Galería de Imágenes -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-images"></i>
+                Imágenes de la Unidad
+            </h2>
+            
+            <% if (!images || images.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-images" style="font-size: 3rem; color: #dee2e6; margin-bottom: 15px;"></i>
+                <p class="text-muted">No hay imágenes registradas aún</p>
+                <p class="text-muted" style="font-size: 0.9rem;">Puedes agregar imágenes desde la lista de vehículos usando el botón "Imágenes"</p>
+            </div>
+            <% } else { %>
+            <div class="image-gallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+                <% images.forEach(function(image) { 
+                    const imagePath = image.ruta_archivo;
+                %>
+                <div class="image-card" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" onclick="openImageModal('/<%= imagePath %>', '<%= image.nombre_original %>', '<%= (image.descripcion || "").replace(/'/g, "\\'") %>')">
+                    <div class="image-container" style="position: relative; width: 100%; padding-top: 75%; background: #f8f9fa; overflow: hidden;">
+                        <img src="/<%= imagePath %>" alt="<%= image.nombre_original %>" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;">
+                    </div>
+                    <div class="image-info" style="padding: 15px;">
+                        <div style="font-weight: 600; color: var(--dark); margin-bottom: 5px; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <%= image.nombre_original %>
+                        </div>
+                        <% if (image.descripcion) { %>
+                        <div style="font-size: 0.85rem; color: var(--gray); margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <%= image.descripcion %>
+                        </div>
+                        <% } %>
+                        <div style="font-size: 0.75rem; color: var(--gray); display: flex; justify-content: space-between; align-items: center;">
+                            <span>
+                                <i class="fas fa-calendar"></i>
+                                <%= new Date(image.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) %>
+                            </span>
+                            <% if (image.tamano) { %>
+                            <span>
+                                <i class="fas fa-file"></i>
+                                <%= (image.tamano / 1024).toFixed(1) %> KB
+                            </span>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+            <% } %>
         </div>
 
         <!-- Registros de Combustible -->
@@ -1849,6 +1960,57 @@
         // Agregar listener para verificar duplicados al cambiar posición
         document.getElementById('posicionSelect').addEventListener('change', checkPositionDuplicate);
 
+        // Funciones para el modal de imagen
+        function openImageModal(imagePath, imageName, description) {
+            const modal = document.getElementById('imageViewModal');
+            const img = document.getElementById('imageViewImg');
+            const name = document.getElementById('imageViewName');
+            const desc = document.getElementById('imageViewDesc');
+            
+            img.src = imagePath;
+            img.alt = imageName;
+            name.textContent = imageName;
+            desc.textContent = description || 'Sin descripción';
+            desc.style.display = description ? 'block' : 'none';
+            
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageViewModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // Cerrar modal con ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeImageModal();
+            }
+        });
+
+        // Cerrar modal al hacer click fuera de la imagen
+        document.getElementById('imageViewModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeImageModal();
+            }
+        });
+
     </script>
+
+    <!-- Modal para ver imagen en grande -->
+    <div id="imageViewModal" class="image-modal">
+        <button class="image-modal-close" onclick="closeImageModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="image-modal-content">
+            <img id="imageViewImg" src="" alt="">
+            <div class="image-modal-info">
+                <h3 id="imageViewName" style="margin: 0 0 10px 0; font-size: 1.2rem;"></h3>
+                <p id="imageViewDesc" style="margin: 0; opacity: 0.9; font-size: 0.95rem;"></p>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
