@@ -323,13 +323,37 @@ function initializeDatabase() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         nombre TEXT NOT NULL,
+        rfc TEXT,
+        tipo_licencia TEXT,
         licencia TEXT,
         fecha_vencimiento_licencia DATE,
         telefono TEXT,
+        direccion TEXT,
         email TEXT,
         estado TEXT DEFAULT 'Activo',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
+    )`);
+    
+    // Add new columns to operators table if they don't exist (for existing databases)
+    const operatorColumns = ['rfc', 'tipo_licencia', 'direccion'];
+    operatorColumns.forEach(column => {
+        db.run(`ALTER TABLE operators ADD COLUMN ${column} TEXT`, (err) => {
+            // Ignore error if column already exists
+        });
+    });
+    
+    // Vehicle-Operator relationship table (to allow multiple operators per vehicle over time)
+    db.run(`CREATE TABLE IF NOT EXISTS vehicle_operators (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_id INTEGER NOT NULL,
+        operator_id INTEGER NOT NULL,
+        fecha_asignacion DATE DEFAULT CURRENT_DATE,
+        fecha_fin DATE,
+        activo INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
+        FOREIGN KEY (operator_id) REFERENCES operators(id)
     )`);
 
     // Accidents/Claims table (Siniestros)
@@ -3513,13 +3537,22 @@ app.get('/vehicles/:id', requireAuth, (req, res) => {
                     // Get tires
                     db.allConverted('SELECT * FROM tires WHERE vehicle_id = ? ORDER BY fecha_instalacion DESC', [vehicleId], (err, tires) => {
                         
-                        res.render('vehicle-detail', {
-                            user: req.session,
-                            vehicle: vehicle,
-                            fuelRecords: fuelRecords || [],
-                            maintenanceRecords: maintenanceRecords || [],
-                            policies: policies || [],
-                            tires: tires || []
+                        // Get operators for this vehicle
+                        db.allConverted(`SELECT o.*, vo.fecha_asignacion, vo.activo 
+                                        FROM operators o
+                                        INNER JOIN vehicle_operators vo ON o.id = vo.operator_id
+                                        WHERE vo.vehicle_id = ?
+                                        ORDER BY vo.fecha_asignacion DESC`, [vehicleId], (err, operators) => {
+                            
+                            res.render('vehicle-detail', {
+                                user: req.session,
+                                vehicle: vehicle,
+                                fuelRecords: fuelRecords || [],
+                                maintenanceRecords: maintenanceRecords || [],
+                                policies: policies || [],
+                                tires: tires || [],
+                                operators: operators || []
+                            });
                         });
                     });
                 });
@@ -5293,6 +5326,56 @@ app.post('/api/tires/:tire_id/reviews', requireAuth, (req, res) => {
                     null, { fecha_revision: fecha_revision, presion_psi: presion_psi, profundidad_mm: profundidad_mm, kilometraje: kilometraje });
                 
                 res.json({ success: true, id: reviewId });
+            });
+    });
+});
+
+// API: Create operator for vehicle
+app.post('/api/operators', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const { vehicle_id, nombre, rfc, tipo_licencia, fecha_vencimiento_licencia, telefono, direccion } = req.body;
+    
+    if (!vehicle_id || !nombre) {
+        return res.status(400).json({ error: 'Vehículo y nombre del operador son requeridos' });
+    }
+    
+    // Verify vehicle belongs to user
+    db.getConverted('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicle_id, userId], (err, vehicle) => {
+        if (err || !vehicle) {
+            return res.status(403).json({ error: 'Vehículo no encontrado' });
+        }
+        
+        // Create or get operator
+        db.runConverted(`INSERT INTO operators (user_id, nombre, rfc, tipo_licencia, fecha_vencimiento_licencia, telefono, direccion, estado)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'Activo')`,
+            [userId, nombre, rfc || null, tipo_licencia || null, fecha_vencimiento_licencia || null, telefono || null, direccion || null],
+            (err, result) => {
+                if (err) {
+                    console.error('Error creating operator:', err);
+                    return res.status(500).json({ error: 'Error al crear operador: ' + err.message });
+                }
+                
+                const operatorId = result?.lastID;
+                if (!operatorId) {
+                    return res.status(500).json({ error: 'Error: No se pudo obtener el ID del operador creado' });
+                }
+                
+                // Associate operator with vehicle
+                db.runConverted(`INSERT INTO vehicle_operators (vehicle_id, operator_id, fecha_asignacion, activo)
+                        VALUES (?, ?, CURRENT_DATE, 1)`,
+                    [vehicle_id, operatorId],
+                    (err, result) => {
+                        if (err) {
+                            console.error('Error associating operator with vehicle:', err);
+                            return res.status(500).json({ error: 'Error al asociar operador con vehículo: ' + err.message });
+                        }
+                        
+                        // Log activity
+                        logActivity(userId, 'vehicle', vehicle_id, 'operator_added', 
+                            `Operador ${nombre} agregado al vehículo`, null, { operator_id: operatorId, nombre: nombre });
+                        
+                        res.json({ success: true, id: operatorId });
+                    });
             });
     });
 });

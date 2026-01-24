@@ -645,6 +645,72 @@
             <% } %>
         </div>
 
+        <!-- Operadores -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-user-tie"></i>
+                    Operadores
+                </h2>
+                <button class="btn btn-success" onclick="openOperatorModal()">
+                    <i class="fas fa-plus"></i>
+                    Agregar Operador
+                </button>
+            </div>
+            
+            <% if (!operators || operators.length === 0) { %>
+            <div class="empty-state">
+                <i class="fas fa-user-tie"></i>
+                <p class="text-muted">No hay operadores registrados aún</p>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>RFC</th>
+                        <th>Tipo de Licencia</th>
+                        <th>Vigencia de Licencia</th>
+                        <th>Teléfono</th>
+                        <th>Dirección</th>
+                        <th>Fecha de Asignación</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% operators.forEach(function(operator) { %>
+                    <tr>
+                        <td class="font-weight-bold"><%= operator.nombre %></td>
+                        <td><%= operator.rfc || '-' %></td>
+                        <td><%= operator.tipo_licencia || '-' %></td>
+                        <td>
+                            <% if (operator.fecha_vencimiento_licencia) { %>
+                                <%= new Date(operator.fecha_vencimiento_licencia).toLocaleDateString('es-MX') %>
+                            <% } else { %>
+                                -
+                            <% } %>
+                        </td>
+                        <td><%= operator.telefono || '-' %></td>
+                        <td><%= operator.direccion || '-' %></td>
+                        <td class="text-muted">
+                            <% if (operator.fecha_asignacion) { %>
+                                <%= new Date(operator.fecha_asignacion).toLocaleDateString('es-MX') %>
+                            <% } else { %>
+                                -
+                            <% } %>
+                        </td>
+                        <td>
+                            <span class="badge badge-<%= operator.activo === 1 ? 'success' : 'warning' %>">
+                                <%= operator.activo === 1 ? 'Activo' : 'Inactivo' %>
+                            </span>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+
         <!-- Adjuntos -->
         <div class="section">
             <div class="section-header">
@@ -1108,19 +1174,112 @@
         </div>
     </div>
 
+    <!-- Modal para agregar operador -->
+    <div id="operatorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Operador</h2>
+                <button class="modal-close" onclick="closeOperatorModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="operatorForm">
+                    <input type="hidden" name="vehicle_id" value="<%= vehicle.id %>">
+                    <div class="form-group">
+                        <label class="form-label">Nombre del Operador *</label>
+                        <input type="text" class="form-control" name="nombre" required placeholder="Ej: Juan Pérez García">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">RFC</label>
+                        <input type="text" class="form-control" name="rfc" placeholder="Ej: PERJ800101ABC" maxlength="13">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo de Licencia</label>
+                        <select class="form-control" name="tipo_licencia">
+                            <option value="">Seleccionar tipo</option>
+                            <option value="Tipo A">Tipo A</option>
+                            <option value="Tipo B">Tipo B</option>
+                            <option value="Tipo C">Tipo C</option>
+                            <option value="Tipo D">Tipo D</option>
+                            <option value="Tipo E">Tipo E</option>
+                            <option value="Tipo F">Tipo F</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Vigencia de Licencia</label>
+                        <input type="date" class="form-control" name="fecha_vencimiento_licencia">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Teléfono</label>
+                        <input type="tel" class="form-control" name="telefono" placeholder="Ej: 5551234567">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Dirección</label>
+                        <textarea class="form-control" name="direccion" rows="3" placeholder="Calle, número, colonia, ciudad, estado, CP"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeOperatorModal()" style="flex: 1;">Cancelar</button>
+                        <button type="submit" class="btn btn-success" style="flex: 1;">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script>
+        // Formulario de operador
+        document.getElementById('operatorForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+            
+            try {
+                const response = await fetch('/api/operators', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('✅ Operador agregado exitosamente');
+                    closeOperatorModal();
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('❌ Error: ' + (error.error || 'Error al agregar operador'));
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            } catch (error) {
+                alert('❌ Error al conectar con el servidor: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+
         // Cerrar modales al hacer click fuera
         window.onclick = function(event) {
             const fuelModal = document.getElementById('fuelModal');
             const maintenanceModal = document.getElementById('maintenanceModal');
             const policyModal = document.getElementById('policyModal');
             const tireModal = document.getElementById('tireModal');
+            const operatorModal = document.getElementById('operatorModal');
             if (event.target == fuelModal) {
                 fuelModal.style.display = 'none';
             }
             if (event.target == maintenanceModal) {
                 maintenanceModal.style.display = 'none';
+            }
+            if (event.target == operatorModal) {
+                operatorModal.style.display = 'none';
             }
             if (event.target == policyModal) {
                 policyModal.style.display = 'none';
@@ -1525,6 +1684,18 @@
             document.getElementById('kilometrajeInstalacion').value = '<%= vehicle.kilometraje_actual || '' %>';
             document.getElementById('presionInput').value = '32';
             document.getElementById('profundidadInput').value = '8.5';
+        }
+
+        // Funciones para el modal de operador
+        function openOperatorModal() {
+            const modal = document.getElementById('operatorModal');
+            modal.style.display = 'block';
+        }
+
+        function closeOperatorModal() {
+            const modal = document.getElementById('operatorModal');
+            modal.style.display = 'none';
+            document.getElementById('operatorForm').reset();
         }
 
         // Funciones para el llenado rápido de posiciones
