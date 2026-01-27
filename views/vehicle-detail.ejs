@@ -584,6 +584,7 @@
                         <th>Precio/Litro</th>
                         <th>Costo Total</th>
                         <th>Kilometraje</th>
+                        <th>Ruta terrestre</th>
                         <th>Estación</th>
                         <th>Ticket</th>
                     </tr>
@@ -596,6 +597,7 @@
                         <td class="text-muted">$<%= record.precio_litro.toFixed(2) %></td>
                         <td class="font-weight-bold">$<%= record.costo_total.toFixed(2) %></td>
                         <td class="text-muted"><%= record.kilometraje ? record.kilometraje.toLocaleString() + ' km' : '-' %></td>
+                        <td class="text-muted"><%= record.ruta_terrestre || '-' %></td>
                         <td class="text-muted"><%= record.estacion || '-' %></td>
                         <td class="text-muted"><%= record.ticket_gasolina || '-' %></td>
                     </tr>
@@ -930,6 +932,10 @@
                     <div class="form-group">
                         <label class="form-label" for="ticket_gasolina">Ticket de Gasolina</label>
                         <input type="text" id="ticket_gasolina" name="ticket_gasolina" class="form-control" placeholder="Número de ticket o referencia">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="ruta_terrestre">Ruta terrestre</label>
+                        <input type="text" id="ruta_terrestre" name="ruta_terrestre" class="form-control" placeholder="Ej: CDMX – Querétaro, Tramo Monterrey – Reynosa">
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="btn btn-success" style="flex: 1;">

@@ -245,6 +245,9 @@ function initializeDatabase() {
     db.run(`ALTER TABLE fuel_records ADD COLUMN ticket_gasolina TEXT`, (err) => {
         // Ignore error if column already exists
     });
+    db.run(`ALTER TABLE fuel_records ADD COLUMN ruta_terrestre TEXT`, (err) => {
+        // Ignore error if column already exists
+    });
     
     // Tires table for tire management
     db.runConverted(`CREATE TABLE IF NOT EXISTS tires (
@@ -3732,7 +3735,7 @@ app.delete('/api/vehicles/:id', requireAuth, (req, res) => {
 });
 
 app.post('/api/fuel', requireAuth, (req, res) => {
-    const { vehicle_id, fecha, litros, precio_litro, kilometraje, estacion, ticket_gasolina } = req.body;
+    const { vehicle_id, fecha, litros, precio_litro, kilometraje, estacion, ticket_gasolina, ruta_terrestre } = req.body;
     const costo_total = litros * precio_litro;
     
     // Verify vehicle belongs to user
@@ -3741,9 +3744,9 @@ app.post('/api/fuel', requireAuth, (req, res) => {
             return res.status(403).json({ error: 'No autorizado' });
         }
         
-        db.run(`INSERT INTO fuel_records (vehicle_id, fecha, litros, precio_litro, costo_total, kilometraje, estacion, ticket_gasolina) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [vehicle_id, fecha, litros, precio_litro, costo_total, kilometraje, estacion, ticket_gasolina || null],
+        db.run(`INSERT INTO fuel_records (vehicle_id, fecha, litros, precio_litro, costo_total, kilometraje, estacion, ticket_gasolina, ruta_terrestre) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [vehicle_id, fecha, litros, precio_litro, costo_total, kilometraje, estacion, ticket_gasolina || null, ruta_terrestre || null],
             (err, result) => {
                 if (err) {
                     console.error('Error creating fuel record:', err);
@@ -5520,8 +5523,8 @@ function generateFuelRecordsPDF(vehicle, fuelRecords, user, res) {
        .text('REGISTROS DE COMBUSTIBLE', 50, yPos);
     yPos += 30;
     
-    const fCols = [60, 60, 70, 80, 80, 100];
-    const fHeaders = ['Fecha', 'Litros', 'Precio/L', 'Costo Total', 'Kilometraje', 'Estación'];
+    const fCols = [55, 45, 55, 70, 65, 95, 85];
+    const fHeaders = ['Fecha', 'Litros', 'Precio/L', 'Costo Total', 'Km', 'Ruta terrestre', 'Estación'];
     let xPos = 50;
     
     fHeaders.forEach((header, i) => {
@@ -5557,7 +5560,9 @@ function generateFuelRecordsPDF(vehicle, fuelRecords, user, res) {
         xPos += fCols[3];
         drawTableCell(doc, xPos, yPos, fCols[4], 18, `${(record.kilometraje || 0).toLocaleString()} km`);
         xPos += fCols[4];
-        drawTableCell(doc, xPos, yPos, fCols[5], 18, record.estacion || '-');
+        drawTableCell(doc, xPos, yPos, fCols[5], 18, (record.ruta_terrestre || '-').substring(0, 20));
+        xPos += fCols[5];
+        drawTableCell(doc, xPos, yPos, fCols[6], 18, (record.estacion || '-').substring(0, 18));
         yPos += 18;
     });
     
