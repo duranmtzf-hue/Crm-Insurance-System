@@ -581,10 +581,14 @@
                     <tr>
                         <th>Fecha</th>
                         <th>Litros</th>
-                        <th>Precio/Litro</th>
-                        <th>Costo Total</th>
-                        <th>Kilometraje</th>
-                        <th>Ruta terrestre</th>
+                        <th>Precio/L</th>
+                        <th>Costo</th>
+                        <th>Km</th>
+                        <th>Origen</th>
+                        <th>Destino</th>
+                        <th>Desc. ruta</th>
+                        <th>Dist. km</th>
+                        <th>Tiempo</th>
                         <th>Estación</th>
                         <th>Ticket</th>
                     </tr>
@@ -597,8 +601,13 @@
                         <td class="text-muted">$<%= record.precio_litro.toFixed(2) %></td>
                         <td class="font-weight-bold">$<%= record.costo_total.toFixed(2) %></td>
                         <td class="text-muted"><%= record.kilometraje ? record.kilometraje.toLocaleString() + ' km' : '-' %></td>
-                        <td class="text-muted"><%= record.ruta_terrestre || '-' %></td>
-                        <td class="text-muted"><%= record.estacion || '-' %></td>
+                        <% var _o=(record.ruta_origen||record.ruta_terrestre||'-').toString(), _d=(record.ruta_destino||'-').toString(), _r=(record.ruta_descripcion||'-').toString(); %>
+                        <td class="text-muted"><%= _o.length>15 ? _o.substring(0,15)+'…' : _o %></td>
+                        <td class="text-muted"><%= _d.length>15 ? _d.substring(0,15)+'…' : _d %></td>
+                        <td class="text-muted" title="<%= (record.ruta_descripcion||'').replace(/"/g,'&quot;') %>"><%= _r.length>12 ? _r.substring(0,12)+'…' : _r %></td>
+                        <td class="text-muted"><%= record.ruta_distancia_km != null ? Number(record.ruta_distancia_km) + ' km' : '-' %></td>
+                        <td class="text-muted"><%= (record.ruta_tiempo_horas != null || record.ruta_tiempo_minutos != null) ? (record.ruta_tiempo_horas || 0) + 'h ' + (record.ruta_tiempo_minutos || 0) + 'm' : '-' %></td>
+                        <td class="text-muted"><%= (record.estacion || '-').toString().substring(0, 12) %><%= (record.estacion && record.estacion.length > 12) ? '…' : '' %></td>
                         <td class="text-muted"><%= record.ticket_gasolina || '-' %></td>
                     </tr>
                     <% }); %>
@@ -933,9 +942,34 @@
                         <label class="form-label" for="ticket_gasolina">Ticket de Gasolina</label>
                         <input type="text" id="ticket_gasolina" name="ticket_gasolina" class="form-control" placeholder="Número de ticket o referencia">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="ruta_terrestre">Ruta terrestre</label>
-                        <input type="text" id="ruta_terrestre" name="ruta_terrestre" class="form-control" placeholder="Ej: CDMX – Querétaro, Tramo Monterrey – Reynosa">
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #dee2e6;">
+                        <p class="form-label" style="font-weight: 600; margin-bottom: 0.75rem;"><i class="fas fa-route"></i> Ruta terrestre</p>
+                        <div class="form-group">
+                            <label class="form-label" for="ruta_origen">Origen</label>
+                            <input type="text" id="ruta_origen" name="ruta_origen" class="form-control" placeholder="Ej: CDMX, Terminal Norte">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="ruta_destino">Destino</label>
+                            <input type="text" id="ruta_destino" name="ruta_destino" class="form-control" placeholder="Ej: Querétaro, Plaza Logística">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="ruta_descripcion">Descripción de la ruta</label>
+                            <textarea id="ruta_descripcion" name="ruta_descripcion" class="form-control" rows="2" placeholder="Ej: Autopista México–Querétaro, caseta Indios Verdes"></textarea>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                            <div class="form-group">
+                                <label class="form-label" for="ruta_distancia_km">Distancia aprox. (km)</label>
+                                <input type="number" step="0.1" id="ruta_distancia_km" name="ruta_distancia_km" class="form-control" placeholder="km">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="ruta_tiempo_horas">Tiempo aprox. (horas)</label>
+                                <input type="number" min="0" id="ruta_tiempo_horas" name="ruta_tiempo_horas" class="form-control" placeholder="h">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="ruta_tiempo_minutos">Tiempo aprox. (minutos)</label>
+                                <input type="number" min="0" max="59" id="ruta_tiempo_minutos" name="ruta_tiempo_minutos" class="form-control" placeholder="min">
+                            </div>
+                        </div>
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="btn btn-success" style="flex: 1;">
@@ -1535,6 +1569,9 @@
             data.litros = parseFloat(data.litros);
             data.precio_litro = parseFloat(data.precio_litro);
             if (data.kilometraje) data.kilometraje = parseInt(data.kilometraje);
+            if (data.ruta_distancia_km !== '') data.ruta_distancia_km = parseFloat(data.ruta_distancia_km);
+            if (data.ruta_tiempo_horas !== '') data.ruta_tiempo_horas = parseInt(data.ruta_tiempo_horas, 10);
+            if (data.ruta_tiempo_minutos !== '') data.ruta_tiempo_minutos = parseInt(data.ruta_tiempo_minutos, 10);
             
             try {
                 const response = await fetch('/api/fuel', {
