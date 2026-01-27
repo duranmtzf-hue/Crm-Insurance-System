@@ -446,6 +446,8 @@
             <div class="period-selector">
                 <label for="period" style="font-weight: 600;">Período:</label>
                 <select id="period" onchange="window.location.href='/reports?period=' + this.value">
+                    <option value="hoy" <%= period === 'hoy' ? 'selected' : '' %>>Hoy (presente)</option>
+                    <option value="semanal" <%= period === 'semanal' ? 'selected' : '' %>>Semanal</option>
                     <option value="1month" <%= period === '1month' ? 'selected' : '' %>>Último Mes</option>
                     <option value="3months" <%= period === '3months' ? 'selected' : '' %>>Últimos 3 Meses</option>
                     <option value="6months" <%= period === '6months' ? 'selected' : '' %>>Últimos 6 Meses</option>
