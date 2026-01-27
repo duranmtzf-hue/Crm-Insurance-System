@@ -1179,78 +1179,62 @@
     </div>
 
     <script>
-        // Chart.js configuration
-        // Note: showTab is already defined in the head section
+        document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js no está cargado. Comprueba la conexión o el CDN.');
+            return;
+        }
         Chart.defaults.font.family = "'Open Sans', sans-serif";
         Chart.defaults.font.size = 12;
         Chart.defaults.color = '#212529';
 
-        // Debug: Log available data
-        <% try { %>
-        console.log('Cost Breakdown:', <%= JSON.stringify(costBreakdown || []) %>);
-        console.log('Monthly Trends:', <%= JSON.stringify(monthlyTrends || []) %>);
-        console.log('Fuel Data:', <%= JSON.stringify(fuelData || []) %>);
-        <% } catch(e) { %>
-        console.log('Error logging data:', e);
-        <% } %>
-        
-        // Cost Breakdown Chart
         <% 
-        var hasCostDataForChart = false;
-        if (costBreakdown && costBreakdown.length > 0) {
-            for (var i = 0; i < costBreakdown.length; i++) {
-                if (costBreakdown[i].amount > 0) {
-                    hasCostDataForChart = true;
-                    break;
-                }
-            }
+        var costBreakdownFiltered = [];
+        if (costBreakdown && Array.isArray(costBreakdown)) {
+            costBreakdownFiltered = costBreakdown.filter(function(c){ return c && (Number(c.amount) || 0) > 0; });
         }
-        if (hasCostDataForChart) { %>
-        const costBreakdownCtx = document.getElementById('costBreakdownChart');
-        if (costBreakdownCtx) {
+        var hasCostDataForChart = costBreakdownFiltered.length > 0;
+        %>
+        var costBreakdownData = <%- JSON.stringify(costBreakdownFiltered) %>;
+
+        // Cost Breakdown Chart (pastel/doughnut)
+        var costBreakdownCtx = document.getElementById('costBreakdownChart');
+        if (costBreakdownCtx && costBreakdownData && costBreakdownData.length > 0) {
             try {
-                new Chart(costBreakdownCtx, {
+                var costChart = new Chart(costBreakdownCtx, {
                     type: 'doughnut',
                     data: {
-                        labels: [<%= costBreakdown.filter(c => c.amount > 0).map(c => `'${c.category}'`).join(',') %>],
+                        labels: costBreakdownData.map(function(c){ return c.category || ''; }),
                         datasets: [{
-                            data: [<%= costBreakdown.filter(c => c.amount > 0).map(c => c.amount).join(',') %>],
-                            backgroundColor: [<%= costBreakdown.filter(c => c.amount > 0).map(c => `'${c.color}'`).join(',') %>],
+                            data: costBreakdownData.map(function(c){ return Number(c.amount) || 0; }),
+                            backgroundColor: costBreakdownData.map(function(c){ return c.color || '#6c757d'; }),
                             borderWidth: 2,
                             borderColor: '#fff'
                         }]
                     },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed || 0;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return `${label}: $${value.toLocaleString('es-MX', {minimumFractionDigits: 2})} (${percentage}%)`;
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        var value = context.parsed || 0;
+                                        var total = context.dataset.data.reduce(function(a,b){ return a+b; }, 0);
+                                        var pct = total ? ((value/total)*100).toFixed(1) : 0;
+                                        return (context.label || '') + ': $' + value.toLocaleString('es-MX', {minimumFractionDigits: 2}) + ' (' + pct + '%)';
+                                    }
                                 }
                             }
                         }
                     }
-                }
                 });
-                console.log('Cost Breakdown Chart created successfully');
-            } catch (error) {
-                console.error('Error creating Cost Breakdown Chart:', error);
+                if (costChart && costChart.resize) requestAnimationFrame(function(){ costChart.resize(); });
+            } catch (err) {
+                console.error('Error creando gráfica de distribución de costos:', err);
             }
-        } else {
-            console.warn('Cost Breakdown Chart canvas not found');
         }
-        <% } else { %>
-        console.log('No cost breakdown data available or all amounts are zero');
-        <% } %>
 
         // Monthly Trends Chart
         <% if (monthlyTrends && monthlyTrends.length > 0) { %>
@@ -1894,6 +1878,7 @@
         <% } %>
 
         console.log('All charts initialized');
+        }); // fin DOMContentLoaded
     </script>
 </body>
 </html>
