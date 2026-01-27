@@ -6439,7 +6439,7 @@ app.delete('/api/fines/:id', requireAuth, (req, res) => {
 // Reports route - Comprehensive reports with all system data
 app.get('/reports', requireAuth, (req, res) => {
     const userId = req.session.userId;
-    const period = req.query.period || '6months'; // hoy, semanal, 1month, 3months, 6months, 12months
+    const period = (req.query.period || 'hoy').toString().toLowerCase(); // hoy, semanal, 1month, 3months, 6months, 12months
     
     // Get user vehicles
     db.allConverted('SELECT * FROM vehicles WHERE user_id = ?', [userId], (err, vehicles) => {
@@ -6487,13 +6487,12 @@ app.get('/reports', requireAuth, (req, res) => {
             });
         }
         
-        // Calculate period date (SQL expression or literal 'YYYY-MM-DD')
+        // Calculate period date (SQL expression compatible con SQLite y PostgreSQL vía convertSQL)
         let periodDate = "date('now', '-6 months')";
         if (period === 'hoy') {
-            periodDate = "'1900-01-01'"; // Todo el historial hasta hoy
+            periodDate = "date('now', '-100 years')"; // Todo el historial hasta hoy
         } else if (period === 'semanal') {
-            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-            periodDate = "'" + weekAgo.toISOString().split('T')[0] + "'";
+            periodDate = "date('now', '-7 days')";
         } else if (period === '1month') periodDate = "date('now', '-1 month')";
         else if (period === '3months') periodDate = "date('now', '-3 months')";
         else if (period === '12months') periodDate = "date('now', '-12 months')";

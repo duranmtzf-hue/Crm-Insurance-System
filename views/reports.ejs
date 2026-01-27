@@ -418,6 +418,17 @@
     </style>
 </head>
 <body>
+    <script>
+        // Recordar último período y redirigir si entramos sin ?period=
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            if (!params.has('period')) {
+                var saved = (typeof localStorage !== 'undefined' && localStorage.getItem('reportsPeriod')) || 'hoy';
+                window.location.replace('/reports?period=' + encodeURIComponent(saved));
+                return;
+            }
+        })();
+    </script>
     <header>
         <div class="header-container">
             <div class="logo">
@@ -445,7 +456,7 @@
             </div>
             <div class="period-selector">
                 <label for="period" style="font-weight: 600;">Período:</label>
-                <select id="period" onchange="window.location.href='/reports?period=' + this.value">
+                <select id="period" onchange="var p=this.value; try{localStorage.setItem('reportsPeriod',p);}catch(e){} window.location.href='/reports?period='+encodeURIComponent(p);">
                     <option value="hoy" <%= period === 'hoy' ? 'selected' : '' %>>Hoy (presente)</option>
                     <option value="semanal" <%= period === 'semanal' ? 'selected' : '' %>>Semanal</option>
                     <option value="1month" <%= period === '1month' ? 'selected' : '' %>>Último Mes</option>
