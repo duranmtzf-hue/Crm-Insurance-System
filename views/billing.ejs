@@ -1038,6 +1038,7 @@
             </div>
             <div class="modal-body" style="max-height: 85vh; overflow-y: auto;">
                 <form id="cartaPorteForm">
+                    <p style="margin-bottom: 16px; font-size: 0.9rem; color: var(--gray);"><span style="color: #dc3545;">*</span> Campos obligatorios. Los demás son opcionales.</p>
                     <!-- Información General -->
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--accent);">
                         <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
@@ -1045,7 +1046,7 @@
                         </h3>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Vehículo *</label>
+                                <label class="form-label">Vehículo <span style="color: #dc3545;">*</span></label>
                                 <select name="vehicle_id" id="vehicleSelect" class="form-control" required onchange="loadVehicleData()">
                                     <option value="">Seleccionar vehículo</option>
                                     <% vehicles.forEach(function(vehicle) { %>
@@ -1054,33 +1055,33 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Folio/Número de Guía</label>
+                                <label class="form-label">Folio/Número de Guía <span style="color: var(--gray); font-weight: 400;">(opcional)</span></label>
                                 <input type="text" name="numero_guia" class="form-control" placeholder="Número de guía de transporte">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Fecha de Salida *</label>
+                                <label class="form-label">Fecha de Salida <span style="color: #dc3545;">*</span></label>
                                 <input type="date" name="fecha" class="form-control" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Hora de Salida</label>
+                                <label class="form-label">Hora de Salida <span style="color: var(--gray); font-weight: 400;">(opcional)</span></label>
                                 <input type="time" name="hora_salida" class="form-control">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Fecha de Llegada</label>
+                                <label class="form-label">Fecha de Llegada <span style="color: var(--gray); font-weight: 400;">(opcional)</span></label>
                                 <input type="date" name="fecha_llegada" class="form-control">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Hora de Llegada</label>
+                                <label class="form-label">Hora de Llegada <span style="color: var(--gray); font-weight: 400;">(opcional)</span></label>
                                 <input type="time" name="hora_llegada" class="form-control">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Tipo de Transporte *</label>
+                                <label class="form-label">Tipo de Transporte <span style="color: #dc3545;">*</span></label>
                                 <select name="tipo_transporte" class="form-control" required>
                                     <option value="Terrestre" selected>Terrestre</option>
                                     <option value="Aéreo">Aéreo</option>
@@ -1089,7 +1090,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Tipo de Servicio</label>
+                                <label class="form-label">Tipo de Servicio <span style="color: var(--gray); font-weight: 400;">(opcional)</span></label>
                                 <select name="tipo_servicio" class="form-control">
                                     <option value="">Seleccionar</option>
                                     <option value="Transporte de Carga">Transporte de Carga</option>
@@ -1099,7 +1100,7 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Distancia Recorrida (km)</label>
+                            <label class="form-label">Distancia Recorrida (km) <span style="color: var(--gray); font-weight: 400;">(opcional)</span></label>
                             <input type="number" name="distancia_km" class="form-control" step="0.01" min="0" placeholder="0.00">
                         </div>
                     </div>
@@ -1110,21 +1111,21 @@
                             <i class="fas fa-map-marker-alt"></i> Ubicación de Origen *
                         </h3>
                         <div class="form-group">
-                            <label class="form-label">Dirección Completa *</label>
+                            <label class="form-label">Dirección Completa <span style="color: #dc3545;">*</span></label>
                             <input type="text" name="origen" class="form-control" placeholder="Calle, número, colonia" required>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Código Postal</label>
+                                <label class="form-label">Código Postal <span style="color: var(--gray); font-weight: 400;">(opcional)</span></label>
                                 <input type="text" name="origen_cp" class="form-control" placeholder="00000" maxlength="5">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Estado *</label>
+                                <label class="form-label">Estado <span style="color: #dc3545;">*</span></label>
                                 <input type="text" name="origen_estado" class="form-control" placeholder="Estado" required>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Municipio</label>
+                            <label class="form-label">Municipio <span style="color: var(--gray); font-weight: 400;">(opcional)</span></label>
                             <input type="text" name="origen_municipio" class="form-control" placeholder="Municipio">
                         </div>
                     </div>
@@ -1135,21 +1136,21 @@
                             <i class="fas fa-map-marker-alt"></i> Ubicación de Destino *
                         </h3>
                         <div class="form-group">
-                            <label class="form-label">Dirección Completa *</label>
+                            <label class="form-label">Dirección Completa <span style="color: #dc3545;">*</span></label>
                             <input type="text" name="destino" class="form-control" placeholder="Calle, número, colonia" required>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label">Código Postal</label>
+                                <label class="form-label">Código Postal <span style="color: var(--gray); font-weight: 400;">(opcional)</span></label>
                                 <input type="text" name="destino_cp" class="form-control" placeholder="00000" maxlength="5">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Estado *</label>
+                                <label class="form-label">Estado <span style="color: #dc3545;">*</span></label>
                                 <input type="text" name="destino_estado" class="form-control" placeholder="Estado" required>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Municipio</label>
+                            <label class="form-label">Municipio <span style="color: var(--gray); font-weight: 400;">(opcional)</span></label>
                             <input type="text" name="destino_municipio" class="form-control" placeholder="Municipio">
                         </div>
                     </div>
@@ -1157,7 +1158,7 @@
                     <!-- Datos del Transportista -->
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
                         <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
-                            <i class="fas fa-truck"></i> Datos del Transportista
+                            <i class="fas fa-truck"></i> Datos del Transportista <span style="color: var(--gray); font-weight: 400; font-size: 0.9rem;">(opcional)</span>
                         </h3>
                         <div class="form-row">
                             <div class="form-group">
@@ -1213,7 +1214,7 @@
                     <!-- Datos del Destinatario -->
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #6f42c1;">
                         <h3 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1rem;">
-                            <i class="fas fa-user-check"></i> Datos del Destinatario
+                            <i class="fas fa-user-check"></i> Datos del Destinatario <span style="color: var(--gray); font-weight: 400; font-size: 0.9rem;">(opcional)</span>
                         </h3>
                         <div class="form-row">
                             <div class="form-group">
