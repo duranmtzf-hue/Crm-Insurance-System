@@ -1039,11 +1039,14 @@ app.get('/logout', (req, res) => {
     res.redirect('/login');
 });
 
-// Middleware to check authentication
+// Middleware to check authentication (API routes reciben 401 JSON para que el cliente redirija a login)
 function requireAuth(req, res, next) {
     if (req.session.userId) {
         next();
     } else {
+        if (req.path.startsWith('/api/')) {
+            return res.status(401).json({ success: false, error: 'Sesión expirada. Inicia sesión de nuevo.' });
+        }
         res.redirect('/login');
     }
 }

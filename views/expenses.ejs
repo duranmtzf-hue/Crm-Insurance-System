@@ -720,15 +720,16 @@
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
+                credentials: 'same-origin'
             });
+            if (response.status === 401 || response.status === 403) {
+                window.location.href = '/login';
+                return { redirect: true };
+            }
             const contentType = response.headers.get('Content-Type') || '';
             if (!contentType.includes('application/json')) {
-                if (response.status === 401 || response.status === 403) {
-                    window.location.href = '/login';
-                    return { redirect: true };
-                }
-                throw new Error('Respuesta inválida del servidor. Intenta de nuevo.');
+                throw new Error('Error del servidor. Intenta de nuevo en unos segundos.');
             }
             const result = await response.json();
             if (result.success) return { ok: true, message: successMsg };
