@@ -14,6 +14,9 @@ const db = require('./db'); // Database abstraction layer
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Necesario en Render: el tráfico llega por HTTPS detrás de un proxy
+app.set('trust proxy', 1);
+
 // Transporter de correo (Gmail con contraseña de aplicación)
 let mailTransporter = null;
 if (process.env.GMAIL_USER && process.env.GMAIL_PASS) {
@@ -144,16 +147,17 @@ if (process.env.DATABASE_URL) {
     console.log('⚠️ Usando MemoryStore para sesiones (solo desarrollo)');
 }
 
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.DATABASE_URL;
 app.use(session({
     store: sessionStore || undefined, // undefined = MemoryStore (solo desarrollo)
     secret: process.env.SESSION_SECRET || 'crm-insurance-secret-key-2024',
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: false, // false para permitir HTTP (Render puede usar HTTP internamente)
+        secure: isProduction, // true en Render (HTTPS) para que el navegador envíe la cookie
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         httpOnly: true,
-        sameSite: 'lax' // Mejor compatibilidad
+        sameSite: 'lax'
     }
 }));
 
@@ -7992,15 +7996,27 @@ app.get('/api/download-report', requireAuth, (req, res) => {
     });
 });
 
-// 404 handler for undefined routes
+// 404 handler: API recibe JSON, el resto HTML
 app.use((req, res) => {
     console.log(`404 - Route not found: ${req.method} ${req.url}`);
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ success: false, error: 'Ruta no encontrada' });
+    }
     res.status(404).send(`
         <h1>404 - Página no encontrada</h1>
         <p>La ruta <strong>${req.url}</strong> no existe.</p>
         <p><a href="/">Volver al inicio</a></p>
         <p><a href="/login">Ir al login</a></p>
     `);
+});
+
+// Manejador de errores: APIs siempre devuelven JSON
+app.use((err, req, res, next) => {
+    console.error('Error en servidor:', err);
+    if (req.path.startsWith('/api/')) {
+        return res.status(500).json({ success: false, error: err.message || 'Error interno del servidor' });
+    }
+    res.status(500).send('Error interno del servidor');
 });
 
 app.listen(PORT, () => {

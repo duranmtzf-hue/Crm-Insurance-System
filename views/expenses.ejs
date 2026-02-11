@@ -751,6 +751,8 @@
                 if (out.ok) {
                     alert(out.message);
                     e.target.reset();
+                    window.location.reload();
+                    return;
                 } else {
                     alert('Error: ' + out.message);
                 }
@@ -776,8 +778,8 @@
                 if (out.redirect) return;
                 if (out.ok) {
                     alert(out.message);
-                    e.target.reset();
-                    document.getElementById('toll_fecha').value = today;
+                    window.location.reload();
+                    return;
                 } else {
                     alert('Error: ' + out.message);
                 }
@@ -803,8 +805,8 @@
                 if (out.redirect) return;
                 if (out.ok) {
                     alert(out.message);
-                    e.target.reset();
-                    document.getElementById('perdiem_fecha').value = today;
+                    window.location.reload();
+                    return;
                 } else {
                     alert('Error: ' + out.message);
                 }
@@ -830,8 +832,8 @@
                 if (out.redirect) return;
                 if (out.ok) {
                     alert(out.message);
-                    e.target.reset();
-                    document.getElementById('variable_fecha').value = today;
+                    window.location.reload();
+                    return;
                 } else {
                     alert('Error: ' + out.message);
                 }
