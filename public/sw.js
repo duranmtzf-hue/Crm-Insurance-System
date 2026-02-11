@@ -1,5 +1,5 @@
 // Service Worker para CRM Insurance System
-const CACHE_NAME = 'crm-insurance-v6';
+const CACHE_NAME = 'crm-insurance-v7';
 const urlsToCache = [
   '/',
   '/dashboard',
@@ -74,15 +74,19 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // EXCLUIR rutas críticas de autenticación y operaciones largas del service worker
-  // Estas rutas deben ir directamente al servidor sin interceptación
+  // EXCLUIR rutas críticas de autenticación, APIs de gastos y operaciones largas del service worker
+  // Estas rutas deben ir directamente al servidor sin interceptación (evita timeout y mensaje "sin conexión")
   const excludedPaths = [
-    '/login', 
-    '/register', 
-    '/logout', 
-    '/api/login', 
+    '/login',
+    '/register',
+    '/logout',
+    '/api/login',
     '/api/register',
-    '/api/carta-porte' // Excluir generación de CFDI que puede tardar mucho tiempo
+    '/api/carta-porte',
+    '/api/operator-salary',
+    '/api/toll-payment',
+    '/api/per-diem',
+    '/api/variable-expense'
   ];
   const isExcluded = excludedPaths.some(path => url.pathname === path || url.pathname.startsWith(path + '/'));
   

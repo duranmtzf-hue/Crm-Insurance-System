@@ -715,27 +715,49 @@
             event.target.classList.add('active');
         }
 
+        // Helper: enviar formulario de gastos a la API (rutas excluidas del SW para evitar "sin conexión")
+        async function submitExpenseForm(url, data, successMsg) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const contentType = response.headers.get('Content-Type') || '';
+            if (!contentType.includes('application/json')) {
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '/login';
+                    return { redirect: true };
+                }
+                throw new Error('Respuesta inválida del servidor. Intenta de nuevo.');
+            }
+            const result = await response.json();
+            if (result.success) return { ok: true, message: successMsg };
+            return { ok: false, message: result.error || 'Error desconocido' };
+        }
+
         // Operator Salary Form
         document.getElementById('operatorSalaryForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
-            
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
             try {
-                const response = await fetch('/api/operator-salary', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                const result = await response.json();
-                if (result.success) {
-                    alert('Sueldo de operador registrado correctamente');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+                const out = await submitExpenseForm('/api/operator-salary', data, 'Sueldo de operador registrado correctamente');
+                if (out.redirect) return;
+                if (out.ok) {
+                    alert(out.message);
                     e.target.reset();
                 } else {
-                    alert('Error: ' + (result.error || 'Error desconocido'));
+                    alert('Error: ' + out.message);
                 }
             } catch (error) {
-                alert('Error al registrar sueldo: ' + error.message);
+                alert(error.message || 'Error de conexión. Verifica tu internet e intenta de nuevo.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
         });
 
@@ -744,23 +766,25 @@
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
-            
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
             try {
-                const response = await fetch('/api/toll-payment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                const result = await response.json();
-                if (result.success) {
-                    alert('Pago de caseta registrado correctamente');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+                const out = await submitExpenseForm('/api/toll-payment', data, 'Pago de caseta registrado correctamente');
+                if (out.redirect) return;
+                if (out.ok) {
+                    alert(out.message);
                     e.target.reset();
                     document.getElementById('toll_fecha').value = today;
                 } else {
-                    alert('Error: ' + (result.error || 'Error desconocido'));
+                    alert('Error: ' + out.message);
                 }
             } catch (error) {
-                alert('Error al registrar pago de caseta: ' + error.message);
+                alert(error.message || 'Error de conexión. Verifica tu internet e intenta de nuevo.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
         });
 
@@ -769,23 +793,25 @@
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
-            
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
             try {
-                const response = await fetch('/api/per-diem', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                const result = await response.json();
-                if (result.success) {
-                    alert('Viático registrado correctamente');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+                const out = await submitExpenseForm('/api/per-diem', data, 'Viático registrado correctamente');
+                if (out.redirect) return;
+                if (out.ok) {
+                    alert(out.message);
                     e.target.reset();
                     document.getElementById('perdiem_fecha').value = today;
                 } else {
-                    alert('Error: ' + (result.error || 'Error desconocido'));
+                    alert('Error: ' + out.message);
                 }
             } catch (error) {
-                alert('Error al registrar viático: ' + error.message);
+                alert(error.message || 'Error de conexión. Verifica tu internet e intenta de nuevo.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
         });
 
@@ -794,23 +820,25 @@
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
-            
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
             try {
-                const response = await fetch('/api/variable-expense', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                const result = await response.json();
-                if (result.success) {
-                    alert('Gasto variable registrado correctamente');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+                const out = await submitExpenseForm('/api/variable-expense', data, 'Gasto variable registrado correctamente');
+                if (out.redirect) return;
+                if (out.ok) {
+                    alert(out.message);
                     e.target.reset();
                     document.getElementById('variable_fecha').value = today;
                 } else {
-                    alert('Error: ' + (result.error || 'Error desconocido'));
+                    alert('Error: ' + out.message);
                 }
             } catch (error) {
-                alert('Error al registrar gasto variable: ' + error.message);
+                alert(error.message || 'Error de conexión. Verifica tu internet e intenta de nuevo.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
         });
 
