@@ -59,7 +59,8 @@ if (process.env.GMAIL_USER && process.env.GMAIL_PASS) {
     console.warn('⚠️ Configure las variables de entorno para habilitar envío de correos');
 }
 
-// Middleware
+// Middleware (parsear JSON en /api primero para evitar req.body vacío)
+app.use('/api', bodyParser.json({ limit: '2mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
@@ -3823,17 +3824,17 @@ app.post('/api/operator-salary', requireAuth, (req, res) => {
             (err, result) => {
                 if (err) {
                     console.error('Error creating operator salary:', err);
-                    return res.status(500).json({ error: 'Error al registrar sueldo de operador: ' + err.message });
+                    return res.status(500).json({ error: 'Error al registrar sueldo de operador: ' + (err.message || '') });
                 }
-                const salaryId = result?.lastID;
-                logActivity(req.session.userId, 'vehicle', vehicle_id, 'operator_salary_added',
-                    `Sueldo de operador agregado: $${sueldo_mensual.toFixed(2)}/${tipo_periodo || 'Mensual'}`, null, { sueldo_mensual, tipo_periodo, periodo_inicio });
+                const salaryId = result && result.lastID;
                 res.json({ success: true, id: salaryId });
+                try { logActivity(req.session.userId, 'vehicle', vehicle_id, 'operator_salary_added',
+                    `Sueldo de operador agregado: $${Number(sueldo_mensual).toFixed(2)}/${tipo_periodo || 'Mensual'}`, null, { sueldo_mensual, tipo_periodo, periodo_inicio }); } catch (_) {}
             });
     });
     } catch (e) {
         console.error('Error en /api/operator-salary:', e);
-        return res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
+        if (!res.headersSent) res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
     }
 });
 
@@ -3857,17 +3858,17 @@ app.post('/api/toll-payment', requireAuth, (req, res) => {
             (err, result) => {
                 if (err) {
                     console.error('Error creating toll payment:', err);
-                    return res.status(500).json({ error: 'Error al registrar pago de caseta: ' + err.message });
+                    return res.status(500).json({ error: 'Error al registrar pago de caseta: ' + (err.message || '') });
                 }
-                const tollId = result?.lastID;
-                logActivity(req.session.userId, 'vehicle', vehicle_id, 'toll_payment_added',
-                    `Pago de caseta agregado: ${caseta} - $${monto.toFixed(2)}`, null, { caseta, monto, fecha });
+                const tollId = result && result.lastID;
                 res.json({ success: true, id: tollId });
+                try { logActivity(req.session.userId, 'vehicle', vehicle_id, 'toll_payment_added',
+                    `Pago de caseta agregado: ${caseta} - $${Number(monto).toFixed(2)}`, null, { caseta, monto, fecha }); } catch (_) {}
             });
     });
     } catch (e) {
         console.error('Error en /api/toll-payment:', e);
-        return res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
+        if (!res.headersSent) res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
     }
 });
 
@@ -3891,17 +3892,17 @@ app.post('/api/per-diem', requireAuth, (req, res) => {
             (err, result) => {
                 if (err) {
                     console.error('Error creating per diem expense:', err);
-                    return res.status(500).json({ error: 'Error al registrar viático: ' + err.message });
+                    return res.status(500).json({ error: 'Error al registrar viático: ' + (err.message || '') });
                 }
-                const perDiemId = result?.lastID;
-                logActivity(req.session.userId, 'vehicle', vehicle_id, 'per_diem_added',
-                    `Viático agregado: ${concepto} - $${monto.toFixed(2)}`, null, { concepto, monto, fecha });
+                const perDiemId = result && result.lastID;
                 res.json({ success: true, id: perDiemId });
+                try { logActivity(req.session.userId, 'vehicle', vehicle_id, 'per_diem_added',
+                    `Viático agregado: ${concepto} - $${Number(monto).toFixed(2)}`, null, { concepto, monto, fecha }); } catch (_) {}
             });
     });
     } catch (e) {
         console.error('Error en /api/per-diem:', e);
-        return res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
+        if (!res.headersSent) res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
     }
 });
 
@@ -3925,17 +3926,17 @@ app.post('/api/variable-expense', requireAuth, (req, res) => {
             (err, result) => {
                 if (err) {
                     console.error('Error creating variable expense:', err);
-                    return res.status(500).json({ error: 'Error al registrar gasto variable: ' + err.message });
+                    return res.status(500).json({ error: 'Error al registrar gasto variable: ' + (err.message || '') });
                 }
-                const expenseId = result?.lastID;
-                logActivity(req.session.userId, 'vehicle', vehicle_id, 'variable_expense_added',
-                    `Gasto variable agregado: ${concepto} - $${monto.toFixed(2)}`, null, { concepto, monto, categoria, fecha });
+                const expenseId = result && result.lastID;
                 res.json({ success: true, id: expenseId });
+                try { logActivity(req.session.userId, 'vehicle', vehicle_id, 'variable_expense_added',
+                    `Gasto variable agregado: ${concepto} - $${Number(monto).toFixed(2)}`, null, { concepto, monto, categoria, fecha }); } catch (_) {}
             });
     });
     } catch (e) {
         console.error('Error en /api/variable-expense:', e);
-        return res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
+        if (!res.headersSent) res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
     }
 });
 

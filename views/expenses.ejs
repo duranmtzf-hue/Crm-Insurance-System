@@ -729,9 +729,17 @@
             }
             const contentType = response.headers.get('Content-Type') || '';
             if (!contentType.includes('application/json')) {
-                throw new Error('Error del servidor. Intenta de nuevo en unos segundos.');
+                if (response.status === 502 || response.status === 503) {
+                    throw new Error('La aplicación está iniciando o el servidor no responde. Espera 30 segundos y vuelve a intentar.');
+                }
+                throw new Error('Error del servidor (código ' + response.status + '). Vuelve a intentar.');
             }
-            const result = await response.json();
+            let result;
+            try {
+                result = await response.json();
+            } catch (_) {
+                throw new Error('Respuesta inválida. Vuelve a intentar.');
+            }
             if (result.success) return { ok: true, message: successMsg };
             return { ok: false, message: result.error || 'Error desconocido' };
         }
