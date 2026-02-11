@@ -3805,17 +3805,17 @@ app.post('/api/maintenance', requireAuth, (req, res) => {
 
 // Operator Salary API (Costo Fijo)
 app.post('/api/operator-salary', requireAuth, (req, res) => {
-    const { vehicle_id, operator_id, periodo_inicio, periodo_fin, sueldo_mensual, tipo_periodo, descripcion } = req.body;
-    
-    if (!vehicle_id || !sueldo_mensual || !periodo_inicio) {
-        return res.status(400).json({ error: 'Vehículo, sueldo mensual y período de inicio son requeridos' });
-    }
-    
-    // Verify vehicle belongs to user
-    db.get('SELECT user_id FROM vehicles WHERE id = ?', [vehicle_id], (err, vehicle) => {
-        if (err || !vehicle || vehicle.user_id !== req.session.userId) {
-            return res.status(403).json({ error: 'No autorizado' });
+    try {
+        const body = req.body && typeof req.body === 'object' ? req.body : {};
+        const { vehicle_id, operator_id, periodo_inicio, periodo_fin, sueldo_mensual, tipo_periodo, descripcion } = body;
+        if (!vehicle_id || !sueldo_mensual || !periodo_inicio) {
+            return res.status(400).json({ error: 'Vehículo, sueldo mensual y período de inicio son requeridos' });
         }
+        const sessionUserId = req.session && req.session.userId;
+        db.get('SELECT user_id FROM vehicles WHERE id = ?', [vehicle_id], (err, vehicle) => {
+            if (err) return res.status(500).json({ error: 'Error al verificar vehículo: ' + (err.message || '') });
+            if (!vehicle) return res.status(404).json({ error: 'Vehículo no encontrado' });
+            if (String(vehicle.user_id) !== String(sessionUserId)) return res.status(403).json({ error: 'No autorizado' });
         
         db.runConverted(`INSERT INTO operator_salaries (vehicle_id, operator_id, periodo_inicio, periodo_fin, sueldo_mensual, tipo_periodo, descripcion) 
                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -3831,21 +3831,25 @@ app.post('/api/operator-salary', requireAuth, (req, res) => {
                 res.json({ success: true, id: salaryId });
             });
     });
+    } catch (e) {
+        console.error('Error en /api/operator-salary:', e);
+        return res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
+    }
 });
 
 // Toll Payments API (Costo Variable)
 app.post('/api/toll-payment', requireAuth, (req, res) => {
-    const { vehicle_id, fecha, caseta, ubicacion, monto, kilometraje, descripcion, ticket_caseta } = req.body;
-    
-    if (!vehicle_id || !fecha || !caseta || !monto) {
-        return res.status(400).json({ error: 'Vehículo, fecha, caseta y monto son requeridos' });
-    }
-    
-    // Verify vehicle belongs to user
-    db.get('SELECT user_id FROM vehicles WHERE id = ?', [vehicle_id], (err, vehicle) => {
-        if (err || !vehicle || vehicle.user_id !== req.session.userId) {
-            return res.status(403).json({ error: 'No autorizado' });
+    try {
+        const body = req.body && typeof req.body === 'object' ? req.body : {};
+        const { vehicle_id, fecha, caseta, ubicacion, monto, kilometraje, descripcion, ticket_caseta } = body;
+        if (!vehicle_id || !fecha || !caseta || !monto) {
+            return res.status(400).json({ error: 'Vehículo, fecha, caseta y monto son requeridos' });
         }
+        const sessionUserId = req.session && req.session.userId;
+        db.get('SELECT user_id FROM vehicles WHERE id = ?', [vehicle_id], (err, vehicle) => {
+            if (err) return res.status(500).json({ error: 'Error al verificar vehículo' });
+            if (!vehicle) return res.status(404).json({ error: 'Vehículo no encontrado' });
+            if (String(vehicle.user_id) !== String(sessionUserId)) return res.status(403).json({ error: 'No autorizado' });
         
         db.runConverted(`INSERT INTO toll_payments (vehicle_id, fecha, caseta, ubicacion, monto, kilometraje, descripcion, ticket_caseta) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -3861,21 +3865,25 @@ app.post('/api/toll-payment', requireAuth, (req, res) => {
                 res.json({ success: true, id: tollId });
             });
     });
+    } catch (e) {
+        console.error('Error en /api/toll-payment:', e);
+        return res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
+    }
 });
 
 // Per Diem Expenses API (Viáticos - Costo Variable)
 app.post('/api/per-diem', requireAuth, (req, res) => {
-    const { vehicle_id, fecha, concepto, monto, kilometraje, descripcion, comprobante } = req.body;
-    
-    if (!vehicle_id || !fecha || !concepto || !monto) {
-        return res.status(400).json({ error: 'Vehículo, fecha, concepto y monto son requeridos' });
-    }
-    
-    // Verify vehicle belongs to user
-    db.get('SELECT user_id FROM vehicles WHERE id = ?', [vehicle_id], (err, vehicle) => {
-        if (err || !vehicle || vehicle.user_id !== req.session.userId) {
-            return res.status(403).json({ error: 'No autorizado' });
+    try {
+        const body = req.body && typeof req.body === 'object' ? req.body : {};
+        const { vehicle_id, fecha, concepto, monto, kilometraje, descripcion, comprobante } = body;
+        if (!vehicle_id || !fecha || !concepto || !monto) {
+            return res.status(400).json({ error: 'Vehículo, fecha, concepto y monto son requeridos' });
         }
+        const sessionUserId = req.session && req.session.userId;
+        db.get('SELECT user_id FROM vehicles WHERE id = ?', [vehicle_id], (err, vehicle) => {
+            if (err) return res.status(500).json({ error: 'Error al verificar vehículo' });
+            if (!vehicle) return res.status(404).json({ error: 'Vehículo no encontrado' });
+            if (String(vehicle.user_id) !== String(sessionUserId)) return res.status(403).json({ error: 'No autorizado' });
         
         db.runConverted(`INSERT INTO per_diem_expenses (vehicle_id, fecha, concepto, monto, kilometraje, descripcion, comprobante) 
                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -3891,21 +3899,25 @@ app.post('/api/per-diem', requireAuth, (req, res) => {
                 res.json({ success: true, id: perDiemId });
             });
     });
+    } catch (e) {
+        console.error('Error en /api/per-diem:', e);
+        return res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
+    }
 });
 
 // Variable Expenses API (Otros gastos variables)
 app.post('/api/variable-expense', requireAuth, (req, res) => {
-    const { vehicle_id, fecha, concepto, monto, kilometraje, categoria, descripcion, comprobante } = req.body;
-    
-    if (!vehicle_id || !fecha || !concepto || !monto) {
-        return res.status(400).json({ error: 'Vehículo, fecha, concepto y monto son requeridos' });
-    }
-    
-    // Verify vehicle belongs to user
-    db.get('SELECT user_id FROM vehicles WHERE id = ?', [vehicle_id], (err, vehicle) => {
-        if (err || !vehicle || vehicle.user_id !== req.session.userId) {
-            return res.status(403).json({ error: 'No autorizado' });
+    try {
+        const body = req.body && typeof req.body === 'object' ? req.body : {};
+        const { vehicle_id, fecha, concepto, monto, kilometraje, categoria, descripcion, comprobante } = body;
+        if (!vehicle_id || !fecha || !concepto || !monto) {
+            return res.status(400).json({ error: 'Vehículo, fecha, concepto y monto son requeridos' });
         }
+        const sessionUserId = req.session && req.session.userId;
+        db.get('SELECT user_id FROM vehicles WHERE id = ?', [vehicle_id], (err, vehicle) => {
+            if (err) return res.status(500).json({ error: 'Error al verificar vehículo' });
+            if (!vehicle) return res.status(404).json({ error: 'Vehículo no encontrado' });
+            if (String(vehicle.user_id) !== String(sessionUserId)) return res.status(403).json({ error: 'No autorizado' });
         
         db.runConverted(`INSERT INTO variable_expenses (vehicle_id, fecha, concepto, monto, kilometraje, categoria, descripcion, comprobante) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -3921,6 +3933,10 @@ app.post('/api/variable-expense', requireAuth, (req, res) => {
                 res.json({ success: true, id: expenseId });
             });
     });
+    } catch (e) {
+        console.error('Error en /api/variable-expense:', e);
+        return res.status(500).json({ error: 'Error del servidor: ' + (e.message || 'Intenta de nuevo') });
+    }
 });
 
 
