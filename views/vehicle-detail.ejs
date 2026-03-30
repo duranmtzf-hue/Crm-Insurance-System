@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -251,6 +251,116 @@
         }
         .image-card:hover .image-container img {
             transform: scale(1.05);
+        }
+        .operators-credential-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 22px;
+            margin-top: 8px;
+        }
+        .operator-credential {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 6px 24px rgba(15, 23, 42, 0.1);
+            border: 1px solid var(--border);
+            background: #fff;
+        }
+        .operator-credential-header {
+            background: linear-gradient(135deg, #001f3f 0%, #1e3a5f 100%);
+            color: #fff;
+            padding: 11px 16px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .operator-credential-body {
+            display: grid;
+            grid-template-columns: 118px 1fr;
+            gap: 16px;
+            padding: 18px;
+            align-items: start;
+        }
+        .operator-credential-photo {
+            width: 118px;
+            height: 148px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: #e2e8f0;
+            border: 3px solid #f1f5f9;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            display: block;
+        }
+        .operator-credential-photo.placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 2rem;
+        }
+        .operator-credential-name {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin: 0 0 10px 0;
+            line-height: 1.25;
+        }
+        .operator-credential-dl {
+            margin: 0;
+            font-size: 0.82rem;
+            color: var(--gray);
+            line-height: 1.5;
+        }
+        .operator-credential-dl dt {
+            font-weight: 700;
+            color: var(--dark);
+            margin-top: 8px;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .operator-credential-dl dt:first-child {
+            margin-top: 0;
+        }
+        .operator-credential-dl dd {
+            margin: 2px 0 0 0;
+            word-break: break-word;
+        }
+        .operator-credential-footer {
+            padding: 12px 16px 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: var(--gray);
+            background: #fafbfc;
+        }
+        .operator-photo-upload-hint {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 6px;
+        }
+        @media (max-width: 520px) {
+            .operator-credential-body {
+                grid-template-columns: 1fr;
+                justify-items: center;
+                text-align: center;
+            }
+            .operator-credential-dl {
+                text-align: left;
+                width: 100%;
+            }
+            .operator-credential-name {
+                text-align: center;
+            }
         }
         .image-modal {
             display: none;
@@ -521,16 +631,28 @@
 
         <!-- Galería de Imágenes -->
         <div class="section">
-            <h2 class="section-title">
-                <i class="fas fa-images"></i>
-                Imágenes de la Unidad
-            </h2>
+            <div class="section-header">
+                <h2 class="section-title" style="margin: 0;">
+                    <i class="fas fa-images"></i>
+                    Imágenes de la Unidad
+                </h2>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-success" onclick="openVehicleImageUploadModal()">
+                        <i class="fas fa-plus"></i>
+                        Agregar imágenes
+                    </button>
+                </div>
+            </div>
             
             <% if (!images || images.length === 0) { %>
             <div class="empty-state">
                 <i class="fas fa-images" style="font-size: 3rem; color: #e2e8f0; margin-bottom: 15px;"></i>
                 <p class="text-muted">No hay imágenes registradas aún</p>
-                <p class="text-muted" style="font-size: 0.9rem;">Puedes agregar imágenes desde la lista de vehículos usando el botón "Imágenes"</p>
+                <p class="text-muted" style="font-size: 0.9rem;">Sube fotos de la unidad con el botón de arriba o el siguiente.</p>
+                <button type="button" class="btn btn-success" style="margin-top: 16px;" onclick="openVehicleImageUploadModal()">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    Subir imágenes
+                </button>
             </div>
             <% } else { %>
             <div class="image-gallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
@@ -834,50 +956,54 @@
                 <p class="text-muted">No hay operadores registrados aún</p>
             </div>
             <% } else { %>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>RFC</th>
-                        <th>Tipo de Licencia</th>
-                        <th>Vigencia de Licencia</th>
-                        <th>Teléfono</th>
-                        <th>Dirección</th>
-                        <th>Fecha de Asignación</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% operators.forEach(function(operator) { %>
-                    <tr>
-                        <td class="font-weight-bold"><%= operator.nombre %></td>
-                        <td><%= operator.rfc || '-' %></td>
-                        <td><%= operator.tipo_licencia || '-' %></td>
-                        <td>
-                            <% if (operator.fecha_vencimiento_licencia) { %>
-                                <%= new Date(operator.fecha_vencimiento_licencia).toLocaleDateString('es-MX') %>
-                            <% } else { %>
-                                -
-                            <% } %>
-                        </td>
-                        <td><%= operator.telefono || '-' %></td>
-                        <td><%= operator.direccion || '-' %></td>
-                        <td class="text-muted">
+            <div class="operators-credential-grid">
+                <% operators.forEach(function(operator) { %>
+                <div class="operator-credential">
+                    <div class="operator-credential-header">
+                        <span>Credencial de operador</span>
+                        <span>Unidad #<%= vehicle.numero_vehiculo %></span>
+                    </div>
+                    <div class="operator-credential-body">
+                        <% if (operator.foto_ruta) { %>
+                        <img class="operator-credential-photo" src="/<%= operator.foto_ruta %>" alt="Foto <%= operator.nombre %>">
+                        <% } else { %>
+                        <div class="operator-credential-photo placeholder" aria-hidden="true"><i class="fas fa-user"></i></div>
+                        <% } %>
+                        <div>
+                            <h3 class="operator-credential-name"><%= operator.nombre %></h3>
+                            <dl class="operator-credential-dl">
+                                <dt>RFC</dt>
+                                <dd><%= operator.rfc || '—' %></dd>
+                                <dt>Licencia</dt>
+                                <dd><%= operator.tipo_licencia || '—' %></dd>
+                                <dt>Vigencia</dt>
+                                <dd>
+                                    <% if (operator.fecha_vencimiento_licencia) { %>
+                                        <%= new Date(operator.fecha_vencimiento_licencia).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+                                    <% } else { %>—<% } %>
+                                </dd>
+                                <dt>Teléfono</dt>
+                                <dd><%= operator.telefono || '—' %></dd>
+                                <dt>Dirección</dt>
+                                <dd><%= operator.direccion || '—' %></dd>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="operator-credential-footer">
+                        <span>
                             <% if (operator.fecha_asignacion) { %>
-                                <%= new Date(operator.fecha_asignacion).toLocaleDateString('es-MX') %>
+                            <i class="fas fa-calendar-check"></i> Asignado: <%= new Date(operator.fecha_asignacion).toLocaleDateString('es-MX') %>
                             <% } else { %>
-                                -
+                            <i class="fas fa-calendar-check"></i> Asignación: —
                             <% } %>
-                        </td>
-                        <td>
-                            <span class="badge badge-<%= operator.activo === 1 ? 'success' : 'warning' %>">
-                                <%= operator.activo === 1 ? 'Activo' : 'Inactivo' %>
-                            </span>
-                        </td>
-                    </tr>
-                    <% }); %>
-                </tbody>
-            </table>
+                        </span>
+                        <span class="badge badge-<%= operator.activo === 1 ? 'success' : 'warning' %>">
+                            <%= operator.activo === 1 ? 'Activo' : 'Inactivo' %>
+                        </span>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
             <% } %>
         </div>
 
@@ -920,6 +1046,42 @@
             <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Archivos Adjuntos</h3>
             <div id="attachmentsList">
                 <p class="text-muted">Cargando adjuntos...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: subir imágenes de la unidad -->
+    <div id="vehicleImageUploadModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Agregar imágenes de la unidad</h2>
+                <button type="button" class="modal-close" onclick="closeVehicleImageUploadModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="vehicleDetailImageUploadForm" enctype="multipart/form-data">
+                    <input type="hidden" id="vehicleDetailImageVehicleId" name="vehicle_id" value="<%= vehicle.id %>">
+                    <div class="form-group">
+                        <label class="form-label">Seleccionar imágenes *</label>
+                        <input type="file" id="vehicleDetailImagesInput" name="images" multiple accept="image/*" required class="form-control">
+                        <small class="text-muted">Varias a la vez. JPG, PNG, GIF. Máximo 10 MB por archivo.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Descripción (opcional)</label>
+                        <textarea class="form-control" id="vehicleDetailImageDescription" name="descripcion" rows="3" placeholder="Ej. Vista frontal, lateral, interior…"></textarea>
+                    </div>
+                    <div id="vehicleDetailImagePreviewWrap" style="display: none; margin-top: 15px;">
+                        <label class="form-label">Vista previa</label>
+                        <div id="vehicleDetailImagePreviewGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 10px;"></div>
+                    </div>
+                    <div class="form-actions" style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary" onclick="closeVehicleImageUploadModal()" style="flex: 1; min-width: 120px;">Cancelar</button>
+                        <button type="submit" class="btn btn-success" style="flex: 1; min-width: 120px;">
+                            <i class="fas fa-upload"></i> Subir imágenes
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -1407,7 +1569,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form id="operatorForm">
+                <form id="operatorForm" enctype="multipart/form-data">
                     <input type="hidden" name="vehicle_id" value="<%= vehicle.id %>">
                     <div class="form-row-grid">
                         <div class="form-group">
@@ -1447,6 +1609,15 @@
                             <textarea class="form-control" name="direccion" rows="2" placeholder="Calle, colonia, CP"></textarea>
                         </div>
                     </div>
+                    <div class="form-group" style="margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--border);">
+                        <label class="form-label">Fotografía del operador (opcional)</label>
+                        <input type="file" class="form-control" name="foto" id="operatorFotoInput" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp">
+                        <p class="operator-photo-upload-hint">Se mostrará en la credencial junto a los datos. JPG, PNG o GIF hasta 10 MB.</p>
+                        <div id="operatorFotoPreview" style="display: none; margin-top: 14px;">
+                            <span class="form-label" style="display:block;margin-bottom:8px;">Vista previa</span>
+                            <img id="operatorFotoPreviewImg" alt="" style="max-width: 160px; max-height: 200px; border-radius: 12px; object-fit: cover; border: 2px solid var(--border); box-shadow: var(--shadow);">
+                        </div>
+                    </div>
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="closeOperatorModal()" style="flex: 1;">Cancelar</button>
                         <button type="submit" class="btn btn-success" style="flex: 1;">Guardar</button>
@@ -1458,10 +1629,26 @@
 
     <script>
         // Formulario de operador
+        document.getElementById('operatorFotoInput').addEventListener('change', function () {
+            var prev = document.getElementById('operatorFotoPreview');
+            var img = document.getElementById('operatorFotoPreviewImg');
+            if (this.files && this.files[0]) {
+                var r = new FileReader();
+                r.onload = function (e) {
+                    img.src = e.target.result;
+                    prev.style.display = 'block';
+                };
+                r.readAsDataURL(this.files[0]);
+            } else {
+                prev.style.display = 'none';
+                img.src = '';
+                img.alt = '';
+            }
+        });
+
         document.getElementById('operatorForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData(this);
-            const data = Object.fromEntries(formData);
             
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
@@ -1471,10 +1658,7 @@
             try {
                 const response = await fetch('/api/operators', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
+                    body: formData
                 });
                 
                 if (response.ok) {
@@ -1501,6 +1685,7 @@
             const policyModal = document.getElementById('policyModal');
             const tireModal = document.getElementById('tireModal');
             const operatorModal = document.getElementById('operatorModal');
+            const vehicleImageUploadModal = document.getElementById('vehicleImageUploadModal');
             if (event.target == fuelModal) {
                 fuelModal.style.display = 'none';
             }
@@ -1515,6 +1700,10 @@
             }
             if (event.target == tireModal) {
                 tireModal.style.display = 'none';
+            }
+            if (vehicleImageUploadModal && event.target == vehicleImageUploadModal) {
+                vehicleImageUploadModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
             }
         }
 
@@ -1928,6 +2117,10 @@
             const modal = document.getElementById('operatorModal');
             modal.style.display = 'none';
             document.getElementById('operatorForm').reset();
+            var prev = document.getElementById('operatorFotoPreview');
+            var img = document.getElementById('operatorFotoPreviewImg');
+            if (prev) prev.style.display = 'none';
+            if (img) { img.src = ''; img.alt = ''; }
         }
 
         // Funciones para el llenado rápido de posiciones
@@ -2051,7 +2244,109 @@
         // Agregar listener para verificar duplicados al cambiar posición
         document.getElementById('posicionSelect').addEventListener('change', checkPositionDuplicate);
 
-        // Funciones para el modal de imagen
+        function openVehicleImageUploadModal() {
+            var m = document.getElementById('vehicleImageUploadModal');
+            var f = document.getElementById('vehicleDetailImageUploadForm');
+            if (!m || !f) return;
+            f.reset();
+            var hid = document.getElementById('vehicleDetailImageVehicleId');
+            if (hid) hid.value = String(vehicleId);
+            var pw = document.getElementById('vehicleDetailImagePreviewWrap');
+            var pg = document.getElementById('vehicleDetailImagePreviewGrid');
+            if (pw) pw.style.display = 'none';
+            if (pg) pg.innerHTML = '';
+            m.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeVehicleImageUploadModal() {
+            var m = document.getElementById('vehicleImageUploadModal');
+            if (m) m.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        (function initVehicleDetailImageUpload() {
+            var inp = document.getElementById('vehicleDetailImagesInput');
+            var form = document.getElementById('vehicleDetailImageUploadForm');
+            if (inp) {
+                inp.addEventListener('change', function () {
+                    var grid = document.getElementById('vehicleDetailImagePreviewGrid');
+                    var wrap = document.getElementById('vehicleDetailImagePreviewWrap');
+                    if (!grid || !wrap) return;
+                    grid.innerHTML = '';
+                    if (this.files.length > 0) {
+                        wrap.style.display = 'block';
+                        Array.from(this.files).forEach(function (file) {
+                            if (!file.type.startsWith('image/')) return;
+                            var reader = new FileReader();
+                            reader.onload = function (ev) {
+                                var imgDiv = document.createElement('div');
+                                imgDiv.style.cssText = 'position:relative;border:2px solid #dee2e6;border-radius:8px;overflow:hidden;';
+                                var img = document.createElement('img');
+                                img.src = ev.target.result;
+                                img.style.cssText = 'width:100%;height:100px;object-fit:cover;display:block;';
+                                var nameDiv = document.createElement('div');
+                                nameDiv.style.cssText = 'padding:5px;background:#f8f9fa;font-size:0.75rem;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                                nameDiv.textContent = file.name;
+                                imgDiv.appendChild(img);
+                                imgDiv.appendChild(nameDiv);
+                                grid.appendChild(imgDiv);
+                            };
+                            reader.readAsDataURL(file);
+                        });
+                    } else {
+                        wrap.style.display = 'none';
+                    }
+                });
+            }
+            if (form) {
+                form.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    var vidEl = document.getElementById('vehicleDetailImageVehicleId');
+                    var vid = (vidEl && vidEl.value) ? vidEl.value : String(vehicleId);
+                    var filesInput = document.getElementById('vehicleDetailImagesInput');
+                    var descEl = document.getElementById('vehicleDetailImageDescription');
+                    var descripcion = descEl ? descEl.value : '';
+                    if (!filesInput || filesInput.files.length === 0) {
+                        alert('Selecciona al menos una imagen');
+                        return;
+                    }
+                    var submitBtn = form.querySelector('button[type="submit"]');
+                    var originalText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+                    var successCount = 0;
+                    var errorCount = 0;
+                    for (var i = 0; i < filesInput.files.length; i++) {
+                        var formData = new FormData();
+                        formData.append('file', filesInput.files[i]);
+                        formData.append('entity_type', 'vehicle');
+                        formData.append('entity_id', vid);
+                        formData.append('descripcion', descripcion || ('Imagen ' + (i + 1) + ' de la unidad'));
+                        formData.append('categoria', 'imagen_vehiculo');
+                        try {
+                            var response = await fetch('/api/attachments', { method: 'POST', body: formData });
+                            var data = await response.json();
+                            if (data.success) successCount++;
+                            else errorCount++;
+                        } catch (err) {
+                            errorCount++;
+                        }
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    if (successCount > 0) {
+                        alert('✅ ' + successCount + ' imagen(es) subida(s) correctamente' + (errorCount > 0 ? '\n⚠️ ' + errorCount + ' no se pudieron subir' : ''));
+                        closeVehicleImageUploadModal();
+                        window.location.reload();
+                    } else {
+                        alert('No se pudieron subir las imágenes');
+                    }
+                });
+            }
+        })();
+
+        // Funciones para el modal de imagen (visor a pantalla completa)
         function openImageModal(imagePath, imageName, description) {
             const modal = document.getElementById('imageViewModal');
             const img = document.getElementById('imageViewImg');
@@ -2077,6 +2372,11 @@
         // Cerrar modal con ESC
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
+                var uploadM = document.getElementById('vehicleImageUploadModal');
+                if (uploadM && uploadM.style.display === 'block') {
+                    closeVehicleImageUploadModal();
+                    return;
+                }
                 closeImageModal();
             }
         });

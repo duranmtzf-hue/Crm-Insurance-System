@@ -87,9 +87,11 @@ const upload = multer({
     },
     fileFilter: function (req, file, cb) {
         // Permitir imágenes, PDFs y documentos comunes
-        const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|txt/;
+        const allowedTypes = /jpeg|jpg|png|gif|webp|pdf|doc|docx|xls|xlsx|txt/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
+        const mimetype =
+            /jpeg|jpg|png|gif|webp|pdf|doc|docx|xls|xlsx|plain/.test(file.mimetype) ||
+            file.mimetype === 'image/webp';
         
         if (mimetype && extname) {
             return cb(null, true);
@@ -348,7 +350,7 @@ function initializeDatabase() {
     )`);
     
     // Add new columns to operators table if they don't exist (for existing databases)
-    const operatorColumns = ['rfc', 'tipo_licencia', 'direccion'];
+    const operatorColumns = ['rfc', 'tipo_licencia', 'direccion', 'foto_ruta'];
     operatorColumns.forEach(column => {
         db.run(`ALTER TABLE operators ADD COLUMN ${column} TEXT`, (err) => {
             // Ignore error if column already exists
@@ -5390,50 +5392,66 @@ app.post('/api/tires/:tire_id/reviews', requireAuth, (req, res) => {
     });
 });
 
-// API: Create operator for vehicle
-app.post('/api/operators', requireAuth, (req, res) => {
+// API: Create operator for vehicle (multipart: campo opcional `foto`)
+app.post('/api/operators', requireAuth, upload.single('foto'), (req, res) => {
     const userId = req.session.userId;
     const { vehicle_id, nombre, rfc, tipo_licencia, fecha_vencimiento_licencia, telefono, direccion } = req.body;
-    
+
+    const cleanupFile = () => {
+        if (req.file && req.file.path) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (_) {}
+        }
+    };
+
     if (!vehicle_id || !nombre) {
+        cleanupFile();
         return res.status(400).json({ error: 'Vehículo y nombre del operador son requeridos' });
     }
-    
+
+    let foto_ruta = null;
+    if (req.file) {
+        foto_ruta = path.relative(__dirname, req.file.path).replace(/\\/g, '/');
+    }
+
     // Verify vehicle belongs to user
     db.getConverted('SELECT id FROM vehicles WHERE id = ? AND user_id = ?', [vehicle_id, userId], (err, vehicle) => {
         if (err || !vehicle) {
+            cleanupFile();
             return res.status(403).json({ error: 'Vehículo no encontrado' });
         }
-        
-        // Create or get operator
-        db.runConverted(`INSERT INTO operators (user_id, nombre, rfc, tipo_licencia, fecha_vencimiento_licencia, telefono, direccion, estado)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'Activo')`,
-            [userId, nombre, rfc || null, tipo_licencia || null, fecha_vencimiento_licencia || null, telefono || null, direccion || null],
+
+        db.runConverted(`INSERT INTO operators (user_id, nombre, rfc, tipo_licencia, fecha_vencimiento_licencia, telefono, direccion, estado, foto_ruta)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'Activo', ?)`,
+            [userId, nombre, rfc || null, tipo_licencia || null, fecha_vencimiento_licencia || null, telefono || null, direccion || null, foto_ruta],
             (err, result) => {
                 if (err) {
                     console.error('Error creating operator:', err);
+                    cleanupFile();
                     return res.status(500).json({ error: 'Error al crear operador: ' + err.message });
                 }
-                
+
                 const operatorId = result?.lastID;
                 if (!operatorId) {
+                    cleanupFile();
                     return res.status(500).json({ error: 'Error: No se pudo obtener el ID del operador creado' });
                 }
-                
-                // Associate operator with vehicle
+
                 db.runConverted(`INSERT INTO vehicle_operators (vehicle_id, operator_id, fecha_asignacion, activo)
                         VALUES (?, ?, CURRENT_DATE, 1)`,
                     [vehicle_id, operatorId],
-                    (err, result) => {
-                        if (err) {
-                            console.error('Error associating operator with vehicle:', err);
-                            return res.status(500).json({ error: 'Error al asociar operador con vehículo: ' + err.message });
+                    (err2) => {
+                        if (err2) {
+                            console.error('Error associating operator with vehicle:', err2);
+                            db.run('DELETE FROM operators WHERE id = ?', [operatorId], () => {});
+                            cleanupFile();
+                            return res.status(500).json({ error: 'Error al asociar operador con vehículo: ' + err2.message });
                         }
-                        
-                        // Log activity
-                        logActivity(userId, 'vehicle', vehicle_id, 'operator_added', 
+
+                        logActivity(userId, 'vehicle', vehicle_id, 'operator_added',
                             `Operador ${nombre} agregado al vehículo`, null, { operator_id: operatorId, nombre: nombre });
-                        
+
                         res.json({ success: true, id: operatorId });
                     });
             });
