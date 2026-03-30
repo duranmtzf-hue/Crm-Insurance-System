@@ -18,17 +18,21 @@
     <link rel="apple-touch-icon" href="/images/logo.png">
     <title>Facturación y Órdenes de Servicio | CRM Insurance System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #001f3f;
-            --secondary: #87ceeb;
+            --primary: #0a1628;
+            --primary-light: #1a2d4a;
+            --secondary: #64b5f6;
             --accent: #4da6ff;
             --light: #f5f7fa;
-            --dark: #212529;
-            --gray: #6c757d;
-            --border: #dee2e6;
-            --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            --dark: #1e293b;
+            --gray: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08);
+            --radius-md: 10px;
+            --radius-lg: 16px;
         }
         * {
             margin: 0;
@@ -36,8 +40,8 @@
             box-sizing: border-box;
         }
         body {
-            font-family: 'Open Sans', sans-serif;
-            background-color: #f5f7fa;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #f0f4f8;
             color: var(--dark);
             line-height: 1.6;
         }
@@ -97,7 +101,7 @@
             gap: 8px;
         }
         .btn:hover {
-            background-color: #003366;
+            transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10, 22, 40, 0.2);
         }
         .btn-secondary {
             background-color: #6c757d;
@@ -213,20 +217,20 @@
             letter-spacing: 0.5px;
         }
         .badge-success {
-            background-color: #d4edda;
-            color: #155724;
+            background-color: #dcfce7;
+            color: #166534;
         }
         .badge-warning {
-            background-color: #fff3cd;
-            color: #856404;
+            background-color: #fef3c7;
+            color: #92400e;
         }
         .badge-danger {
-            background-color: #f8d7da;
-            color: #721c24;
+            background-color: #fee2e2;
+            color: #991b1b;
         }
         .badge-info {
-            background-color: #d1ecf1;
-            color: #0c5460;
+            background-color: #dbeafe;
+            color: #1e40af;
         }
         .text-muted {
             color: var(--gray);
@@ -242,7 +246,7 @@
         }
         .empty-state i {
             font-size: 2rem;
-            color: #dee2e6;
+            color: #e2e8f0;
             margin-bottom: 8px;
         }
         /* Modal */
@@ -320,7 +324,7 @@
             border: 1px solid var(--border);
             border-radius: 6px;
             font-size: 0.9rem;
-            font-family: 'Open Sans', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             transition: border-color 0.2s;
         }
         .form-control:focus {

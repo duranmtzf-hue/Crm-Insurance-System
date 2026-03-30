@@ -3484,7 +3484,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
                                                                         console.log('📊 Raw fuelStats:', fuelStats);
                                                                         console.log('📊 Raw maintStats:', maintStats);
                                                                         console.log('📊 Raw policyStats:', policyStats);
-                                                                        
+
                                                                         res.render('dashboard', {
                                                                             user: req.session,
                                                                             vehicles: vehicles,
@@ -3501,8 +3501,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
                                                                             notificationsHistory: notificationsHistory || [],
                                                                             hasNotificationsHistory: (notificationsHistory && notificationsHistory.length > 0) || false
                                                                         });
-                                                                    }
-                                                                );
+                                                                    });
                                                             });
                                                         });
                                                     });
@@ -3521,7 +3520,9 @@ app.get('/dashboard', requireAuth, (req, res) => {
 
 app.get('/vehicles', requireAuth, (req, res) => {
     const userId = req.session.userId;
-    
+    const qRaw = (req.query.q != null ? String(req.query.q) : '').trim();
+    const q = qRaw.toLowerCase();
+
     db.all(`SELECT v.*
             FROM vehicles v 
             WHERE v.user_id = ? 
@@ -3530,7 +3531,17 @@ app.get('/vehicles', requireAuth, (req, res) => {
         if (err) {
             return res.status(500).send('Error al cargar vehículos');
         }
-        res.render('vehicles', { user: req.session, vehicles: vehicles || [] });
+        let list = vehicles || [];
+        if (q) {
+            list = list.filter((v) => {
+                const n = String(v.numero_vehiculo || '').toLowerCase();
+                const pl = String(v.placas || '').toLowerCase();
+                const ma = String(v.marca || '').toLowerCase();
+                const mo = String(v.modelo || '').toLowerCase();
+                return n.includes(q) || pl.includes(q) || ma.includes(q) || mo.includes(q);
+            });
+        }
+        res.render('vehicles', { user: req.session, vehicles: list, searchQ: qRaw });
     });
 });
 

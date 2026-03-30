@@ -1,5 +1,7 @@
 node_modules/
 database.sqlite
+*.sqlite-shm
+*.sqlite-wal
 data/
 *.db
 *.sqlite
